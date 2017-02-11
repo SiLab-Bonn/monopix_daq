@@ -1,0 +1,228 @@
+
+---
+name    : monopix_daq
+version : 0.0.1
+
+transfer_layer:
+    - name  : intf
+      type  : SiUsb
+      init : 
+        timeout  : 600
+        bit_file : ../firmware/ise/monopix_mio.bit
+
+hw_drivers:
+  - name      : GPAC
+    type      : GPAC
+    interface : intf
+    base_addr : 0x00000
+    init :
+        no_calibration : True
+        
+  - name      : gpio
+    type      : gpio
+    interface : intf
+    base_addr : 0x10000
+    size      : 8
+    
+  - name      : spi
+    type      : spi
+    interface : intf
+    base_addr : 0x11000
+    
+  - name      : inj
+    type      : pulse_gen
+    interface : intf
+    base_addr : 0x10100
+    
+  - name      : tdc
+    type      : tdc_s3
+    interface : intf
+    base_addr : 0x10300
+     
+  - name      : gate_tdc
+    type      : pulse_gen
+    interface : intf
+    base_addr : 0x10400
+    
+  - name      : fifo
+    type      : sram_fifo
+    interface : intf
+    base_addr : 0x18000
+    base_data_addr: 0x1000000000000
+    
+registers:
+  - name        : CONF
+    type        : StdRegister
+    hw_driver   : gpio
+    size        : 8
+    fields :
+      - name    : SREN
+        size    : 1
+        offset  : 3
+      - name    : LDPIX
+        size    : 1
+        offset  : 2
+      - name    : LDDAC
+        size    : 1
+        offset  : 1
+      - name    : RESET
+        size    : 1
+        offset  : 0
+
+  - name        : VDD_BCID_BUFF
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR0'}
+
+  - name        : VDDA
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR1'}
+
+  - name        : VDDD
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR2'}
+    
+  - name        : VPC
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR3'}
+   
+  - name        : BL
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC0'}
+    
+  - name        : TH
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC1'}
+    
+  - name        : VCascC 
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC2'}
+    
+  - name        : VCascN
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC3'}
+    
+  - name        : INJ_LO
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'INJ1'}
+    
+  - name        : INJ_HI
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'INJ0'}
+
+  - name        : CONF_SR
+    type        : StdRegister
+    hw_driver   : spi
+    size        : 4841
+    auto_start  : True 
+    init        :
+        BLRes     : 32
+        VAmp      : 32
+        VPFB      : 32
+        VPFoll    : 12
+        VPLoad    : 11
+        IComp     : 32
+        Vbias_CS  : 32
+        IBOTA     : 32
+        ILVDS     : 32
+        Vfs       : 32
+        LSBdacL   : 32
+        Vsf_dis1  : 10
+        Vsf_dis2  : 20
+        Vsf_dis3  : 30
+        REGULATOR_EN : 1
+    fields:
+        - name     : BLRes
+          size     : 6
+          offset   : 5
+        - name     : VAmp
+          size     : 6
+          offset   : 11
+        - name     : VPFB
+          size     : 6
+          offset   : 17
+        - name     : VPFoll
+          size     : 6
+          offset   : 23
+        - name     : VPLoad
+          size     : 6
+          offset   : 29
+        - name     : IComp
+          size     : 6
+          offset   : 35
+        - name     : Vbias_CS
+          size     : 6
+          offset   : 41
+        - name     : IBOTA
+          size     : 6
+          offset   : 47
+        - name     : ILVDS
+          size     : 6
+          offset   : 53
+        - name     : Vfs
+          size     : 6
+          offset   : 59
+        - name     : LSBdacL
+          size     : 6
+          offset   : 65
+        - name     : Vsf_dis1
+          size     : 6
+          offset   : 71
+        - name     : Vsf_dis2
+          size     : 6
+          offset   : 77
+        - name     : ColRO_En
+          size     : 36
+          offset   : 113
+        - name     : Vsf_dis3
+          size     : 6
+          offset   : 119
+        - name     : TRIM_EN
+          size     : 4
+          offset   : 123
+        - name     : INJECT_EN
+          size     : 1
+          offset   : 124
+        - name     : MONITOR_EN
+          size     : 1
+          offset   : 125
+        - name     : PREAMP_EN
+          size     : 1
+          offset   : 126
+        - name     : NotUsed
+          size     : 14
+          offset   : 140
+        - name     : MON_EN
+          size     : 36
+          offset   : 176
+        - name     : INJ_EN
+          size     : 18
+          offset   : 194
+        - name     : BUFFER_EN
+          size     : 1
+          offset   : 195
+        - name     : REGULATOR_EN
+          size     : 1
+          offset   : 196
+        - name     : Pixels
+          size     : 4644
+          offset   : 4840

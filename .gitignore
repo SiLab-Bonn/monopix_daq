@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*~
+*.npy
+*.h5
 
 # C extensions
 *.so
@@ -87,3 +90,16 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+/firmware/ise/*
+!/firmware/ise/*.xise
+!/firmware/ise/*.bit
+
+tests/Makefile
+tests/results.xml
+tests/sim_build
+tests/*.vcd
+tests/transcript
+
+.project
+.pydevproject
