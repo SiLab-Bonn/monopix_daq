@@ -133,9 +133,9 @@ monopix dut(
     );
 
 
-//initial begin
-//    $dumpfile("/tmp/monopix.vcd");
-//    $dumpvars(0);
-//end
+initial begin
+    $dumpfile("/tmp/monopix.vcd");
+    $dumpvars(3);
+end
 
 endmodule

@@ -127,11 +127,18 @@ always@(*)
     if(LdDAC)
         mopnopix_globar_ld = mopnopix_globar_sr;
 
+`ifndef TEST_DC
+    localparam DCOLS = 36/2; 
+`else
+    localparam DCOLS = `TEST_DC;
+`endif
+
 logic [0:18*129*2] pix_sr;
 logic [0:35] pix_mon;
+
 assign Monitor = !(|(pix_mon & mopnopix_globar_ld.MON_EN));
 assign pix_sr[0] = mopnopix_globar_sr[0];
-assign SR_out = pix_sr[$bits(pix_sr)-1];
+assign SR_out = pix_sr[DCOLS*129*2];
 
 generate
     genvar col_i;
@@ -141,42 +148,48 @@ generate
         wire [129-1:0] dc_mon_R;
         assign pix_mon[2*col_i] = |dc_mon_L;
         assign pix_mon[2*col_i+1] = |dc_mon_R;
-
-        for (row_i = 0; row_i <129; row_i = row_i + 1) begin: row_gen
-            
-            mono_pixel mono_pixel_L(
-                            .ANA_HIT(ANA_HIT[col_i*(129*2)+row_i]),
-                            .Injection(Injection & mopnopix_globar_ld.INJ_EN[col_i]),
-                            
-                            .SR_CLK(Clk_Conf), 
-                            .SR_DATA_IN(pix_sr[col_i*(129*2)+row_i]), 
-                            .SR_EN(SR_EN),
-                            .SR_DATA_OUT(pix_sr[col_i*(129*2)+row_i+1]),
-                            
-                            .TRIM_EN(mopnopix_globar_sr.TRIM_EN & {4{LdPix}}),
-                            .INJECT_EN(mopnopix_globar_sr.INJECT_EN & LdPix),
-                            .MONITOR_EN(mopnopix_globar_sr.MONITOR_EN & LdPix),
-                            .PREAMP_EN(mopnopix_globar_sr.PREAMP_EN & LdPix),
-                            
-                            .OUT_MONITOR(dc_mon_L[row_i])
-                );
-                            
-             mono_pixel mono_pixel_R(
-                            .ANA_HIT(ANA_HIT[col_i*(129*2)+129+row_i]),
-                            .Injection(Injection & mopnopix_globar_ld.INJ_EN[col_i]),
-                            
-                            .SR_CLK(Clk_Conf),
-                            .SR_DATA_IN(pix_sr[col_i*(129*2)+129+row_i]),
-                            .SR_EN(SR_EN),
-                            .SR_DATA_OUT(pix_sr[col_i*(129*2)+129+row_i+1]),
-                            
-                            .TRIM_EN(mopnopix_globar_sr.TRIM_EN & {4{LdPix}}),
-                            .INJECT_EN(mopnopix_globar_sr.INJECT_EN & LdPix),
-                            .MONITOR_EN(mopnopix_globar_sr.MONITOR_EN & LdPix),
-                            .PREAMP_EN(mopnopix_globar_sr.PREAMP_EN & LdPix),
-                            
-                            .OUT_MONITOR(dc_mon_R[row_i])
-                 );
+        
+        if(col_i < DCOLS) begin
+            for (row_i = 0; row_i <129; row_i = row_i + 1) begin: row_gen
+                
+                mono_pixel mono_pixel_L(
+                                .ANA_HIT(ANA_HIT[col_i*(129*2)+row_i]),
+                                .Injection(Injection & mopnopix_globar_ld.INJ_EN[col_i]),
+                                
+                                .SR_CLK(Clk_Conf), 
+                                .SR_DATA_IN(pix_sr[col_i*(129*2)+row_i]), 
+                                .SR_EN(SR_EN),
+                                .SR_DATA_OUT(pix_sr[col_i*(129*2)+row_i+1]),
+                                
+                                .TRIM_EN(mopnopix_globar_sr.TRIM_EN & {4{LdPix}}),
+                                .INJECT_EN(mopnopix_globar_sr.INJECT_EN & LdPix),
+                                .MONITOR_EN(mopnopix_globar_sr.MONITOR_EN & LdPix),
+                                .PREAMP_EN(mopnopix_globar_sr.PREAMP_EN & LdPix),
+                                
+                                .OUT_MONITOR(dc_mon_L[row_i])
+                    );
+                                
+                 mono_pixel mono_pixel_R(
+                                .ANA_HIT(ANA_HIT[col_i*(129*2)+129+row_i]),
+                                .Injection(Injection & mopnopix_globar_ld.INJ_EN[col_i]),
+                                
+                                .SR_CLK(Clk_Conf),
+                                .SR_DATA_IN(pix_sr[col_i*(129*2)+129+row_i]),
+                                .SR_EN(SR_EN),
+                                .SR_DATA_OUT(pix_sr[col_i*(129*2)+129+row_i+1]),
+                                
+                                .TRIM_EN(mopnopix_globar_sr.TRIM_EN & {4{LdPix}}),
+                                .INJECT_EN(mopnopix_globar_sr.INJECT_EN & LdPix),
+                                .MONITOR_EN(mopnopix_globar_sr.MONITOR_EN & LdPix),
+                                .PREAMP_EN(mopnopix_globar_sr.PREAMP_EN & LdPix),
+                                
+                                .OUT_MONITOR(dc_mon_R[row_i])
+                     );
+            end
+        end
+        else begin
+            assign dc_mon_L = 0;
+            assign dc_mon_R = 0;
         end
     
     end

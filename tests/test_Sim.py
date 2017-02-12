@@ -17,11 +17,17 @@ from monopix_daq.monopix import monopix
 class TestSim(unittest.TestCase):
 
     def setUp(self):
-        
+    
+        extra_defines = []
+        if os.environ['SIM']=='icarus':
+            extra_defines = ['TEST_DC=1']
+            
+            
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) #../
         print root_dir
         cocotb_compile_and_run(
-            sim_files = [root_dir + '/tests/hdl/monopix_tb.sv'], 
+            sim_files = [root_dir + '/tests/hdl/monopix_tb.sv'],
+            extra_defines = extra_defines,
             sim_bus = 'basil.utils.sim.SiLibUsbBusDriver',
             include_dirs = (root_dir, root_dir + "/firmware/src"),
             extra = '\nVSIM_ARGS += -wlf /tmp/monopix.wlf  \n'
@@ -37,10 +43,6 @@ class TestSim(unittest.TestCase):
 
     def test(self):
         self.dut.init()
-       
-        if os.environ['HOME']=='icarus':
-            logging.warnig('Icarus simulator is to slow!')
-            return
         
         self.dut['CONF_SR']['MON_EN'].setall(True)
         self.dut['CONF_SR']['INJ_EN'].setall(True)
