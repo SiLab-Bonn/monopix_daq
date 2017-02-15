@@ -35,6 +35,9 @@ class monopix(Dut):
         self['CONF']['RESET'] = 0
         self['CONF'].write()
         
+        self['gate_tdc'].reset()
+        self['inj'].reset()
+        
         self['CONF_SR'].set_size(4841)
                 
     def write_global_conf(self):

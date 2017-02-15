@@ -11,9 +11,10 @@ from basil.utils.sim.utils import cocotb_compile_and_run, cocotb_compile_clean
 import sys
 import yaml
 import time
+import numpy as np
 
 from monopix_daq.monopix import monopix
-from monopix_daq.scans.threshold_scan_monitor import ThresholdScanMonitor
+
 
 class TestSim(unittest.TestCase):
 
@@ -39,17 +40,43 @@ class TestSim(unittest.TestCase):
         self.cnfg['transfer_layer'][0]['type'] = 'SiSim'
 
         
-    def test(self):
-    
-        import monopix_daq.scans.threshold_scan_monitor 
-        params = monopix_daq.scans.threshold_scan_monitor.local_configuration 
-        
-        self.scan = ThresholdScanMonitor(self.cnfg)
+    def test_noise_scan_monitor(self):
+        import monopix_daq.scans.noise_scan_monitor 
+  
+        params = monopix_daq.scans.noise_scan_monitor.local_configuration 
+  
+        self.scan = monopix_daq.scans.noise_scan_monitor.ThresholdScanMonitor(self.cnfg)
         params['repeat_command'] = 2
         params['scan_pixels'] =  [[0,0],[0,4]]        
+        params['scan_range'] =  [0.8, 0.7, -0.03]  
+        scan_range = np.arange(params['scan_range'][0], params['scan_range'][1], params['scan_range'][2])
         
         self.scan.start(**params)
-        self.scan.analyze()
+        H = self.scan.analyze()
+        exp = np.full((len(scan_range), len(params['scan_pixels'])), 0)
+        
+        comp = (H == exp)
+        self.assertTrue(comp.all())
+        
+        
+    def test_threshold_scan_monitor(self):
+        import monopix_daq.scans.threshold_scan_monitor 
+  
+        params = monopix_daq.scans.threshold_scan_monitor.local_configuration 
+  
+        self.scan = monopix_daq.scans.threshold_scan_monitor.ThresholdScanMonitor(self.cnfg)
+        params['repeat_command'] = 2
+        params['scan_pixels'] =  [[0,0],[0,4]]        
+        params['scan_range'] =  [0, 0.2, 0.04]  
+        scan_range = np.arange(params['scan_range'][0], params['scan_range'][1], params['scan_range'][2])
+ 
+        self.scan.start(**params)
+        H = self.scan.analyze()
+        exp = np.full((len(scan_range), len(params['scan_pixels'])), params['repeat_command'])
+
+        comp = (H == exp)
+        self.assertTrue(comp.all())
+        
         
     def tearDown(self):
         self.scan.dut.close()
