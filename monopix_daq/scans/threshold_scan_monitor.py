@@ -60,10 +60,9 @@ class ThresholdScanMonitor(ScanBase):
         self.dut['tdc'].EN_INVERT_TDC = 1
         self.dut['tdc'].ENABLE_EXTERN = 1
         
-        pixels_cnt = len(scan_pixels)
         scan_range = np.arange(scan_range[0], scan_range[1], scan_range[2])
         
-        logging.info('Start Scan: pixels=%s scan_range=%s', str(scan_pixels),str(scan_pixels))
+        logging.info('Start Scan: pixels=%s scan_range=%s', str(scan_pixels), str(scan_range))
         
         for idx, pix in enumerate(scan_pixels):
             
@@ -94,8 +93,8 @@ class ThresholdScanMonitor(ScanBase):
             
             for vol_idx, vol in enumerate(scan_range):
                 
-                param_id = idx * pixels_cnt + vol_idx
-                logging.info('Scan Pixel: %s (V=%f ID=%d)', str(pix), vol, param_id)
+                param_id = idx * len(scan_range) + vol_idx
+                logging.info('Scan Pixel Start: %s (V=%f ID=%d)', str(pix), vol, param_id)
                 
                 self.dut['INJ_HI'].set_voltage( float(INJ_LO + vol), unit='V')
                 time.sleep(0.1)
@@ -119,15 +118,52 @@ class ThresholdScanMonitor(ScanBase):
                     data = np.concatenate([item[0] for item in dqdata])
                 except ValueError:
                     data = []
-                logging.info('Scan Pixel: %s V=%f TDC_COUNT=%d', str(pix), vol, len(data))
-
-        #scan_results = self.h5_file.create_group("/", 'scan_results', 'Scan Masks')
-        #self.h5_file.create_carray(scan_results, 'tdac_mask', obj=mask_tdac)
-        #self.h5_file.create_carray(scan_results, 'en_mask', obj=mask_en)
+                logging.info('Scan Pixel Finished: %s V=%f TDC_COUNT=%d', str(pix), vol, len(data))
         
-    def analyze(self):
-        pass
+    def analyze(self, h5_filename  = ''):
+        if h5_filename == '':
+            h5_filename = self.output_filename +'.h5'
+        
+        logging.info('Anallyzing: %s', h5_filename)
+        
+        with tb.open_file(h5_filename, 'r+') as in_file_h5:
+            raw_data = in_file_h5.root.raw_data[:]
+            meta_data = in_file_h5.root.meta_data[:]
+            
+            tdc_data = self.dut.interpret_tdc_data(raw_data, meta_data)
+            #in_file_h5.create_table(in_file_h5.root, 'tdc_data', tdc_data, filters=self.filter_tables)
+
+            import yaml
+            import monopix_daq.analysis as analysis
+            scan_args = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
+            
+            scan_range = scan_args['scan_range']
+            scan_pixels = scan_args['scan_pixels']
+            repeat_command = scan_args['repeat_command']
+            
+            hit_map = np.full((len(scan_range), len(scan_pixels)), 0, dtype = np.int16)
+            noise_fit = []
+            mean_fit = []
+            
+            for i in range(len(scan_range)*len(scan_pixels)):
+                wh = np.where(tdc_data['scan_param_id'] == i)  # this can be faster
+                hd = tdc_data[wh[0]]
                 
+                pix = int(i / len(scan_range))
+                scan = i %  len(scan_range)
+
+                hit_map[scan,pix] = len(hd)
+
+            logging.info('|------------%s |', "-----"*len(scan_range))
+            logging.info('|           :%s |', "".join([str(scan).rjust(5) for scan in scan_range]))
+            logging.info('|------------%s |', "-----"*len(scan_range))
+
+            for i,pix in enumerate(scan_pixels):
+                A, mu, sigma = analysis.fit_scurve(hit_map[:,i], scan_range, repeat_command)
+                logging.info('|%s :%s | mu=%s  sigma=%s', str(pix).rjust(10), "".join([str(hits).rjust(5) for hits in hit_map[:,i]]), str(mu), str(sigma),)
+                
+            logging.info('|------------%s |', "-----"*len(scan_range))
+             
 if __name__ == "__main__":
 
     scan = ThresholdScanMonitor()

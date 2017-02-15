@@ -43,6 +43,9 @@ class ScanBase(object):
         self.dut = monopix(dut_conf)
         self.dut.init()
         
+        
+        self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
+        self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
 
     def get_basil_dir(self):
         return str(os.path.dirname(os.path.dirname(basil.__file__)))
@@ -53,10 +56,8 @@ class ScanBase(object):
         self.scan_param_id = 0
         
         filename = self.output_filename +'.h5'
-        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
         self.h5_file = tb.open_file(filename, mode='w', title=self.scan_id)
-        self.raw_data_earray = self.h5_file.create_earray (self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=filter_raw_data)
+        self.raw_data_earray = self.h5_file.create_earray (self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
         self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)
         
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
@@ -85,6 +86,8 @@ class ScanBase(object):
         
         self.dut.power_down()
         self.logger.removeHandler(self.fh)
+        
+        return self.output_filename + '.h5'
         
     def analyze(self):
         raise NotImplementedError('ScanBase.analyze() not implemented')

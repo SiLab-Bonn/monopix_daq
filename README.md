@@ -1,5 +1,7 @@
 # MONOPIX
 
+[![Build Status](https://travis-ci.org/SiLab-Bonn/monopix_daq.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/monopix_daq)
+
 DAQ for MONOPIX prototype based on [Basil](https://github.com/SiLab-Bonn/basil) framwork.
 
 ## Instalation

@@ -40,8 +40,16 @@ class TestSim(unittest.TestCase):
 
         
     def test(self):
+    
+        import monopix_daq.scans.threshold_scan_monitor 
+        params = monopix_daq.scans.threshold_scan_monitor.local_configuration 
+        
         self.scan = ThresholdScanMonitor(self.cnfg)
-        self.scan.start(scan_pixels = [[0,0],[0,1]], repeat_command = 2)
+        params['repeat_command'] = 2
+        params['scan_pixels'] =  [[0,0],[0,4]]        
+        
+        self.scan.start(**params)
+        self.scan.analyze()
         
     def tearDown(self):
         self.scan.dut.close()

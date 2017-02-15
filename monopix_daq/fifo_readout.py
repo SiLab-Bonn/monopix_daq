@@ -152,7 +152,7 @@ class FifoReadout(object):
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['fifo']['FIFO_SIZE'])
         logging.info('Channel:                     %s', " | ".join(['TDC','SPI_RX','DATA_RX']))
-        logging.info('Discard counter:             %s', " | ".join([str(tdc_discard_count),'???','???']))
+        logging.info('Discard counter:             %s', " | ".join([str(tdc_discard_count).rjust(3),'???','???']))
 
         if tdc_discard_count:
             logging.warning('Errors detected')
