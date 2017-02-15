@@ -192,8 +192,8 @@ gpio
 #( 
     .BASEADDR(GPIO_BASEADDR), 
     .HIGHADDR(GPIO_HIGHADDR),
-    .IO_WIDTH(8),
-    .IO_DIRECTION(8'hff)
+    .IO_WIDTH(16),
+    .IO_DIRECTION(16'hffff)
 ) gpio
 (
     .BUS_CLK(BUS_CLK),
@@ -205,11 +205,20 @@ gpio
     .IO(GPIO_OUT)
     );    
 
-wire LDDAC_CONF, LDPIX_CONF, SREN_CONF;
-assign RESET = GPIO_OUT[0];
+wire RESET_CONF, LDDAC_CONF, LDPIX_CONF, SREN_CONF, EN_BX_CLK_CONF, EN_OUT_CLK_CONF, RESET_GRAY_CONF;
+wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF;
+assign RESET_CONF = GPIO_OUT[0];
 assign LDDAC_CONF = GPIO_OUT[1];
 assign LDPIX_CONF = GPIO_OUT[2];
 assign SREN_CONF = GPIO_OUT[3];
+
+assign EN_BX_CLK_CONF = GPIO_OUT[4];
+assign EN_OUT_CLK_CONF = GPIO_OUT[5];
+assign RESET_GRAY_CONF = GPIO_OUT[6];
+
+assign EN_TEST_PATTERN_CONF = GPIO_OUT[7];
+assign EN_DRIVER_CONF = GPIO_OUT[8];
+assign EN_DATA_CMOS_CONF = GPIO_OUT[9];
 
 wire CONF_CLK;
 assign CONF_CLK = CLK8;
@@ -400,19 +409,32 @@ sram_fifo #(
     .FIFO_READ_ERROR()
 );
     
+    
+
+ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_BX) );
+ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );
+
+reg nRST_reg;
+assign nRST = nRST_reg;
+always@(negedge CLK40)
+    nRST_reg <= !RESET_CONF;
+   
+reg RST_GRAY_reg;
+assign RST_GRAY = RST_GRAY_reg;
+always@(negedge CLK40)
+    RST_GRAY_reg <= RESET_GRAY_CONF;
+
+assign EN_TEST_PATTERN = EN_TEST_PATTERN_CONF;
+assign EN_DRIVER = EN_DRIVER_CONF;
+assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
+
 //TODO: readout
-assign CLK_BX = 0; 
 assign READ = 0;
 assign FREEZE = 0;
-assign nRST = 0;
-assign EN_TEST_PATTERN = 0;
-assign RST_GRAY = 0;
-assign EN_DRIVER = 0;
-assign EN_DATA_CMOS = 0;
-assign CLK_OUT = 0;
+
 //TOKEN,
 //DATA,
-    
+
 // LED assignments
 assign LED[0] = 0;
 assign LED[1] = 0;

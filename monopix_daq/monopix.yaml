@@ -22,7 +22,7 @@ hw_drivers:
     type      : gpio
     interface : intf
     base_addr : 0x10000
-    size      : 8
+    size      : 16
     
   - name      : spi
     type      : spi
@@ -50,12 +50,31 @@ hw_drivers:
     base_addr : 0x18000
     base_data_addr: 0x1000000000000
     
+
 registers:
   - name        : CONF
     type        : StdRegister
     hw_driver   : gpio
-    size        : 8
+    size        : 16
     fields :
+      - name    : EN_DATA_CMOS
+        size    : 1
+        offset  : 9
+      - name    : EN_DRIVER
+        size    : 1
+        offset  : 8
+      - name    : EN_TEST_PATTERN
+        size    : 1
+        offset  : 7
+      - name    : RESET_GRAY
+        size    : 1
+        offset  : 6
+      - name    : EN_OUT_CLK
+        size    : 1
+        offset  : 5
+      - name    : EN_BX_CLK
+        size    : 1
+        offset  : 4
       - name    : SREN
         size    : 1
         offset  : 3
