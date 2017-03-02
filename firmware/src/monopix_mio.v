@@ -187,7 +187,7 @@ fx2_to_bus fx2_to_bus (
 );
 
 // -------  USER MODULES  ------- //
-wire [7:0] GPIO_OUT;
+wire [15:0] GPIO_OUT;
 gpio 
 #( 
     .BASEADDR(GPIO_BASEADDR), 
@@ -412,7 +412,8 @@ sram_fifo #(
     
 
 ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_BX) );
-ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );
+//ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );
+assign CLK_OUT = EN_OUT_CLK_CONF ? CLK40 : 1'b0;
 
 reg nRST_reg;
 assign nRST = nRST_reg;
@@ -431,7 +432,8 @@ assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 //TODO: readout
 assign READ = 0;
 assign FREEZE = 0;
-
+assign RESET = 0;
+ 
 //TOKEN,
 //DATA,
 
