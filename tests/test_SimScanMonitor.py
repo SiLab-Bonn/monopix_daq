@@ -15,7 +15,6 @@ import numpy as np
 
 from monopix_daq.monopix import monopix
 
-
 class TestSim(unittest.TestCase):
 
     def setUp(self):
@@ -38,7 +37,7 @@ class TestSim(unittest.TestCase):
             self.cnfg = yaml.load(f)
 
         self.cnfg['transfer_layer'][0]['type'] = 'SiSim'
-
+        self.cnfg['hw_drivers'][0]['init']['no_calibration'] = True
         
     def test_noise_scan_monitor(self):
         import monopix_daq.scans.noise_scan_monitor 

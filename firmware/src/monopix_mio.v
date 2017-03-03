@@ -37,6 +37,9 @@
 `include "utils/ddr_des.v"
 `include "utils/flag_domain_crossing.v"
 
+`include "mono_data_rx/mono_data_rx.v"
+`include "utils/cdc_reset_sync.v"
+
 `ifdef COCOTB_SIM //for simulation
     `include "utils/ODDR_sim.v"
     `include "utils/IDDR_sim.v"
@@ -52,6 +55,8 @@
     `include "utils/IDDR_s3.v"
     `include "utils/ODDR_s3.v"
 `endif 
+
+
 
 module monopix_mio (
     
@@ -164,6 +169,9 @@ localparam TDC_HIGHADDR = 16'h0400-1;
     
 localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
 localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
+
+localparam DATA_RX_BASEADDR = 16'h0500;
+localparam DATA_RX_HIGHADDR = 16'h0600-1;
     
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-1;
@@ -310,7 +318,6 @@ wire [31:0] ARB_DATA_OUT;
 wire FE_FIFO_READ;
 wire FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
-assign FE_FIFO_EMPTY = 1;
     
 wire TDC_FIFO_READ;
 wire TDC_FIFO_EMPTY;
@@ -372,7 +379,35 @@ tdc_s3 #(
     
     .TIMESTAMP(16'b0)
 );
+ 
+
+mono_data_rx #(
+   .BASEADDR(DATA_RX_BASEADDR),
+   .HIGHADDR(DATA_RX_HIGHADDR),
+   .IDENTYFIER(2'b00)
+) mono_data_rx (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
     
+    .CLK_BX(CLK40),
+    .RX_TOKEN(TOKEN), 
+    .RX_DATA(DATA_LVDS), 
+    .RX_CLK(CLK40),
+    .RX_READ(READ), 
+    .RX_FREEZE(FREEZE), 
+    
+    .FIFO_READ(FE_FIFO_READ),
+    .FIFO_EMPTY(FE_FIFO_EMPTY),
+    .FIFO_DATA(FE_FIFO_DATA),
+    
+    .LOST_ERROR()
+    
+); 
+ 
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
     
@@ -430,12 +465,7 @@ assign EN_DRIVER = EN_DRIVER_CONF;
 assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 
 //TODO: readout
-assign READ = 0;
-assign FREEZE = 0;
 assign RESET = 0;
- 
-//TOKEN,
-//DATA,
 
 // LED assignments
 assign LED[0] = 0;

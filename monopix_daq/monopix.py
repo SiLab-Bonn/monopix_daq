@@ -7,6 +7,8 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+sys.path = [os.path.dirname(os.path.abspath(__file__))] + sys.path  #for data_rx module
+
 from basil.dut import Dut
         
 class monopix(Dut):

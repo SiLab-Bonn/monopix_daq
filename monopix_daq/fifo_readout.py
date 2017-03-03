@@ -147,14 +147,15 @@ class FifoReadout(object):
 
     def print_readout_status(self):
         tdc_discard_count = self.get_tdc_fifo_discard_count()
+        data_rx_lost_count = self.get_data_rx_fifo_discard_count()
         
         logging.info('Recived words: %d', self._record_count)
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['fifo']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join(['TDC','SPI_RX','DATA_RX']))
-        logging.info('Discard counter:             %s', " | ".join([str(tdc_discard_count).rjust(3),'???','???']))
+        logging.info('Channel:                     %s', " | ".join(['TDC','DATA_RX','SPI_RX']))
+        logging.info('Discard counter:             %s', " | ".join([str(tdc_discard_count).rjust(3), str(data_rx_lost_count).rjust(7), '???']))
 
-        if tdc_discard_count:
+        if tdc_discard_count or data_rx_lost_count:
             logging.warning('Errors detected')
 
     def readout(self, no_data_timeout=None):
@@ -231,6 +232,10 @@ class FifoReadout(object):
                 #    raise RxSyncError('No RX sync')
                 #if any(self.get_rx_8b10b_error_count()):
                 #    raise EightbTenbError('RX 8b10b error(s) detected')
+                
+                if self.get_data_rx_fifo_discard_count():
+                    raise FifoError('DATA RX FIFO discard error(s) detected')
+                
                 if self.get_tdc_fifo_discard_count():
                     raise FifoError('TDC FIFO discard error(s) detected')
             except Exception:
@@ -280,6 +285,9 @@ class FifoReadout(object):
 
     def get_tdc_fifo_discard_count(self, channels=None):
         return self.dut['tdc'].LOST_DATA_COUNTER
+    
+    def get_data_rx_fifo_discard_count(self, channels=None):
+        return self.dut['data_rx'].LOST_COUNT
         
     def get_float_time(self):
         '''returns time as double precision floats - Time64 in pytables - mapping to and from python datetime's

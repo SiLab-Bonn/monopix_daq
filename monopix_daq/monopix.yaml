@@ -16,7 +16,7 @@ hw_drivers:
     interface : intf
     base_addr : 0x00000
     init :
-        no_calibration : True
+        no_calibration : False
         
   - name      : gpio
     type      : gpio
@@ -50,7 +50,11 @@ hw_drivers:
     base_addr : 0x18000
     base_data_addr: 0x1000000000000
     
-
+  - name      : data_rx
+    type      : mono_data_rx
+    interface : intf
+    base_addr : 0x10500
+    
 registers:
   - name        : CONF
     type        : StdRegister

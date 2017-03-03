@@ -18,9 +18,9 @@ class TestSim(unittest.TestCase):
 
     def setUp(self):
     
-        extra_defines = []
-        if os.environ['SIM']=='icarus':
-            extra_defines = ['TEST_DC=1']
+        #extra_defines = []
+        #if os.environ['SIM']=='icarus':
+        extra_defines = ['TEST_DC=1']
             
             
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) #../
@@ -39,21 +39,21 @@ class TestSim(unittest.TestCase):
 
         cnfg['transfer_layer'][0]['type'] = 'SiSim'
         cnfg['hw_drivers'][0]['init']['no_calibration'] = True
-
+        
         self.dut = monopix(conf=cnfg)
 
     def test(self):
         self.dut.init()
+        print('.')
         
-        self.dut['CONF_SR']['MON_EN'].setall(True)
         self.dut['CONF_SR']['INJ_EN'].setall(True)
+        self.dut['CONF_SR']['ColRO_En'].setall(True)
         
         self.dut.write_global_conf()
+        print('.')
         
-        #self.dut.PIXEL_CONF['INJECT_EN'][0,0] = 1
-        #self.dut.PIXEL_CONF['MONITOR_EN'][0,0] = 1
-        self.dut.PIXEL_CONF['MONITOR_EN'][1,0] = 1
-        self.dut.PIXEL_CONF['MONITOR_EN'][2,0] = 1
+        self.dut.PIXEL_CONF['INJECT_EN'][0,0] = 1
+        self.dut.PIXEL_CONF['INJECT_EN'][1,0] = 1
         
         self.dut.write_pixel_conf()
         
@@ -68,12 +68,25 @@ class TestSim(unittest.TestCase):
         self.dut['inj'].set_repeat(1)
         self.dut['inj'].set_en(True)
         
-        print('.')
-        
         self.dut['CONF_SR']['Pixels'].setall(True)
         
         self.dut['CONF_SR'].set_repeat(10)
         self.dut['CONF_SR'].set_wait(1000)
+        
+        self.dut['CONF']['EN_OUT_CLK'] = 1
+        self.dut['CONF']['EN_BX_CLK'] = 1
+        self.dut['CONF']['EN_DRIVER'] = 1
+        self.dut['CONF']['RESET_GRAY'] = 1
+        self.dut['CONF']['EN_TEST_PATTERN'] = 0
+        self.dut['CONF'].write()
+        
+        self.dut['CONF']['RESET_GRAY'] = 0
+        self.dut['CONF'].write()
+        
+        print('.')
+        
+        self.dut['data_rx'].set_en(True)
+         
         self.dut['CONF_SR'].write()
         
         print('.')
@@ -84,6 +97,17 @@ class TestSim(unittest.TestCase):
         for _ in range(40):
             print('.')
             self.dut['CONF_SR'].is_ready
+             
+        print 'FifoSize:', self.dut['fifo']['FIFO_SIZE']
+        data = self.dut['fifo'].get_data()
+        self.assertEqual(len(data), 20)
+        print data
+        print 'COL', data & 0x1f
+        print 'ROW', (data & 0x2fe0) >> 6
+        te = (data & 0x2fc000) >> 14
+        le = (data & 0x2fc00000) >> 22
+        print 'LE', le
+        print 'TE', te
         
     def tearDown(self):
         self.dut.close()

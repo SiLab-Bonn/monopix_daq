@@ -93,7 +93,8 @@ monopix_mio fpga (
     .EN_DATA_CMOS(EN_DATA_CMOS),
     .CLK_OUT(CLK_OUT),
     .TOKEN(TOKEN),
-    .DATA(DATA)
+    .DATA(DATA),
+    .DATA_LVDS(DATA)
     
 );   
 
@@ -132,10 +133,9 @@ monopix dut(
     .SR_out(SOUT)
     );
 
-
 initial begin
-    $dumpfile("/tmp/monopix.vcd");
-    $dumpvars(3);
+    $dumpfile("/tmp/monopix.vcd.gz");
+    $dumpvars(1);
 end
 
 endmodule
