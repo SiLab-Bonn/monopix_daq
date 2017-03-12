@@ -6,7 +6,7 @@
 #
 
 import unittest
-import os
+import os, sys
 from basil.utils.sim.utils import cocotb_compile_and_run, cocotb_compile_clean
 import sys
 import yaml
@@ -44,20 +44,20 @@ class TestSim(unittest.TestCase):
 
     def test(self):
         self.dut.init()
-        print('.')
+        sys.stdout.write('.')
         
         self.dut['CONF_SR']['INJ_EN'].setall(True)
         self.dut['CONF_SR']['ColRO_En'].setall(True)
         
         self.dut.write_global_conf()
-        print('.')
+        sys.stdout.write('.')
         
         self.dut.PIXEL_CONF['INJECT_EN'][0,0] = 1
         self.dut.PIXEL_CONF['INJECT_EN'][1,0] = 1
         
         self.dut.write_pixel_conf()
         
-        print('.')
+        sys.stdout.write('.')
         
         #READBACK 
         self.dut['CONF']['SREN'] =1
@@ -83,31 +83,35 @@ class TestSim(unittest.TestCase):
         self.dut['CONF']['RESET_GRAY'] = 0
         self.dut['CONF'].write()
         
-        print('.')
+        sys.stdout.write('.')
         
         self.dut['data_rx'].set_en(True)
          
         self.dut['CONF_SR'].write()
         
-        print('.')
+        sys.stdout.write('.')
         
         while not self.dut['CONF_SR'].is_ready:
-            print('.')
+            sys.stdout.write('.')
         
         for _ in range(40):
-            print('.')
+            sys.stdout.write('.')
             self.dut['CONF_SR'].is_ready
-             
-        print 'FifoSize:', self.dut['fifo']['FIFO_SIZE']
+        
+        #print ''
+        #print 'FifoSize:', self.dut['fifo']['FIFO_SIZE']
         data = self.dut['fifo'].get_data()
         self.assertEqual(len(data), 20)
-        print data
-        print 'COL', data & 0x1f
-        print 'ROW', (data & 0x2fe0) >> 6
-        te = (data & 0x2fc000) >> 14
-        le = (data & 0x2fc00000) >> 22
-        print 'LE', le
-        print 'TE', te
+        
+        col = data & 0b111111
+        row = (data >> 6) & 0xff
+        te = (data >> 14 ) & 0xff
+        le = (data >> 22) & 0xff
+        tot = te - le
+        
+        self.assertEqual(col.tolist(), [0,1]*10)
+        self.assertEqual(row.tolist(), [0,128]*10)
+        self.assertEqual(tot.tolist(), [7]*20)
         
     def tearDown(self):
         self.dut.close()

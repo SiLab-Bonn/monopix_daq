@@ -7,6 +7,23 @@
 `timescale 1ps/1ps
 `default_nettype none
 
+module bin_to_gray7 (
+    input wire [7:0] gray_input,
+    output reg [7:0] bin_out
+);
+
+always@(*) begin
+    bin_out[7] <= gray_input[7];
+    bin_out[6] <= bin_out[7] ^ gray_input[6];
+    bin_out[5] <= bin_out[6] ^ gray_input[5];
+    bin_out[4] <= bin_out[5] ^ gray_input[4];
+    bin_out[3] <= bin_out[4] ^ gray_input[3];
+    bin_out[2] <= bin_out[3] ^ gray_input[2];
+    bin_out[1] <= bin_out[2] ^ gray_input[1];
+    bin_out[0] <= bin_out[1] ^ gray_input[0];
+end
+
+endmodule
 
 module mono_data_rx_core
 #(
@@ -41,14 +58,17 @@ wire RST;
 assign RST = BUS_RST | SOFT_RST;
 
 reg CONF_EN;
+reg CONF_DISSABLE_GRAY_DEC;
 
 always @(posedge BUS_CLK) begin
     if(RST) begin
         CONF_EN <= 0;
+        CONF_DISSABLE_GRAY_DEC <= 0;
     end
     else if(BUS_WR) begin
         if(BUS_ADD == 2)
             CONF_EN <= BUS_DATA_IN[0];
+            CONF_DISSABLE_GRAY_DEC <= BUS_DATA_IN[1];
     end
 end
 
@@ -59,7 +79,7 @@ always @(posedge BUS_CLK) begin
         if(BUS_ADD == 0)
             BUS_DATA_OUT <= VERSION;
         else if(BUS_ADD == 2)
-            BUS_DATA_OUT <= {7'b0, CONF_EN};
+            BUS_DATA_OUT <= {6'b0, CONF_DISSABLE_GRAY_DEC, CONF_EN};
         else if(BUS_ADD == 3)
             BUS_DATA_OUT <= LOST_DATA_CNT;
         else
@@ -150,7 +170,7 @@ always@(posedge RX_CLK)
 wire store_data;
 assign store_data = (cnt == 30);
 
-reg [29:0] data_out;
+reg [29:0] data_out, data_to_cdc;
 always@(posedge RX_CLK)
     if(RST_SYNC)
         data_out <= 0;
@@ -176,6 +196,15 @@ always@(posedge RX_CLK) begin
         LOST_DATA_CNT <= LOST_DATA_CNT +1;
 end
 
+wire [5:0] col;
+wire [7:0] row, te_gray, le_gray, te, le;
+assign {le_gray, te_gray, row, col} = data_out;
+    
+bin_to_gray7 bin_to_gray_te(.gray_input(te_gray), .bin_out(te) );
+bin_to_gray7 bin_to_gray_le(.gray_input(le_gray), .bin_out(le) );
+
+assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? data_out : {le, te, row, col};
+
 wire [29:0] cdc_data_out;
 wire cdc_fifo_empty, fifo_full;
 cdc_syncfifo #(.DSIZE(30), .ASIZE(3)) cdc_syncfifo_i
@@ -183,7 +212,7 @@ cdc_syncfifo #(.DSIZE(30), .ASIZE(3)) cdc_syncfifo_i
     .rdata(cdc_data_out),
     .wfull(wfull),
     .rempty(cdc_fifo_empty),
-    .wdata(data_out),
+    .wdata(data_to_cdc),
     .winc(cdc_fifo_write), .wclk(RX_CLK), .wrst(RST_SYNC),
     .rinc(!fifo_full), .rclk(BUS_CLK), .rrst(RST)
 );
