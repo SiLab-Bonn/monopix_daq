@@ -164,6 +164,32 @@ class monopix(Dut):
             ret['tdc'][:] = np.bitwise_and(raw_data, 0xfff)     
             
         return ret
+    
+    def interpret_rx_data(self, raw_data, meta_data = []):
+        data_type = {'names':['le','te','row','col','scan_param_id'], 'formats':['uint8','uint8','uint8','uint8','uint16']}
+        ret = []
+        if len(meta_data):
+            param, index = np.unique(meta_data['scan_param_id'], return_index=True)
+            index = index[1:]
+            index = np.append(index, meta_data.shape[0])
+            index = index - 1
+            stops = meta_data['index_stop'][index]
+            split = np.split(raw_data, stops)
+            for i in range(len(split[:-1])):
+                int_pix_data = self.interpret_tdc_data(split[i])
+                int_pix_data['scan_param_id'][:] = param[i]
+                if len(ret):
+                    ret = np.hstack((ret, int_pix_data))
+                else:
+                    ret = int_pix_data
+        else:
+            ret = np.recarray((raw_data.shape[0]), dtype=data_type) 
+            ret['row'][:] = (raw_data >> 6) & 0xff
+            ret['col'][:] = raw_data & 0b111111
+            ret['le'][:] =  (raw_data >> 14 ) & 0xff
+            ret['te'][:] = (raw_data >> 22) & 0xff
+            
+        return ret
         
         
 if __name__=="__main__":

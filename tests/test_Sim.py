@@ -57,7 +57,7 @@ class TestSim(unittest.TestCase):
         
         self.dut.write_pixel_conf()
         
-        print('.')
+        sys.stdout.write('.')
         
         #READBACK 
         self.dut['CONF']['SREN'] =1
@@ -68,7 +68,7 @@ class TestSim(unittest.TestCase):
         self.dut['inj'].set_repeat(1)
         self.dut['inj'].set_en(True)
         
-        print('.')
+        sys.stdout.write('.')
         
         self.dut['CONF_SR']['Pixels'].setall(True)
         
@@ -76,13 +76,13 @@ class TestSim(unittest.TestCase):
         self.dut['CONF_SR'].set_wait(1000)
         self.dut['CONF_SR'].write()
         
-        print('.')
+        sys.stdout.write('.')
         
         while not self.dut['CONF_SR'].is_ready:
-            print('.')
+            sys.stdout.write('.')
         
         for _ in range(40):
-            print('.')
+            sys.stdout.write('.')
             self.dut['CONF_SR'].is_ready
         
     def tearDown(self):
