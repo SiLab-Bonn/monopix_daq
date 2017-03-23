@@ -170,7 +170,9 @@ always@(posedge RX_CLK)
 wire store_data;
 assign store_data = (cnt == 30);
 
-reg [29:0] data_out, data_to_cdc;
+reg [29:0] data_out;
+wire [29:0] data_to_cdc;
+
 always@(posedge RX_CLK)
     if(RST_SYNC)
         data_out <= 0;

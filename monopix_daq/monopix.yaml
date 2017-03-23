@@ -92,7 +92,7 @@ registers:
         size    : 1
         offset  : 0
 
-  - name        : VDD_BCID_BUFF
+  - name        : VDDD
     type        : FunctionalRegister
     hw_driver   : GPAC
     arg_names   : [value]
@@ -104,7 +104,7 @@ registers:
     arg_names   : [value]
     arg_add     : {'channel': 'PWR1'}
 
-  - name        : VDDD
+  - name        : VDD_BCID_BUFF
     type        : FunctionalRegister
     hw_driver   : GPAC
     arg_names   : [value]

@@ -329,6 +329,34 @@
     <!-- Do not hand-edit this section, as it will be overwritten when the    -->
     <!-- project is analyzed based on files automatically identified as       -->
     <!-- include files.                                                       -->
+    <file xil_pn:name="../src/clk_gen.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/bus_to_ip.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/cdc_syncfifo.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/generic_fifo.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/includes/log2func.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/cdc_pulse_sync.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/reset_gen.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/CG_MOD_pos.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/spi/spi_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/spi/spi.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/spi/blk_mem_gen_8_to_1_2k.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/gpio/gpio.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/fx2_to_bus.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/pulse_gen/pulse_gen.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/pulse_gen/pulse_gen_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/tdc_s3/tdc_s3.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/tdc_s3/tdc_s3_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/sram_fifo/sram_fifo_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/sram_fifo/sram_fifo.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/3_stage_synchronizer.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/rrp_arbiter/rrp_arbiter.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/ddr_des.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/flag_domain_crossing.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../src/mono_data_rx/mono_data_rx.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../src/mono_data_rx/mono_data_rx_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/cdc_reset_sync.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/IDDR_s3.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../basil/firmware/modules/utils/ODDR_s3.v" xil_pn:type="FILE_VERILOG"/>
   </autoManagedFiles>
 
 </project>

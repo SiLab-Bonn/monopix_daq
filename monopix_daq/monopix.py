@@ -124,7 +124,6 @@ class monopix(Dut):
         staus = {}
        
         for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
-            self[pwr].set_enable(False)
             staus[pwr+'[V]'] =  self[pwr].get_voltage(unit='V')
             staus[pwr+'[mA]'] = self[pwr].get_current(unit='mA')
         

@@ -14,10 +14,10 @@ from basil.dut import Dut
 import os
 
 local_configuration = {
-    "repeat_command": 10,
+    "repeat_command": 100,
     "mask_filename": '',
-    "scan_range": [0, 0.2, 0.05],
-    "scan_pixels": [[0,0],[0,1]]
+    "scan_range": [0, 0.4, 0.01],
+    "scan_pixels": [[0,64],[0,65],[0,66],[0,67]]
 }
 
 class ThresholdScanMonitor(ScanBase):
@@ -47,6 +47,15 @@ class ThresholdScanMonitor(ScanBase):
         #        mask_en = in_file_h5.root.scan_results.en_mask[:]
         #SCAN
         
+        self.dut['TH'].set_voltage(0.782, unit='V')
+        
+        self.dut["CONF_SR"]["PREAMP_EN"]=1
+        self.dut["CONF_SR"]["INJECT_EN"]=1
+        self.dut["CONF_SR"]["MONITOR_EN"]=1
+        self.dut["CONF_SR"]["REGULATOR_EN"]=1
+        self.dut["CONF_SR"]["BUFFER_EN"]=1
+        self.dut.write_global_conf()
+
         self.dut['gate_tdc'].set_delay(1000)
         self.dut['gate_tdc'].set_width(500)
         self.dut['gate_tdc'].set_repeat(repeat_command)
@@ -79,10 +88,12 @@ class ThresholdScanMonitor(ScanBase):
             self.dut.write_global_conf()
             
             #CONFIGURE PIXELS
-            self.dut.PIXEL_CONF['PREAMP_EN'][:] = 1 #???
+            #HACK
+            self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0 #???
+            self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 #???
             
-            self.dut.PIXEL_CONF['TRIM_EN'][:] = 7
-            self.dut.PIXEL_CONF['TRIM_EN'][pix_col, pix_row] = 7 #???
+            self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+            self.dut.PIXEL_CONF['TRIM_EN'][pix_col, pix_row] = 0 #???
             
             self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
             self.dut.PIXEL_CONF['INJECT_EN'][pix_col, pix_row] = 1
