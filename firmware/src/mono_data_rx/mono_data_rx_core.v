@@ -120,18 +120,13 @@ always@(*) begin : set_next_state
             if(DelayCnt == 10) ///1)
                 next_state = DATA;  
         DATA: 
-            if(DelayCnt == 25) //2)
-            begin
-                if(RX_TOKEN)
-                    next_state = TOKEN_WAIT; 
-                else
-                    next_state = NOP;
-            end           
+            if(DelayCnt == 35) //2)
+                next_state = NOP;
     endcase
 end
      
 always@(posedge CLK_BX)
-if(RST_SYNC || (next_state == TOKEN_WAIT && state != TOKEN_WAIT) || (next_state == READ_STATE && state != READ_STATE)  || (next_state == DATA && state != DATA) )
+if(RST_SYNC || state == NOP )
     DelayCnt <= 0;
 else if(DelayCnt != 8'hff)
     DelayCnt <= DelayCnt + 1;
@@ -168,7 +163,7 @@ always@(posedge RX_CLK)
     ser <= {ser[28:0], RX_DATA};
 
 wire store_data;
-assign store_data = (cnt == 30);
+assign store_data = (cnt == 29);
 
 reg [29:0] data_out;
 wire [29:0] data_to_cdc;
