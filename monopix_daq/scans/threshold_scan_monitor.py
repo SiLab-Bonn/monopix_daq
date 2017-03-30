@@ -16,14 +16,15 @@ import os
 local_configuration = {
     "repeat_command": 100,
     "mask_filename": '',
-    "scan_range": [0, 0.4, 0.01],
-    "scan_pixels": [[0,64],[0,65],[0,66],[0,67]]
+    "scan_range": [0.05, 0.25, 0.005],
+    "scan_pixels": [[1,64]], #,[0,65],[0,66],[0,67]],
+    "TH": 0.778
 }
 
 class ThresholdScanMonitor(ScanBase):
     scan_id = "threshold_scan_monitor"
 
-    def scan(self,  repeat_command = 100, scan_range = [0, 0.2, 0.05], mask_filename = '', scan_pixels = [], **kwargs):
+    def scan(self,  repeat_command = 100, scan_range = [0, 0.2, 0.05], mask_filename = '', TH = 1.5, scan_pixels = [], **kwargs):
 
         '''Scan loop
         Parameters
@@ -46,8 +47,7 @@ class ThresholdScanMonitor(ScanBase):
         #        mask_tdac = in_file_h5.root.scan_results.tdac_mask[:]
         #        mask_en = in_file_h5.root.scan_results.en_mask[:]
         #SCAN
-        
-        self.dut['TH'].set_voltage(0.782, unit='V')
+                
         
         self.dut["CONF_SR"]["PREAMP_EN"]=1
         self.dut["CONF_SR"]["INJECT_EN"]=1
@@ -80,17 +80,18 @@ class ThresholdScanMonitor(ScanBase):
             pix_row = pix[1]
             
             self.dut['CONF_SR']['MON_EN'].setall(False)
-            self.dut['CONF_SR']['MON_EN'][pix_col] = 1
+            self.dut['CONF_SR']['MON_EN'][35-pix_col] = 1
             
             self.dut['CONF_SR']['INJ_EN'].setall(False)
-            self.dut['CONF_SR']['INJ_EN'][int(pix_col/2)] = 1
+            self.dut['CONF_SR']['INJ_EN'][17-int(pix_col/2)] = 1
             
             self.dut.write_global_conf()
             
             #CONFIGURE PIXELS
             #HACK
             self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0 #???
-            self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 #???
+            #self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 #???
+            self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,pix_row] = 1 #???
             
             self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
             self.dut.PIXEL_CONF['TRIM_EN'][pix_col, pix_row] = 0 #???
@@ -101,11 +102,13 @@ class ThresholdScanMonitor(ScanBase):
             self.dut.PIXEL_CONF['MONITOR_EN'][pix_col, pix_row] = 1
             self.dut.write_pixel_conf()
 
-            
+            self.dut['TH'].set_voltage(TH, unit='V')
+            time.sleep(0.1)
+
             for vol_idx, vol in enumerate(scan_range):
                 
                 param_id = idx * len(scan_range) + vol_idx
-                logging.info('Scan Pixel Start: %s (V=%f ID=%d)', str(pix), vol, param_id)
+                #logging.info('Scan Pixel Start: %s (V=%f ID=%d)', str(pix), vol, param_id)
                 
                 self.dut['INJ_HI'].set_voltage( float(INJ_LO + vol), unit='V')
                 time.sleep(0.1)
@@ -121,7 +124,7 @@ class ThresholdScanMonitor(ScanBase):
                     while not self.dut['inj'].is_done():
                         pass
                     
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     
                 self.dut['inj'].set_en(False)
                 dqdata = self.fifo_readout.data
@@ -130,6 +133,8 @@ class ThresholdScanMonitor(ScanBase):
                 except ValueError:
                     data = []
                 logging.info('Scan Pixel Finished: %s V=%f TDC_COUNT=%d', str(pix), vol, len(data))
+
+            self.dut['TH'].set_voltage(1.5, unit='V')
 
 
         

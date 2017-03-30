@@ -15,6 +15,7 @@ class mono_data_rx(RegisterHardwareLayer):
     _registers = {'RESET': {'descr': {'addr': 0, 'size': 8, 'properties': ['writeonly']}},
                   'VERSION': {'descr': {'addr': 0, 'size': 8, 'properties': ['ro']}},
                   'EN': {'descr': {'addr': 2, 'size': 1, 'offset': 0}},
+                  'DISSABLE_GRAY_DECODER': {'descr': {'addr': 2, 'size': 1, 'offset': 1}},
                   'LOST_COUNT': {'descr': {'addr': 3, 'size': 8, 'properties': ['ro']}}}
     _require_version = "==1"
 

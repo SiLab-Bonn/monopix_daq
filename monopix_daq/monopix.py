@@ -59,6 +59,7 @@ class monopix(Dut):
                 
         rev_mask = np.copy(mask)
         rev_mask[1::2,:] = np.fliplr(mask[1::2,:]) #reverse every 2nd column
+        rev_mask = rev_mask[::-1,:] #reverse column
         
         mask_1d =  np.ravel(rev_mask)
         lmask = mask_1d.tolist()
@@ -97,7 +98,7 @@ class monopix(Dut):
     
         #DACS
         self['BL'].set_voltage(0.75, unit='V')
-        self['TH'].set_voltage(0.751, unit='V')
+        self['TH'].set_voltage(1.5, unit='V')
         self['VCascC'].set_voltage(0.8, unit='V')
         self['VCascN'].set_voltage(0.4, unit='V')
         
@@ -165,8 +166,8 @@ class monopix(Dut):
         return ret
     
     def interpret_rx_data(self, raw_data, meta_data = []):
-        data_type = {'names':['le','te','row','col','scan_param_id'], 'formats':['uint8','uint8','uint8','uint8','uint16']}
-        ret = []
+        data_type = {'names':['col','row','le','te','scan_param_id'], 'formats':['uint16','uint16','uint8','uint8','uint16']}
+        ret = np.recarray((0), dtype=data_type) 
         if len(meta_data):
             param, index = np.unique(meta_data['scan_param_id'], return_index=True)
             index = index[1:]
@@ -175,7 +176,7 @@ class monopix(Dut):
             stops = meta_data['index_stop'][index]
             split = np.split(raw_data, stops)
             for i in range(len(split[:-1])):
-                int_pix_data = self.interpret_tdc_data(split[i])
+                int_pix_data = self.interpret_rx_data(split[i])
                 int_pix_data['scan_param_id'][:] = param[i]
                 if len(ret):
                     ret = np.hstack((ret, int_pix_data))
@@ -185,8 +186,8 @@ class monopix(Dut):
             ret = np.recarray((raw_data.shape[0]), dtype=data_type) 
             ret['row'][:] = (raw_data >> 6) & 0xff
             ret['col'][:] = raw_data & 0b111111
-            ret['le'][:] =  (raw_data >> 14 ) & 0xff
-            ret['te'][:] = (raw_data >> 22) & 0xff
+            ret['te'][:] =  (raw_data >> 14 ) & 0xff
+            ret['le'][:] = (raw_data >> 22) & 0xff
             
         return ret
         

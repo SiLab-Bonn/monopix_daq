@@ -74,7 +74,7 @@ class ThresholdScanMonitor(ScanBase):
             for vol_idx, vol in enumerate(scan_range):
                 
                 param_id = idx * len(scan_range) + vol_idx
-                logging.info('Scan Pixel Start: %s (TH=%f ID=%d)', str(pix), vol, param_id)
+                #logging.info('Scan Pixel Start: %s (TH=%f ID=%d)', str(pix), vol, param_id)
                                 
                 with self.readout(scan_param_id = param_id, fill_buffer=True, clear_buffer=True):
                     
@@ -82,7 +82,7 @@ class ThresholdScanMonitor(ScanBase):
                     while not self.dut['gate_tdc'].is_done():
                         pass
                     
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     
                 dqdata = self.fifo_readout.data
                 try:

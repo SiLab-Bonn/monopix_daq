@@ -84,8 +84,9 @@ class ScanBase(object):
         self.h5_file.close()
         logging.info('Data Output Filename: %s', self.output_filename + '.h5')
         
+        logging.info('Power Status: %s', str(self.dut.power_status()))
         self.dut.power_down()
-        self.logger.removeHandler(self.fh)
+        #self.logger.removeHandler(self.fh)
         
         return self.output_filename + '.h5'
         
