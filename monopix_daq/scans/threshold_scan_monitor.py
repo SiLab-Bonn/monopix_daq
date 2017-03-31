@@ -91,7 +91,7 @@ class ThresholdScanMonitor(ScanBase):
             self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,pix_row] = 1 #???
             
             self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-            self.dut.PIXEL_CONF['TRIM_EN'][pix_col, pix_row] = 0 #???
+            self.dut.PIXEL_CONF['TRIM_EN'][pix_col, pix_row] = 1 #???
             
             self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
             self.dut.PIXEL_CONF['INJECT_EN'][pix_col, pix_row] = 1
