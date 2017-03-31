@@ -183,11 +183,13 @@ class monopix(Dut):
                 else:
                     ret = int_pix_data
         else:
-            ret = np.recarray((raw_data.shape[0]), dtype=data_type) 
-            ret['row'][:] = (raw_data >> 6) & 0xff
-            ret['col'][:] = raw_data & 0b111111
-            ret['te'][:] =  (raw_data >> 14 ) & 0xff
-            ret['le'][:] = (raw_data >> 22) & 0xff
+            size = len(raw_data)
+            ret = np.recarray((size), dtype=data_type) 
+            if size:
+                ret['row'][:] = (raw_data >> 6) & 0xff
+                ret['col'][:] = raw_data & 0b111111
+                ret['te'][:] =  (raw_data >> 14 ) & 0xff
+                ret['le'][:] = (raw_data >> 22) & 0xff
             
         return ret
         

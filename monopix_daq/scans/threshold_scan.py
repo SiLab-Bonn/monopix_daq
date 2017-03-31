@@ -51,8 +51,8 @@ class ThresholdScan(ScanBase):
         #SCAN
         self.dut['TH'].set_voltage(1.5, unit='V')
 
-        self.dut['VDDD'].set_voltage(1.7, unit='V')        
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
+        self.dut['VDDD'].set_voltage(1.6, unit='V')        
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
 
         self.dut['inj'].set_delay(20*64)
@@ -189,9 +189,7 @@ class ThresholdScan(ScanBase):
             #print raw_data
             hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
             #in_file_h5.create_table(in_file_h5.root, 'hit_data', hit_data, filters=self.filter_tables)
-		
-            pix = hit_data['col']*129+hit_data['row']
-            
+		    
             import yaml
             import monopix_daq.analysis as analysis
             scan_args = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)

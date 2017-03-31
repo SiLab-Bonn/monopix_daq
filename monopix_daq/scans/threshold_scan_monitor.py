@@ -16,7 +16,7 @@ import os
 local_configuration = {
     "repeat_command": 100,
     "mask_filename": '',
-    "scan_range": [0.05, 0.25, 0.005],
+    "scan_range": [0.05, 0.3, 0.005],
     "scan_pixels": [[1,64]], #,[0,65],[0,66],[0,67]],
     "TH": 0.778
 }
@@ -39,21 +39,18 @@ class ThresholdScanMonitor(ScanBase):
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
         
         self.dut.write_global_conf()
-        
-        #if mask_filename:
-        #    logging.info('Using pixel mask from file: %s', mask_filename)
-        #
-        #    with tb.open_file(mask_filename, 'r') as in_file_h5:
-        #        mask_tdac = in_file_h5.root.scan_results.tdac_mask[:]
-        #        mask_en = in_file_h5.root.scan_results.en_mask[:]
-        #SCAN
-                
+                        
+        self.dut['VDDD'].set_voltage(1.6, unit='V')        
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
         
         self.dut["CONF_SR"]["PREAMP_EN"]=1
         self.dut["CONF_SR"]["INJECT_EN"]=1
         self.dut["CONF_SR"]["MONITOR_EN"]=1
         self.dut["CONF_SR"]["REGULATOR_EN"]=1
         self.dut["CONF_SR"]["BUFFER_EN"]=1
+        
+        self.dut["CONF_SR"]["LSBdacL"] = 60
+        
         self.dut.write_global_conf()
 
         self.dut['gate_tdc'].set_delay(1000)
