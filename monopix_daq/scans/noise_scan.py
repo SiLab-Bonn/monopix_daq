@@ -15,7 +15,7 @@ import os
 
 
 local_configuration = {
-    "column_enable": range(24,28),
+    "column_enable": range(8,12),
     "start_threshold": 0.81,
     "stop_on_disabled": 6
 }
@@ -40,14 +40,7 @@ class NoiseScan(ScanBase):
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
         
         self.dut.write_global_conf()
-        
-        #if mask_filename:
-        #    logging.info('Using pixel mask from file: %s', mask_filename)
-        #
-        #    with tb.open_file(mask_filename, 'r') as in_file_h5:
-        #        mask_tdac = in_file_h5.root.scan_results.tdac_mask[:]
-        #        mask_en = in_file_h5.root.scan_results.en_mask[:]
-        #SCAN
+
         self.dut['TH'].set_voltage(1.5, unit='V')
 
         self.dut['VDDD'].set_voltage(1.6, unit='V')        
