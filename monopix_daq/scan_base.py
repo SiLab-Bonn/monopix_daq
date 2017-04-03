@@ -27,6 +27,7 @@ class ScanBase(object):
 
     def __init__(self, dut_conf=None):
         logging.info('Initializing %s', self.__class__.__name__)
+        self.dut_conf = dut_conf
         
         self.working_dir = os.path.join(os.getcwd(),"output_data")
         if not os.path.exists(self.working_dir):
@@ -40,9 +41,7 @@ class ScanBase(object):
         self.logger = logging.getLogger()
         self.logger.addHandler(self.fh)
         
-        self.dut = monopix(dut_conf)
-        self.dut.init()
-        
+        self.dut = monopix(self.dut_conf)
         
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -52,6 +51,9 @@ class ScanBase(object):
 
     def start(self, **kwargs):
                 
+       
+        self.dut.init()
+        
         self._first_read = False
         self.scan_param_id = 0
         
