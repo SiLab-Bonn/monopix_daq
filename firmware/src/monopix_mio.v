@@ -474,7 +474,7 @@ assign LED[2] = 0;
 assign LED[3] = 0;
 assign LED[4] = 0;
 
-assign LEMO_TX[1] = 0;
+assign LEMO_TX[1] = INJECTION;
 assign LEMO_TX[2] = 0;
 
 endmodule
