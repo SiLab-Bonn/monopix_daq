@@ -15,9 +15,9 @@ import os
 
 
 local_configuration = {
-    "column_enable": range(8,12),
+    "column_enable": range(0,4),
     "start_threshold": 0.81,
-    "stop_on_disabled": 6
+    "stop_on_disabled": 8
 }
 
 class NoiseScan(ScanBase):
@@ -25,20 +25,9 @@ class NoiseScan(ScanBase):
 
     def scan(self, start_threshold = 1.5, column_enable = [], stop_on_disabled = 1, **kwargs):
 
-        '''Scan loop
-        Parameters
-        ----------
-        mask : int
-            Number of mask steps.
-        repeat : int
-            Number of injections.
-        '''
+       
         self.dut['fifo'].reset()
-
-        
-        INJ_LO = 0.2
-        self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
-        
+      
         self.dut.write_global_conf()
 
         self.dut['TH'].set_voltage(1.5, unit='V')
