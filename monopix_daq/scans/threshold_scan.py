@@ -17,10 +17,10 @@ import os
 local_configuration = {
     "repeat": 100,
     "mask_filename": '',
-    "scan_range": [0.0, 0.4, 0.01],
-    "mask" : 16,
-    "TH": 0.740,
-    "columns": range(0, 4)
+    "scan_range": [0.0, 0.8, 0.05],
+    "mask" : 4,
+    "TH": 0.80,
+    "columns": range(0, 1)
 }
 
 class ThresholdScan(ScanBase):
@@ -40,7 +40,14 @@ class ThresholdScan(ScanBase):
         #LSB
         self.dut["CONF_SR"]["LSBdacL"] = 60
         
-        INJ_LO = 0.4
+        INJ_LO = 0.2
+        try:
+            pulser = Dut('../agilent33250a_pyserial.yaml') #should be absolute path
+            pulser.init()
+            logging.info('Connected to '+str(pulser['Pulser'].get_info()))
+        except RuntimeError:
+            logging.info('External injector not connected. Switch to internal one')
+
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
 
         self.dut['TH'].set_voltage(1.5, unit='V')
@@ -105,6 +112,11 @@ class ThresholdScan(ScanBase):
                 
                 TH = in_file_h5.root.meta_data.attrs.final_threshold + 0.001
                 
+                #TODO:
+                #print dac_status
+                #for dac in dac_status:
+                #    self.dut["CONF_SR"][dac] = dac_status[dac]                
+
                 scan_kwargs = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
                 columns = scan_kwargs['column_enable']
                 logging.info('Column Enable: %s', str(columns))
@@ -161,11 +173,11 @@ class ThresholdScan(ScanBase):
 
                 for vol_idx, vol in enumerate(scan_range):
                     
-                    
                     param_id = pix_col_indx*len(scan_range)*mask + idx * len(scan_range) + vol_idx
                     
                     logging.info('Scan : Column = %s MaskId=%d InjV=%f ID=%d)', pix_col, idx, vol, param_id)
                     
+                    pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
                     self.dut['INJ_HI'].set_voltage( float(INJ_LO + vol), unit='V')
                     self.dut['TH'].set_voltage(TH, unit='V') 
                       

@@ -16,10 +16,10 @@ import os
 import monopix_daq.analysis as analysis
 
 local_configuration = {
-    "how_long": 1*60,
+    "how_long": 60,
     "repeat": 1000,
-    "scan_injection": [0.0, 1.6, 0.02],
-    "threshold_range": [0.781, 0.781, -0.002],
+    "scan_injection": [0.0, 1.0, 0.02],
+    "threshold_range": [0.779, 0.779, -0.002],
     "pixel": [1,64] 
 }
 
@@ -31,7 +31,17 @@ class ScanSingle(ScanBase):
         self.dut['fifo'].reset()
         
         INJ_LO = 0.2
+        try:
+            pulser = Dut('../agilent33250a_pyserial.yaml') #should be absolute path
+            pulser.init()
+            logging.info('Connected to '+str(pulser['Pulser'].get_info()))
+        except RuntimeError:
+            logging.info('External injector not connected. Switch to internal one')
+
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
+
+
+        #self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
         
         self.dut['inj'].set_delay(20*64)
         self.dut['inj'].set_width(20*64)
@@ -161,6 +171,7 @@ class ScanSingle(ScanBase):
             for inx, vol in enumerate(inj_scan_range):
                 
                 self.dut['TH'].set_voltage(threshold_range[0], unit='V')  
+                pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
                 self.dut['INJ_HI'].set_voltage( float(INJ_LO + vol), unit='V')
                 
                 logging.info('Scan : TH=%f, InjV=%f ID=%d)',threshold_range[0], vol, inx)
