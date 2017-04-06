@@ -6,19 +6,17 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 import numpy as np
-import bitarray
 import tables as tb
 import yaml
 
 from progressbar import ProgressBar
 from basil.dut import Dut
-import os
 
 local_configuration = {
     "repeat": 100,
-    "mask_filename": '',
-    "scan_range": [0.0, 0.8, 0.05],
-    "mask" : 4,
+    "mask_filename": './output_data/20170405_143750_noise_scan.h5',
+    "scan_range": [0.0, 0.5, 0.01],
+    "mask" : 16,
     "TH": 0.80,
     "columns": range(0, 1)
 }
@@ -36,10 +34,7 @@ class ThresholdScan(ScanBase):
         repeat : int
             Number of injections.
         '''
-
-        #LSB
-        self.dut["CONF_SR"]["LSBdacL"] = 60
-        
+ 
         INJ_LO = 0.2
         try:
             pulser = Dut('../agilent33250a_pyserial.yaml') #should be absolute path
@@ -51,8 +46,9 @@ class ThresholdScan(ScanBase):
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
 
         self.dut['TH'].set_voltage(1.5, unit='V')
-        self.dut['VDDD'].set_voltage(1.6, unit='V')        
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
+        self.dut['VDDD'].set_voltage(1.8, unit='V')        
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.2, unit='V')
+
 
         self.dut['inj'].set_delay(20*64)
         self.dut['inj'].set_width(20*64)
@@ -111,11 +107,12 @@ class ThresholdScan(ScanBase):
                 power_status = yaml.load(in_file_h5.root.meta_data.attrs.power_status)
                 
                 TH = in_file_h5.root.meta_data.attrs.final_threshold + 0.001
+                logging.info('Loading threshold values (+1mv): %f', TH)
                 
-                #TODO:
-                #print dac_status
-                #for dac in dac_status:
-                #    self.dut["CONF_SR"][dac] = dac_status[dac]                
+                logging.info('Loading DAC values from: %s', str(dac_status))
+                dac_names = ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']
+                for dac in  dac_names:
+                   self.dut['CONF_SR'][dac] = dac_status[dac]
 
                 scan_kwargs = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
                 columns = scan_kwargs['column_enable']
@@ -171,17 +168,24 @@ class ThresholdScan(ScanBase):
                 self.dut['CONF']['RESET_GRAY'] = 0
                 self.dut['CONF'].write()
 
+
+                time.sleep(1.0)
+                
                 for vol_idx, vol in enumerate(scan_range):
                     
                     param_id = pix_col_indx*len(scan_range)*mask + idx * len(scan_range) + vol_idx
                     
                     logging.info('Scan : Column = %s MaskId=%d InjV=%f ID=%d)', pix_col, idx, vol, param_id)
                     
+                    
                     pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
+                    if abs(vol) < 0.00001:
+                        time.sleep(2)
+                    
                     self.dut['INJ_HI'].set_voltage( float(INJ_LO + vol), unit='V')
                     self.dut['TH'].set_voltage(TH, unit='V') 
                       
-                    time.sleep(0.2)
+                    time.sleep(0.1)
                     self.dut['data_rx'].reset()
                     self.dut['data_rx'].set_en(True)
                     time.sleep(0.2)

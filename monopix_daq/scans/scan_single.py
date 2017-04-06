@@ -6,20 +6,18 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 import numpy as np
-import bitarray
 import tables as tb
 import yaml
 
 from progressbar import ProgressBar
 from basil.dut import Dut
-import os
 import monopix_daq.analysis as analysis
 
 local_configuration = {
     "how_long": 60,
     "repeat": 1000,
-    "scan_injection": [0.0, 1.0, 0.02],
-    "threshold_range": [0.779, 0.779, -0.002],
+    #"scan_injection": [0.0, 0.5, 0.01],
+    "threshold_range": [0.777, 0.777, -0.001],
     "pixel": [1,64] 
 }
 
@@ -54,7 +52,7 @@ class ScanSingle(ScanBase):
         
         self.dut['TH'].set_voltage(1.5, unit='V')
 
-        self.dut['VDDD'].set_voltage(1.6, unit='V')        
+        self.dut['VDDD'].set_voltage(1.8, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
         

@@ -6,18 +6,15 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 import numpy as np
-import bitarray
 import tables as tb
 
 from progressbar import ProgressBar
 from basil.dut import Dut
-import os
-
 
 local_configuration = {
-    "column_enable": range(0,4),
+    "column_enable": range(12,16),
     "start_threshold": 0.81,
-    "stop_on_disabled": 8
+    "stop_on_disabled": 7
 }
 
 class NoiseScan(ScanBase):
@@ -27,18 +24,13 @@ class NoiseScan(ScanBase):
 
        
         self.dut['fifo'].reset()
-      
         self.dut.write_global_conf()
-
         self.dut['TH'].set_voltage(1.5, unit='V')
-
-        self.dut['VDDD'].set_voltage(1.6, unit='V')        
+        self.dut['VDDD'].set_voltage(1.8, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
-
-
         self.dut['inj'].set_en(False)
-        
+
         #40M BX -> 10^7
         self.dut['gate_tdc'].set_delay(500)
         self.dut['gate_tdc'].set_width(500)
@@ -53,7 +45,7 @@ class NoiseScan(ScanBase):
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
 
         #LSB
-        self.dut["CONF_SR"]["LSBdacL"] = 60
+        self.dut["CONF_SR"]["LSBdacL"] = 63
         
         
         self.dut.write_global_conf()
@@ -62,9 +54,9 @@ class NoiseScan(ScanBase):
         self.dut['CONF']['EN_BX_CLK'] = 1
         self.dut['CONF']['EN_DRIVER'] = 1
         self.dut['CONF']['EN_DATA_CMOS'] = 0
-
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['EN_TEST_PATTERN'] = 0
+        
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF'].write()
 
@@ -79,26 +71,26 @@ class NoiseScan(ScanBase):
         self.dut['CONF_SR']['ColRO_En'].setall(False)
         
         self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 1
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-        
+     
         for pix_col in column_enable:
-            dcol = int(pix_col/2) 
             self.dut['CONF_SR']['ColRO_En'][35-pix_col] = 1
             
             self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:] = 0
             self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 
-        
+     
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
         
-        TH = start_threshold 
 
+    
+        TH = start_threshold 
         finished = False
         idx = 0
         dec_threshod = False
-        dissabled_pixels = {}
+        disabled_pixels = {}
         
         np.set_printoptions(linewidth=260)
         
@@ -121,7 +113,7 @@ class NoiseScan(ScanBase):
                 TH -= 0.001
             
             self.dut['TH'].set_voltage(TH, unit='V')  
-            logging.info('Threshold: %f', TH)
+            #logging.info('Threshold: %f', TH)
             
             time.sleep(0.2)
                 
@@ -168,12 +160,12 @@ class NoiseScan(ScanBase):
                     else:
                         if self.dut.PIXEL_CONF['TRIM_EN'][col,row] == 15:
                             self.dut.PIXEL_CONF['PREAMP_EN'][col,row] = 0
-                            #dissabled_pixels_cnt += 1
+                            #disabled_pixels_cnt += 1
                             pix_str = str([col, row])
-                            if pix_str in dissabled_pixels:
-                                dissabled_pixels[pix_str] += 1
+                            if pix_str in disabled_pixels:
+                                disabled_pixels[pix_str] += 1
                             else:
-                                dissabled_pixels[pix_str] = 1
+                                disabled_pixels[pix_str] = 1
                             logging.info("DISABLE: %d, %d", col, row)
                             
                         else:
@@ -202,13 +194,14 @@ class NoiseScan(ScanBase):
             
             hist =  np.bincount(self.dut.PIXEL_CONF['TRIM_EN'][self.dut.PIXEL_CONF['PREAMP_EN'] == True])
             logging.info('Hist=%s', str(hist) )
-            logging.info('Dissabled=%s', str(dissabled_pixels) )
+            logging.info('Disabled=%s', str(disabled_pixels) )
             
             for col in column_enable:
                 logging.info('Col[%d]=%s',col, str(self.dut.PIXEL_CONF['TRIM_EN'][col,:]))
+                #pass
 
-            if data_size > 10000000 or idx > 1000 or len(dissabled_pixels) > stop_on_disabled:
-                logging.warning('EXIT: stop_on_disabled=%d data_size=%d id=%d', len(dissabled_pixels), data_size, idx)
+            if data_size > 10000000 or idx > 1000 or len(disabled_pixels) > stop_on_disabled:
+                logging.warning('EXIT: stop_on_disabled=%d data_size=%d id=%d', len(disabled_pixels), data_size, idx)
                 finished = True
                 
             idx += 1    
