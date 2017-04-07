@@ -16,7 +16,6 @@ import monopix_daq.analysis as analysis
 local_configuration = {
     "how_long": 60,
     "repeat": 1000,
-    #"scan_injection": [0.0, 0.5, 0.01],
     "threshold_range": [0.777, 0.777, -0.001],
     "pixel": [1,64] 
 }
@@ -137,7 +136,16 @@ class ScanSingle(ScanBase):
             data_size = len(data) 
             
             pixel_data = hit_data['col']*129+hit_data['row']
-            tot = hit_data['te']-hit_data['le']
+            
+            tot = (hit_data['te'] - hit_data['le']) & 0xFF
+            
+#            print "tot"
+#            for i,d in enumerate(hit_data):
+#                 if d['te'] < d['le']:
+#                     print d['te'], d['le'], tot[i]
+#                     if i> 1000:
+#                         break
+            
             scan_pixel = pix_col * 129 + pix_row                    
             scan_pixel_hits = np.where(pixel_data == scan_pixel)[0]
             tot_hist = np.bincount(tot[scan_pixel_hits])
