@@ -16,6 +16,7 @@ import monopix_daq.analysis as analysis
 local_configuration = {
     "how_long": 60,
     "repeat": 1000,
+    #"scan_injection": [0.0, 0.5, 0.01],
     "threshold_range": [0.777, 0.777, -0.001],
     "pixel": [1,64] 
 }
