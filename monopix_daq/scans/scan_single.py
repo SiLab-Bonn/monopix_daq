@@ -16,15 +16,15 @@ import monopix_daq.analysis as analysis
 local_configuration = {
     "how_long": 60,
     "repeat": 1000,
-    #"scan_injection": [0.0, 0.5, 0.01],
-    "threshold_range": [0.777, 0.777, -0.001],
-    "pixel": [1,64] 
+    "scan_injection": [0.0, 1.5, 0.025],
+    "threshold_range": [0.777, 0.777, -0.002], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
+    "pixel":  [3,64]
 }
 
 class ScanSingle(ScanBase):
     scan_id = "scan_single"
 
-    def scan(self, repeat = 100, threshold_range = [0.8, 0.7, -0.05], pixel = [1,64] , how_long = 1, scan_injection = 0, **kwargs):
+    def scan(self, repeat = 10, threshold_range = [0.8, 0.7, -0.05], pixel = [1,64] , how_long = 1, scan_injection = 0, **kwargs):
         
         self.dut['fifo'].reset()
         
@@ -52,8 +52,8 @@ class ScanSingle(ScanBase):
         
         self.dut['TH'].set_voltage(1.5, unit='V')
 
-        self.dut['VDDD'].set_voltage(1.8, unit='V')        
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
+        self.dut['VDDD'].set_voltage(1.7, unit='V')        
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
         
 
@@ -138,12 +138,17 @@ class ScanSingle(ScanBase):
             
             pixel_data = hit_data['col']*129+hit_data['row']
             
-            tot = (hit_data['te'] - hit_data['le']) & 0xFF
+            #tot = (hit_data['te'] - hit_data['le']) & 0xFF
+            tot = hit_data['te'] - hit_data['le'] 
+            neg = hit_data['te']<hit_data['le']
+            tot[neg] = hit_data['te'][neg] + (255 - hit_data['le'][neg])
             
 #            print "tot"
 #            for i,d in enumerate(hit_data):
-#                 if d['te'] < d['le']:
-#                     print d['te'], d['le'], tot[i]
+#                if d['te'] < d['le']:
+#                    print d['te'], d['le'], tot[i], '*'
+#                else:
+#                    print d['te'], d['le'], tot[i]
 #                     if i> 1000:
 #                         break
             
@@ -169,17 +174,21 @@ class ScanSingle(ScanBase):
                     msg += '[%d, %d]=%d %f' % (col, row , hist[pix], np.mean(tot))
                     
                 logging.info(msg)
+            
+            return tot_hist
 
         th_scan_range = np.arange(threshold_range[0], threshold_range[1], threshold_range[2])
         if len(th_scan_range) == 0:
             th_scan_range = [threshold_range[0]]
 
+        inj_scan_dict = {}
+        
         if scan_injection:
             for inx, vol in enumerate(inj_scan_range):
                 
                 self.dut['TH'].set_voltage(threshold_range[0], unit='V')  
                 pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
-                self.dut['INJ_HI'].set_voltage( float(INJ_LO + vol), unit='V')
+                self.dut['INJ_HI'].set_voltage( float(INJ_LO), unit='V')
                 
                 logging.info('Scan : TH=%f, InjV=%f ID=%d)',threshold_range[0], vol, inx)
                 time.sleep(0.2)
@@ -200,8 +209,16 @@ class ScanSingle(ScanBase):
                     self.dut['TH'].set_voltage(1.5, unit='V')
                     
                 #print_hist()
-                print_hist(all_hits = True)
-                    
+                
+                tot_hist = print_hist(all_hits = True)
+                
+                inj_scan_dict[float(vol)] = tot_hist.tolist()
+                
+            
+            print inj_scan_dict
+            with open('calib.yml', 'w') as outfile:
+                yaml.dump(inj_scan_dict, outfile, default_flow_style=False)
+                
         else:
             for inx, TH in enumerate(th_scan_range):
                 with self.readout(scan_param_id = inx, fill_buffer=True, clear_buffer=True):
@@ -223,8 +240,12 @@ class ScanSingle(ScanBase):
                     self.dut['data_rx'].set_en(False)
                     self.dut['TH'].set_voltage(1.5, unit='V')
                     
-                print_hist(all_hits = True)
+                tot_hist = print_hist(all_hits = True)
+                with open('source_noise.yml', 'w') as outfile:
+                    yaml.dump(tot_hist.tolist(), outfile, default_flow_style=False)
+                
 
+        
     def analyze(self, h5_filename  = ''):
         pass
     

@@ -12,9 +12,9 @@ from progressbar import ProgressBar
 from basil.dut import Dut
 
 local_configuration = {
-    "column_enable": range(12,16),
-    "start_threshold": 0.81,
-    "stop_on_disabled": 7
+    "column_enable": range(24,28),
+    "start_threshold": 0.795,
+    "stop_on_disabled": 6
 }
 
 class NoiseScan(ScanBase):
@@ -26,8 +26,9 @@ class NoiseScan(ScanBase):
         self.dut['fifo'].reset()
         self.dut.write_global_conf()
         self.dut['TH'].set_voltage(1.5, unit='V')
-        self.dut['VDDD'].set_voltage(1.8, unit='V')        
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.6, unit='V')
+
+        self.dut['VDDD'].set_voltage(1.7, unit='V')        
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
         self.dut['inj'].set_en(False)
 
@@ -45,8 +46,7 @@ class NoiseScan(ScanBase):
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
 
         #LSB
-        self.dut["CONF_SR"]["LSBdacL"] = 63
-        
+        self.dut["CONF_SR"]["LSBdacL"] = 42
         
         self.dut.write_global_conf()
 
@@ -71,21 +71,32 @@ class NoiseScan(ScanBase):
         self.dut['CONF_SR']['ColRO_En'].setall(False)
         
         self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 1
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
         self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
      
+        PREAMP_EN = self.dut.PIXEL_CONF['PREAMP_EN'].copy()
+     
+        mask = 32
         for pix_col in column_enable:
             self.dut['CONF_SR']['ColRO_En'][35-pix_col] = 1
             
-            self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:] = 0
+        #    #self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:] = 0
+        #    #self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 
+        #
+        #    self.dut.PIXEL_CONF['TRIM_EN'][pix_col,::mask] = 0
             self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 
-     
+            
+            print  self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:]
+        
+        TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()
+        TRIM_EN[:] = 0
+        
+        PREAMP_EN[:] = self.dut.PIXEL_CONF['PREAMP_EN'][:]
+            
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
         
-
-    
         TH = start_threshold 
         finished = False
         idx = 0
@@ -93,45 +104,64 @@ class NoiseScan(ScanBase):
         disabled_pixels = {}
         
         np.set_printoptions(linewidth=260)
-        
-        while not finished:
-            
-            self.dut['CONF']['RESET_GRAY'] = 1
-            self.dut['CONF']['RESET'] = 1
-            self.dut['CONF'].write()
-
-            self.dut['CONF']['RESET'] = 0
-            self.dut['CONF'].write()
-            
-            self.dut['CONF']['RESET_GRAY'] = 0
-            self.dut['CONF'].write()
-
-            self.dut['data_rx'].set_en(True)
-            time.sleep(0.2)
-            
-            if dec_threshod:
-                TH -= 0.001
-            
-            self.dut['TH'].set_voltage(TH, unit='V')  
-            #logging.info('Threshold: %f', TH)
-            
-            time.sleep(0.2)
                 
-            param_id = idx
-            logging.info('Scan Pixel TH: %f (ID=%d)', TH, param_id)
+        while not finished:
+           
+            if dec_threshod:
+                #TH -= 0.0002
+                TH -= 0.0005
             
-            with self.readout(scan_param_id = param_id, fill_buffer=True, clear_buffer=True):
+            mask_steps = []
+            for m in range(mask):
+                noise_mask = np.full([36,129], False, dtype = np.bool)
+                noise_mask[column_enable[0]:column_enable[-1]+1,m::mask] = True
+                #print column_enable[0], noise_mask[column_enable[0],:]
+                #print column_enable[-1], noise_mask[column_enable[-1],:]
+                mask_steps.append(np.copy(noise_mask))
+                
+            logging.info('Scan Pixel TH: %f (ID=%d)', TH, idx)
+            
+            clear_buffer = True
+
+            for m_index, mask_step in enumerate(mask_steps): #mask steps
+                
+                #only trim masked
+                self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+                self.dut.PIXEL_CONF['TRIM_EN'][mask_step] = TRIM_EN[mask_step] 
+                
+                #self.dut.write_global_conf()
+                self.dut.write_pixel_conf()
+                                
+                #time.sleep(0.1)
+                
+                self.dut['TH'].set_voltage(TH, unit='V')  
+                #print self.dut['TH'].get_voltage(unit='V')  
+                
+                logging.info('m_index TH: %f (ID=%d)', TH, m_index)
+                
+                time.sleep(0.1)
+                
+                self.dut['data_rx'].set_en(True)
+                
+                time.sleep(0.1)
+                    
+                param_id = idx
                 
                 self.dut['data_rx'].reset()
-                self.dut['data_rx'].set_en(True)
-                self.dut['fifo'].reset()
-            
-                self.dut['gate_tdc'].start()
-                while not self.dut['gate_tdc'].is_done():
-                    pass
-                
                 self.dut['data_rx'].set_en(False)
-                self.dut['TH'].set_voltage(1.5, unit='V')
+                self.dut['fifo'].reset()
+                    
+                with self.readout(scan_param_id = param_id, fill_buffer=True, clear_buffer=clear_buffer):
+                
+                    self.dut['data_rx'].set_en(True)
+                    self.dut['gate_tdc'].start()
+                    while not self.dut['gate_tdc'].is_done():
+                        pass
+                    
+                    self.dut['data_rx'].set_en(False)
+                    self.dut['TH'].set_voltage(1.5, unit='V')
+                    
+                clear_buffer = False
                 
             dqdata = self.fifo_readout.data
             try:
@@ -145,41 +175,47 @@ class NoiseScan(ScanBase):
             
             pixel_data = hit_data['col']*129+hit_data['row']
             hit_pixels = np.unique(pixel_data)
+            hit_hist =  np.bincount(pixel_data)
+
+            mage_hit = 0 #len(hit_pixels) > len(column_enable)*129*0.5 #50%
             
-            mage_hit = len(hit_pixels) > len(column_enable)*129*0.5 #50%
-            
-            
+            dec_threshod = True
             msg = 'Correction: '
             if data_size and not mage_hit:    
                 for pix in hit_pixels:
                     col = pix / 129
                     row = pix % 129
-                    
-                    if col > 35 or row > 129:
-                        logging.warning('Something went very wrong! col=%d, row=%d, pix=%d', col, row, pix)
-                    else:
-                        if self.dut.PIXEL_CONF['TRIM_EN'][col,row] == 15:
-                            self.dut.PIXEL_CONF['PREAMP_EN'][col,row] = 0
-                            #disabled_pixels_cnt += 1
-                            pix_str = str([col, row])
-                            if pix_str in disabled_pixels:
-                                disabled_pixels[pix_str] += 1
-                            else:
-                                disabled_pixels[pix_str] = 1
-                            logging.info("DISABLE: %d, %d", col, row)
-                            
+                        
+                    if hit_hist[pix] > 1:              
+                      
+                        
+                        if col > 35 or row > 129:
+                            logging.warning('Something went very wrong! col=%d, row=%d, pix=%d', col, row, pix)
                         else:
-                            self.dut.PIXEL_CONF['TRIM_EN'][col,row] += 1
- 
-                        msg += '[%d, %d]=%d ' % (col, row , self.dut.PIXEL_CONF['TRIM_EN'][col,row])
+                            if TRIM_EN[col,row] == 15 :
+                                self.dut.PIXEL_CONF['PREAMP_EN'][col,row] = 0
+                                #disabled_pixels_cnt += 1
+                                pix_str = str([col, row])
+                                if PREAMP_EN[col,row]:
+                                    if pix_str in disabled_pixels:
+                                        disabled_pixels[pix_str] += 1
+                                    else:
+                                        disabled_pixels[pix_str] = 1
+                                    logging.info("DISABLE: %d, %d", col, row)
+                                logging.warning("DISABLE OUT OF RANGE: %d, %d", col, row)
+                                
+                            else:
+                                #self.dut.PIXEL_CONF['TRIM_EN'][col,row] += 1
+                                TRIM_EN[col,row] += 1
+                                dec_threshod = False
+     
+                    if col <= 35 and row <= 129:
+                        msg += '[%d, %d]=%d(%d) ' % (col, row , TRIM_EN[col,row], hit_hist[pix])
                 
                 self.dut.write_pixel_conf()
                 
                 logging.info(msg)
-                dec_threshod = False
-
-            else:
-                dec_threshod = True
+                
             #dec_threshod = True
             
             msg = 'MEGA_HIT:'
@@ -192,13 +228,12 @@ class NoiseScan(ScanBase):
                 logging.warning(msg)
                 dec_threshod = False
             
-            hist =  np.bincount(self.dut.PIXEL_CONF['TRIM_EN'][self.dut.PIXEL_CONF['PREAMP_EN'] == True])
+            hist =  np.bincount(TRIM_EN[self.dut.PIXEL_CONF['PREAMP_EN'] == True])
             logging.info('Hist=%s', str(hist) )
             logging.info('Disabled=%s', str(disabled_pixels) )
             
             for col in column_enable:
-                logging.info('Col[%d]=%s',col, str(self.dut.PIXEL_CONF['TRIM_EN'][col,:]))
-                #pass
+                logging.info('Col[%d]=%s',col, str(TRIM_EN[col,:]))
 
             if data_size > 10000000 or idx > 1000 or len(disabled_pixels) > stop_on_disabled:
                 logging.warning('EXIT: stop_on_disabled=%d data_size=%d id=%d', len(disabled_pixels), data_size, idx)
@@ -209,7 +244,7 @@ class NoiseScan(ScanBase):
             self.dut['TH'].set_voltage(1.5, unit='V')
 
         scan_results = self.h5_file.create_group("/", 'scan_results', 'Scan Results')
-        self.h5_file.create_carray(scan_results, 'TRIM_EN', obj=self.dut.PIXEL_CONF['TRIM_EN'])
+        self.h5_file.create_carray(scan_results, 'TRIM_EN', obj=TRIM_EN)
         self.h5_file.create_carray(scan_results, 'PREAMP_EN', obj=self.dut.PIXEL_CONF['PREAMP_EN'] )
         logging.info('Final threshold value: %s', str(TH))
         self.meta_data_table.attrs.final_threshold = TH

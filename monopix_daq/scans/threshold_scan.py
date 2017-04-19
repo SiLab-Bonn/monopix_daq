@@ -14,26 +14,18 @@ from basil.dut import Dut
 
 local_configuration = {
     "repeat": 100,
-    "mask_filename": './output_data/20170405_143750_noise_scan.h5',
-    "scan_range": [0.0, 0.5, 0.01],
+    "mask_filename": '',
+    "scan_range": [0.01, 0.25, 0.005],
     "mask" : 16,
-    "TH": 0.80,
-    "columns": range(0, 1)
+    "TH": 0.775,
+    "columns": range(8, 12),
+    "threshold_overdrive" : 0.006
 }
 
 class ThresholdScan(ScanBase):
     scan_id = "threshold_scan"
 
-    def scan(self,  repeat = 100, scan_range = [0, 0.2, 0.05], mask_filename = '', TH = 1.5, mask = 16, columns = range(0, 36), **kwargs):
-
-        '''Scan loop
-        Parameters
-        ----------
-        mask : int
-            Number of mask steps.
-        repeat : int
-            Number of injections.
-        '''
+    def scan(self,  repeat = 100, scan_range = [0, 0.2, 0.05], mask_filename = '', TH = 1.5, mask = 16, columns = range(0, 36), threshold_overdrive = 0.001, **kwargs):
  
         INJ_LO = 0.2
         try:
@@ -46,8 +38,8 @@ class ThresholdScan(ScanBase):
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
 
         self.dut['TH'].set_voltage(1.5, unit='V')
-        self.dut['VDDD'].set_voltage(1.8, unit='V')        
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.2, unit='V')
+        self.dut['VDDD'].set_voltage(1.7, unit='V')        
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
 
 
         self.dut['inj'].set_delay(20*64)
@@ -80,7 +72,7 @@ class ThresholdScan(ScanBase):
         self.dut['CONF']['RESET_GRAY'] = 0
         self.dut['CONF'].write()
 
-        self.dut['CONF_SR']['MON_EN'].setall(False)
+        self.dut['CONF_SR']['MON_EN'].setall(True)
         self.dut['CONF_SR']['INJ_EN'].setall(False)
         self.dut['CONF_SR']['ColRO_En'].setall(False)
         
@@ -88,9 +80,8 @@ class ThresholdScan(ScanBase):
         self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
         self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-    
 
-        TRIM_EN = self.dut.PIXEL_CONF['PREAMP_EN'].copy()
+        TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()
                 
         #LOAD PIXEL DAC
         if mask_filename:
@@ -106,14 +97,15 @@ class ThresholdScan(ScanBase):
                 dac_status = yaml.load(in_file_h5.root.meta_data.attrs.dac_status)
                 power_status = yaml.load(in_file_h5.root.meta_data.attrs.power_status)
                 
-                TH = in_file_h5.root.meta_data.attrs.final_threshold + 0.001
-                logging.info('Loading threshold values (+1mv): %f', TH)
+                TH = in_file_h5.root.meta_data.attrs.final_threshold + threshold_overdrive
+                logging.info('Loading threshold values (+mv): %f', TH)
                 
                 logging.info('Loading DAC values from: %s', str(dac_status))
                 dac_names = ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']
                 for dac in  dac_names:
                    self.dut['CONF_SR'][dac] = dac_status[dac]
-
+                   print dac, self.dut['CONF_SR'][dac]
+                    
                 scan_kwargs = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
                 columns = scan_kwargs['column_enable']
                 logging.info('Column Enable: %s', str(columns))
@@ -148,28 +140,29 @@ class ThresholdScan(ScanBase):
                 mask_steps.append(np.copy(col_mask))
 
             for idx, mask_step in enumerate(mask_steps): #mask steps
-                
-                
+ 
                 dcol = int(pix_col/2)  
-                self.dut.PIXEL_CONF['INJECT_EN'][pix_col,:] = mask_step
-                self.dut['CONF_SR']['INJ_EN'][17-dcol] = 1
-                self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:]
+                self.dut['CONF_SR']['INJ_EN'].setall(False)
+                #self.dut['CONF_SR']['PREAMP_EN'].setall(False)
+                self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+                self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
                 
+                self.dut.PIXEL_CONF['INJECT_EN'][pix_col,:] = mask_step
+                self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:][mask_step] = TRIM_EN[pix_col,:][mask_step] 
+                self.dut['CONF_SR']['INJ_EN'][17-dcol] = 1
+
+                print self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:]
+                                
                 self.dut.write_global_conf()
                 self.dut.write_pixel_conf()
                 
                 self.dut['CONF']['RESET_GRAY'] = 1
-                self.dut['CONF']['RESET'] = 1
-                self.dut['CONF'].write()
-
-                self.dut['CONF']['RESET'] = 0
                 self.dut['CONF'].write()
                 
                 self.dut['CONF']['RESET_GRAY'] = 0
                 self.dut['CONF'].write()
 
-
-                time.sleep(1.0)
+                time.sleep(0.1)
                 
                 for vol_idx, vol in enumerate(scan_range):
                     
@@ -220,6 +213,8 @@ class ThresholdScan(ScanBase):
                     pixel_data = hit_data['col']*129+hit_data['row']
                     hit_pixels = np.unique(pixel_data)
                     hist =  np.bincount(pixel_data)
+
+                    
                     msg = ' '
                     
                     if data_size:   
@@ -229,7 +224,7 @@ class ThresholdScan(ScanBase):
                             msg += '[%d, %d]=%d ' % (col, row , hist[pix])
                         logging.info(msg)
             
-                    if data_size > 100000:
+                    if data_size > 1000000:
                         logging.error('To much data!')
                         return
 
@@ -239,7 +234,8 @@ class ThresholdScan(ScanBase):
             h5_filename = self.output_filename +'.h5'
         
         logging.info('Anallyzing: %s', h5_filename)
-        
+        np.set_printoptions(linewidth=260)
+         
         with tb.open_file(h5_filename, 'r+') as in_file_h5:
             raw_data = in_file_h5.root.raw_data[:]
             meta_data = in_file_h5.root.meta_data[:]
@@ -247,7 +243,7 @@ class ThresholdScan(ScanBase):
             #print raw_data
             hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
             #in_file_h5.create_table(in_file_h5.root, 'hit_data', hit_data, filters=self.filter_tables)
-		    
+    
             import yaml
             import monopix_daq.analysis as analysis
             scan_args = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
@@ -263,6 +259,8 @@ class ThresholdScan(ScanBase):
             
             scan_range_size = len(scan_range)
             
+            thresholds = np.full([36,129], np.nan, dtype = np.float)
+            noises = np.full([36,129], np.nan, dtype = np.float)
             
             logging.info('|------------%s |', "-----"*len(scan_range))
             logging.info('|           :%s |', "".join([str(scan).rjust(4) for scan in scan_range]))
@@ -283,21 +281,55 @@ class ThresholdScan(ScanBase):
                     #TODO: TOT=0 check why?
                     
                     for ph in pix_uniq:
-                        hit_map[ph,i] = hist[ph]
-                    
+                        if ph < 129*36:
+                            hit_map[ph,i] = hist[ph]
+                        else:
+                            logging.warning('Something went very wrong! pix=%d', ph)
+                        
                 where_hit = np.unique(np.where(hit_map > 0)[0])
-
-                for i, pix in enumerate(where_hit):
-                    A, mu, sigma = analysis.fit_scurve(hit_map[pix,:], scan_range, repeat)
-                    logging.info('|%s :%s | mu=%s  sigma=%s', str([pix/129,pix%129]).rjust(10), "".join([str(hits).rjust(4) for hits in hit_map[pix,:]]), str(mu), str(sigma),)
                 
-
+                
+                for i, pix in enumerate(where_hit):
+                    pix_col = pix/129
+                    pix_row = pix%129
+                    A, mu, sigma = analysis.fit_scurve(hit_map[pix,:], scan_range, repeat)
+                    
+                    if (pix_row % mask) == (param % mask):
+                        maked_pix = '*'
+                        thresholds[pix_col, pix_row] = mu
+                        noises[pix_col, pix_row] = sigma
+                    else:
+                        maked_pix = ' '
+                    
+                    logging.info('|%s :%s | mu=%s  sigma=%s', str([pix_col, pix_row]).rjust(9)+maked_pix, "".join([str(hits).rjust(4) for hits in hit_map[pix,:]]), str(mu), str(sigma),)
+                
+        
             logging.info('|------------%s |', "-----"*len(scan_range))
+           
+            yml = {}
+            hist, edges = np.histogram(np.ravel(thresholds), range=(0.0, 0.5), density=False, bins=100)
+            logging.info(str(hist))
+            logging.info(str(edges))
+            A_fit, mu_fit, sigma_fit = analysis.fit_gauss(edges[1:-1], hist[1:])
+            logging.info('mu=%f (%f)  sigma_fit=%f (%f)',  mu_fit, (2.5e-15 / 1.602e-19) * mu_fit, sigma_fit, (2.5e-15 / 1.602e-19) * sigma_fit)
+            yml['th_hist'] = hist.tolist()
+            yml['th_edges'] = edges.tolist()
             
-            
+            max_noise = np.max(noises)
+            hist, edges = np.histogram(np.ravel(noises), range=(0.0, 0.1), density=False, bins=100)
+            logging.info(str(hist))
+            logging.info(str(edges))
+            A_fit, mu_fit, sigma_fit = analysis.fit_gauss(edges[1:-1], hist[1:])
+            logging.info('mu=%f (%f)  sigma_fit=%f (%f)',  mu_fit, (2.5e-15 / 1.602e-19) * mu_fit, sigma_fit, (2.5e-15 / 1.602e-19) * sigma_fit)
+            yml['noise_hist'] = hist.tolist()
+            yml['noise_edges'] = edges.tolist()
+            with open(self.output_filename+'.yml', 'w') as outfile:
+                yaml.dump(yml, outfile)
         
 if __name__ == "__main__":
 
     scan = ThresholdScan()
     scan.start(**local_configuration)
     scan.analyze()
+
+
