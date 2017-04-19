@@ -103,14 +103,14 @@ class monopix(Dut):
         self['VCascN'].set_voltage(0.4, unit='V')
         
         #POWER
+        self['VDDD'].set_voltage(1.8, unit='V')
+        self['VDDD'].set_enable(True)
+
         self['VDDA'].set_current_limit(200, unit='mA')
         self['VDDA'].set_voltage(1.8, unit='V')
         self['VDDA'].set_enable(True)
         
-        self['VDDD'].set_voltage(1.8, unit='V')
-        self['VDDD'].set_enable(True)
-        
-        self['VDD_BCID_BUFF'].set_voltage(1.2, unit='V')
+        self['VDD_BCID_BUFF'].set_voltage(1.8, unit='V')
         self['VDD_BCID_BUFF'].set_enable(True)
         
         self['VPC'].set_voltage(1.5, unit='V')
