@@ -1,4 +1,4 @@
-﻿
+
 import logging
 import numpy as np
 import tables as tb
@@ -47,12 +47,12 @@ def fit_gauss(x_data, y_data):
     y_data = np.array(y_data)
     y_maxima=x_data[np.where(y_data[:]==np.max(y_data))[0]]
     params_guess = np.array([np.max(y_data), y_maxima[0], np.std(x_data)]) # np.mean(y_data)
-    logging.info('Params guessed: %s ', str(params_guess))
+    #logging.info('Params guessed: %s ', str(params_guess))
     try:
         params_from_fit = curve_fit(gauss, x_data, y_data, p0=params_guess)
-        logging.info('Fit-params-gauss: %s %s %s ', str(params_from_fit[0][0]),str(params_from_fit[0][1]),str(params_from_fit[0][2]))
+        #logging.info('Fit-params-gauss: %s %s %s ', str(params_from_fit[0][0]),str(params_from_fit[0][1]),str(params_from_fit[0][2]))
     except RuntimeError:
-        logging.info('Fit did not work gauss: %s %s %s', str(np.max(y_data)), str(x_data[np.where(y_data[:] == np.max(y_data))[0]][0]), str(np.std(x_data)))
+        logging.warning('Fit did not work gauss: %s %s %s', str(np.max(y_data)), str(x_data[np.where(y_data[:] == np.max(y_data))[0]][0]), str(np.std(x_data)))
         return params_guess[0],params_guess[1],params_guess[2]
     A_fit = params_from_fit[0][0]
     mu_fit = params_from_fit[0][1]
