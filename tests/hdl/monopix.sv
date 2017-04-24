@@ -179,7 +179,7 @@ always@(posedge clk_bx)
     
 reg [1:0] read_out_dly;
 always@(posedge clk_out)
-    read_out_dly <= {read_out_dly[0], read_dly[1]};
+    read_out_dly <= {read_out_dly[0], read_dly[0]};
     
 reg load;
 always@(posedge clk_out)

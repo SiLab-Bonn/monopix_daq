@@ -39,7 +39,7 @@ class TestSim(unittest.TestCase):
         self.cnfg['transfer_layer'][0]['type'] = 'SiSim'
         self.cnfg['hw_drivers'][0]['init']['no_calibration'] = True
         
-        
+    @unittest.skip("testing skipping")
     def test_threshold_scan(self):
         import monopix_daq.scans.threshold_scan
   

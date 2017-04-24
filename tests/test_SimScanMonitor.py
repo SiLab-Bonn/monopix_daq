@@ -38,7 +38,8 @@ class TestSim(unittest.TestCase):
 
         self.cnfg['transfer_layer'][0]['type'] = 'SiSim'
         self.cnfg['hw_drivers'][0]['init']['no_calibration'] = True
-        
+    
+    @unittest.skip("testing skipping")    
     def test_noise_scan_monitor(self):
         import monopix_daq.scans.noise_scan_monitor 
   

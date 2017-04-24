@@ -52,8 +52,11 @@ class TestSim(unittest.TestCase):
         self.dut.write_global_conf()
         sys.stdout.write('.')
         
-        self.dut.PIXEL_CONF['INJECT_EN'][0,0] = 1
-        self.dut.PIXEL_CONF['INJECT_EN'][1,0] = 1
+        self.dut.PIXEL_CONF['INJECT_EN'][34,0] = 1
+        self.dut.PIXEL_CONF['INJECT_EN'][35,0] = 1
+        
+        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 1
+
         
         self.dut.write_pixel_conf()
         
@@ -108,9 +111,9 @@ class TestSim(unittest.TestCase):
         te = (data >> 14 ) & 0xff
         le = (data >> 22) & 0xff
         tot = te - le
-        
+
         self.assertEqual(col.tolist(), [0,1]*10)
-        self.assertEqual(row.tolist(), [0,128]*10)
+        self.assertEqual(row.tolist(), [128,0]*10)
         self.assertEqual(tot.tolist(), [7]*20)
         
     def tearDown(self):

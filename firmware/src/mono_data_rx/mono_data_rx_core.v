@@ -120,7 +120,7 @@ always@(*) begin : set_next_state
             if(DelayCnt == 10) ///1)
                 next_state = DATA;  
         DATA: 
-            if(DelayCnt == 35) //2)
+            if(DelayCnt == 32) //2)
                 next_state = NOP;
     endcase
 end
