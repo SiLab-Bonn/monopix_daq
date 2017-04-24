@@ -1,24 +1,22 @@
-
-from monopix_daq.scan_base import ScanBase
 import time
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 import numpy as np
 import tables as tb
 import yaml
-
-from progressbar import ProgressBar
-from basil.dut import Dut
 import monopix_daq.analysis as analysis
 
+from monopix_daq.scan_base import ScanBase
+from progressbar import ProgressBar
+from basil.dut import Dut
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 local_configuration = {
-    "how_long": 60,
+    "how_long": 10,
     "repeat": 1000,
-    "scan_injection": [0.0, 1.5, 0.025],
-    "threshold_range": [0.777, 0.777, -0.002], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
-    "pixel":  [3,64]
+    "scan_injection": [0.0, 0.5, 0.005],
+    "threshold_range": [0.773, 0.773, -0.001], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
+    "pixel":  [13,64]
 }
 
 class ScanSingle(ScanBase):
@@ -52,19 +50,19 @@ class ScanSingle(ScanBase):
         
         self.dut['TH'].set_voltage(1.5, unit='V')
 
-        self.dut['VDDD'].set_voltage(1.7, unit='V')        
+        self.dut['VDDD'].set_voltage(1.8, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
         
 
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
         self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 0
+        self.dut["CONF_SR"]["MONITOR_EN"] = 1
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
 
         #LSB
-        self.dut["CONF_SR"]["LSBdacL"] = 60
+        #self.dut["CONF_SR"]["LSBdacL"] = 60
                 
         self.dut.write_global_conf()
 
@@ -86,11 +84,11 @@ class ScanSingle(ScanBase):
 
         self.dut['CONF_SR']['MON_EN'].setall(False)
         self.dut['CONF_SR']['INJ_EN'].setall(False)
-        self.dut['CONF_SR']['ColRO_En'].setall(True)
+        self.dut['CONF_SR']['ColRO_En'].setall(False)
         
         self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 1
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
             
         #LOAD PIXEL DAC

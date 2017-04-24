@@ -1,24 +1,24 @@
-
-from monopix_daq.scan_base import ScanBase
 import time
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 import numpy as np
 import bitarray
 import tables as tb
 import yaml
+import os
 
+from monopix_daq.scan_base import ScanBase
 from progressbar import ProgressBar
 from basil.dut import Dut
-import os
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
 
 
 local_configuration = {
-    'mask_filename': '',
-    "TH": 0.775,
-    "columns": range(8, 12),
+    #'mask_filename': '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170424_TestBeam_MIPs+Bias/noise_tune/20170424_094650_noise_scan.h5',
+    "TH": 0.784,
+    "columns": range(24, 28),
     "threshold_overdrive" : 0.007
 }
 
@@ -27,8 +27,10 @@ class SourceScan(ScanBase):
 
     def scan(self, TH = 1.5, column_enable = [], mask_filename = '', threshold_overdrive = 0.001, columns = range(36), **kwargs):
 
-
+#        self.dut['fifo'].reset()
+#        self.dut.write_global_conf()
         self.dut['TH'].set_voltage(1.5, unit='V')
+        
         self.dut['VDDD'].set_voltage(1.7, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
            
@@ -129,7 +131,7 @@ class SourceScan(ScanBase):
             self.dut['data_rx'].reset()
             self.dut['data_rx'].set_en(True)
              
-            for i in range(6*60):
+            for i in range(1):
                 time.sleep(10)
                 logging.info("Time = " + str(i) + '-'*20)
                 
