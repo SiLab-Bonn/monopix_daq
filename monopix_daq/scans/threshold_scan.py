@@ -1,43 +1,41 @@
-
-from monopix_daq.scan_base import ScanBase
 import time
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 import numpy as np
 import tables as tb
 import yaml
 
 from progressbar import ProgressBar
 from basil.dut import Dut
+from monopix_daq.scan_base import ScanBase
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 local_configuration = {
-    "repeat": 100,
-    "mask_filename": '',
-    "scan_range": [0.01, 0.25, 0.005],
-    "mask" : 16,
-    "TH": 0.775,
-    "columns": range(8, 12),
-    "threshold_overdrive" : 0.006
+    "repeat": 100,                              #Number of times charged is injected
+    "mask_filename": '',                        #Name of an input mask -probably from the noise_scan- (If available)
+    "scan_range": [0.01, 0.25, 0.005],          #Range of injection
+    "mask" : 16,                                #Spacing between enabled pixels in the mask
+    "TH": 0.775,                                #Initial global Threshold value
+    "columns": range(8, 12),                    #Range of columns to be considered
+    "threshold_overdrive" : 0.006               #
 }
 
 class ThresholdScan(ScanBase):
     scan_id = "threshold_scan"
 
     def scan(self,  repeat = 100, scan_range = [0, 0.2, 0.05], mask_filename = '', TH = 1.5, mask = 16, columns = range(0, 36), threshold_overdrive = 0.001, **kwargs):
- 
-        INJ_LO = 0.2
+        
         try:
             pulser = Dut('../agilent33250a_pyserial.yaml') #should be absolute path
             pulser.init()
             logging.info('Connected to '+str(pulser['Pulser'].get_info()))
         except RuntimeError:
             logging.info('External injector not connected. Switch to internal one')
-
+        
+        INJ_LO = 0.2
         self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
 
-        self.dut['TH'].set_voltage(1.5, unit='V')
+        self.dut['TH'].set_voltage(1.5, unit='V')               
         self.dut['VDDD'].set_voltage(1.7, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
 
@@ -60,7 +58,6 @@ class ThresholdScan(ScanBase):
         self.dut['CONF']['EN_BX_CLK'] = 1
         self.dut['CONF']['EN_DRIVER'] = 1
         self.dut['CONF']['EN_DATA_CMOS'] = 0
-
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['EN_TEST_PATTERN'] = 0
         self.dut['CONF']['RESET'] = 1
@@ -69,7 +66,7 @@ class ThresholdScan(ScanBase):
         self.dut['CONF']['RESET'] = 0
         self.dut['CONF'].write()
         
-        self.dut['CONF']['RESET_GRAY'] = 0
+        self.dut['CONF']['RESET_GRAY'] = 0          
         self.dut['CONF'].write()
 
         self.dut['CONF_SR']['MON_EN'].setall(True)
@@ -81,7 +78,7 @@ class ThresholdScan(ScanBase):
         self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
 
-        TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()
+        TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()    
                 
         #LOAD PIXEL DAC
         if mask_filename:
@@ -116,10 +113,9 @@ class ThresholdScan(ScanBase):
                 self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1
         
         for pix_col in columns:
-            dcol = int(pix_col/2)  
             self.dut['CONF_SR']['ColRO_En'][35-pix_col] = 1
             
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = TRIM_EN[:]
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = TRIM_EN[:]              #Probably can be removed (IDCS)
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
         
@@ -130,8 +126,8 @@ class ThresholdScan(ScanBase):
         
         for pix_col_indx, pix_col in enumerate(columns):
             
-            self.dut.PIXEL_CONF['TRIM_EN'][:] = TRIM_EN[:]
-            self.dut['CONF_SR']['INJ_EN'].setall(False)
+            self.dut.PIXEL_CONF['TRIM_EN'][:] = TRIM_EN[:]          #Probably can be removed (IDCS)
+            self.dut['CONF_SR']['INJ_EN'].setall(False)             #Probably can be removed (IDCS)
             
             mask_steps = []
             for m in range(mask):
@@ -151,7 +147,7 @@ class ThresholdScan(ScanBase):
                 self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:][mask_step] = TRIM_EN[pix_col,:][mask_step] 
                 self.dut['CONF_SR']['INJ_EN'][17-dcol] = 1
 
-                print self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:]
+                #print self.dut.PIXEL_CONF['TRIM_EN'][pix_col,:]
                                 
                 self.dut.write_global_conf()
                 self.dut.write_pixel_conf()

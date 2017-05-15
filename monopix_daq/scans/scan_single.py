@@ -1,34 +1,35 @@
-
-from monopix_daq.scan_base import ScanBase
 import time
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 import numpy as np
 import tables as tb
 import yaml
+import monopix_daq.analysis as analysis
 
+from monopix_daq.scan_base import ScanBase
 from progressbar import ProgressBar
 from basil.dut import Dut
-import monopix_daq.analysis as analysis
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 local_configuration = {
     "how_long": 60,
     "repeat": 1000,
-    "scan_injection": [0.0, 1.5, 0.025],
-    "threshold_range": [0.777, 0.777, -0.002], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
-    "pixel":  [3,64]
+    #"scan_injection": [0.0, 0.5, 0.005],
+    "scan_injection": [0.3, 1.7, 0.05],
+    "threshold_range": [0.855, 0.855, -0.001],#[1.035, 1.035, -0.001],#[0.7818, 0.7818, -0.001], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
+    #"threshold_range": [0., 0.9, -0.001],
+    "pixel":  [25,64],
+    "VPFBvalue": 4#56#48
 }
 
 class ScanSingle(ScanBase):
     scan_id = "scan_single"
 
-    def scan(self, repeat = 10, threshold_range = [0.8, 0.7, -0.05], pixel = [1,64] , how_long = 1, scan_injection = 0, **kwargs):
+    def scan(self, repeat = 10, threshold_range = [0.8, 0.7, -0.05], pixel = [1,64] , how_long = 1, scan_injection = 0, VPFBvalue = 32, **kwargs):
         
         self.dut['fifo'].reset()
         
-        INJ_LO = 0.2
+        INJ_LO = -0.2
         try:
             pulser = Dut('../agilent33250a_pyserial.yaml') #should be absolute path
             pulser.init()
@@ -36,7 +37,7 @@ class ScanSingle(ScanBase):
         except RuntimeError:
             logging.info('External injector not connected. Switch to internal one')
 
-        self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
+        #self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
 
 
         #self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
@@ -55,17 +56,16 @@ class ScanSingle(ScanBase):
         self.dut['VDDD'].set_voltage(1.7, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
-        
 
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
         self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 0
+        self.dut["CONF_SR"]["MONITOR_EN"] = 1
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
 
         #LSB
-        self.dut["CONF_SR"]["LSBdacL"] = 60
-                
+        #self.dut["CONF_SR"]["LSBdacL"] = 60
+        self.dut["CONF_SR"]["VPFB"] = VPFBvalue
         self.dut.write_global_conf()
 
         self.dut['CONF']['EN_OUT_CLK'] = 1
@@ -86,11 +86,11 @@ class ScanSingle(ScanBase):
 
         self.dut['CONF_SR']['MON_EN'].setall(False)
         self.dut['CONF_SR']['INJ_EN'].setall(False)
-        self.dut['CONF_SR']['ColRO_En'].setall(True)
+        self.dut['CONF_SR']['ColRO_En'].setall(False)
         
         self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 1
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
             
         #LOAD PIXEL DAC
@@ -108,7 +108,7 @@ class ScanSingle(ScanBase):
             print "scan_injection"
             self.dut.PIXEL_CONF['INJECT_EN'][pix_col,pix_row] = 1
             self.dut['CONF_SR']['INJ_EN'][17-dcol] = 1
-            inj_scan_range = np.arange(scan_injection[0], scan_injection[1], scan_injection[2])
+            inj_scan_range = np.arange(scan_injection[0], scan_injection[1], scan_injection[2])#np.array([0.6, 0.8, 1, 1.2, 1.4])#np.arange(scan_injection[0], scan_injection[1], scan_injection[2])
 
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
@@ -127,6 +127,7 @@ class ScanSingle(ScanBase):
         time.sleep(0.2)
     
         def print_hist(all_hits = False):    
+            #dqdata = self.fifo_readout.data[1:-1]
             dqdata = self.fifo_readout.data
             try:
                 data = np.concatenate([item[0] for item in dqdata])
@@ -175,7 +176,7 @@ class ScanSingle(ScanBase):
                     
                 logging.info(msg)
             
-            return tot_hist
+            return tot_hist[1:-1]
 
         th_scan_range = np.arange(threshold_range[0], threshold_range[1], threshold_range[2])
         if len(th_scan_range) == 0:
@@ -188,10 +189,12 @@ class ScanSingle(ScanBase):
                 
                 self.dut['TH'].set_voltage(threshold_range[0], unit='V')  
                 pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
-                self.dut['INJ_HI'].set_voltage( float(INJ_LO), unit='V')
+                #Enabled before: (For GPAC injection)
+                #self.dut['INJ_HI'].set_voltage( float(INJ_LO), unit='V')
                 
                 logging.info('Scan : TH=%f, InjV=%f ID=%d)',threshold_range[0], vol, inx)
-                time.sleep(0.2)
+                time.sleep(2)
+                #time.sleep(0.2)
                 
                 with self.readout(scan_param_id = inx, fill_buffer=True, clear_buffer=True):
   

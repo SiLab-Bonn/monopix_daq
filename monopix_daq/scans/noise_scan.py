@@ -1,20 +1,18 @@
-
-from monopix_daq.scan_base import ScanBase
 import time
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 import numpy as np
 import tables as tb
 
+from monopix_daq.scan_base import ScanBase
 from progressbar import ProgressBar
 from basil.dut import Dut
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 local_configuration = {
-    "column_enable": range(24,28),
-    "start_threshold": 0.795,
-    "stop_on_disabled": 6
+    "column_enable": range(12,16),              #Range of columns to be considered
+    "start_threshold": 0.79,                   #Initial global Threshold value (in Volts)
+    "stop_on_disabled": 6                       #Maximum number of pixels 
 }
 
 class NoiseScan(ScanBase):
@@ -30,13 +28,14 @@ class NoiseScan(ScanBase):
         self.dut['VDDD'].set_voltage(1.7, unit='V')        
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         #self.dut['VPC'].set_voltage(1.5, unit='V')
+        
         self.dut['inj'].set_en(False)
 
-        #40M BX -> 10^7
+        #40M BX -> 10^7, the gate_tdc counter determines the total time pixels are measuring, BX Units
         self.dut['gate_tdc'].set_delay(500)
         self.dut['gate_tdc'].set_width(500)
         self.dut['gate_tdc'].set_repeat(10000)
-        self.dut['gate_tdc'].set_en(False)
+        self.dut['gate_tdc'].set_en(False)              #disabling external start
         
 
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
@@ -55,15 +54,14 @@ class NoiseScan(ScanBase):
         self.dut['CONF']['EN_DRIVER'] = 1
         self.dut['CONF']['EN_DATA_CMOS'] = 0
         self.dut['CONF']['RESET_GRAY'] = 1
-        self.dut['CONF']['EN_TEST_PATTERN'] = 0
-        
+        self.dut['CONF']['EN_TEST_PATTERN'] = 0        
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF'].write()
 
         self.dut['CONF']['RESET'] = 0
         self.dut['CONF'].write()
         
-        self.dut['CONF']['RESET_GRAY'] = 0
+        self.dut['CONF']['RESET_GRAY'] = 0          #Why do we enable and disable RESETs? (IDCS) ---Time while you write in between. 
         self.dut['CONF'].write()
 
         self.dut['CONF_SR']['MON_EN'].setall(False)
@@ -72,12 +70,12 @@ class NoiseScan(ScanBase):
         
         self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
         self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1    #Why monitor enabled in noise scan and not in threshold scan? (Check if when enable it makes a difference)
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
      
-        PREAMP_EN = self.dut.PIXEL_CONF['PREAMP_EN'].copy()
+        PREAMP_EN = self.dut.PIXEL_CONF['PREAMP_EN'].copy() #Making an independent copy (IDCS)
      
-        mask = 32
+        mask = 32                                           #Mask step (IDCS)
         for pix_col in column_enable:
             self.dut['CONF_SR']['ColRO_En'][35-pix_col] = 1
             
@@ -85,9 +83,9 @@ class NoiseScan(ScanBase):
         #    #self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 
         #
         #    self.dut.PIXEL_CONF['TRIM_EN'][pix_col,::mask] = 0
-            self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1 
+            self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1         
             
-            print  self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:]
+            print  self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:]          #Check if this is printing the right thing (IDCS)
         
         TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()
         TRIM_EN[:] = 0
@@ -148,24 +146,24 @@ class NoiseScan(ScanBase):
                 param_id = idx
                 
                 self.dut['data_rx'].reset()
-                self.dut['data_rx'].set_en(False)
+                self.dut['data_rx'].set_en(False)       #Giving time to clean up the chip on every step (IDCS)
                 self.dut['fifo'].reset()
                     
                 with self.readout(scan_param_id = param_id, fill_buffer=True, clear_buffer=clear_buffer):
                 
-                    self.dut['data_rx'].set_en(True)
+                    self.dut['data_rx'].set_en(True)    
                     self.dut['gate_tdc'].start()
                     while not self.dut['gate_tdc'].is_done():
                         pass
                     
                     self.dut['data_rx'].set_en(False)
-                    self.dut['TH'].set_voltage(1.5, unit='V')
+                    self.dut['TH'].set_voltage(1.5, unit='V')       #It makes the chip quiet while other things are done
                     
                 clear_buffer = False
                 
             dqdata = self.fifo_readout.data
             try:
-                data = np.concatenate([item[0] for item in dqdata])
+                data = np.concatenate([item[0] for item in dqdata])     #Getting the data out of the memory
             except ValueError:
                 data = []
 
@@ -173,15 +171,15 @@ class NoiseScan(ScanBase):
 
             data_size = len(data) 
             
-            pixel_data = hit_data['col']*129+hit_data['row']
-            hit_pixels = np.unique(pixel_data)
-            hit_hist =  np.bincount(pixel_data)
+            pixel_data = hit_data['col']*129+hit_data['row']        #pixel_data: Universal pixel numbers for all pixels in hit_data
+            hit_pixels = np.unique(pixel_data)                      #hit_pixels: List of non-repeated hit pixels
+            hit_hist =  np.bincount(pixel_data)                     #calculates the number of occurencies of every value
 
-            mage_hit = 0 #len(hit_pixels) > len(column_enable)*129*0.5 #50%
+            mega_hit = 0 #len(hit_pixels) > len(column_enable)*129*0.5 #50%
             
             dec_threshod = True
             msg = 'Correction: '
-            if data_size and not mage_hit:    
+            if data_size and not mega_hit:    
                 for pix in hit_pixels:
                     col = pix / 129
                     row = pix % 129
@@ -189,18 +187,18 @@ class NoiseScan(ScanBase):
                     if hit_hist[pix] > 1:              
                       
                         
-                        if col > 35 or row > 129:
+                        if col > 35 or row > 129 or col < 0 or row < 0:
                             logging.warning('Something went very wrong! col=%d, row=%d, pix=%d', col, row, pix)
                         else:
                             if TRIM_EN[col,row] == 15 :
                                 self.dut.PIXEL_CONF['PREAMP_EN'][col,row] = 0
                                 #disabled_pixels_cnt += 1
                                 pix_str = str([col, row])
-                                if PREAMP_EN[col,row]:
-                                    if pix_str in disabled_pixels:
+                                if PREAMP_EN[col,row]:                                      
+                                    if pix_str in disabled_pixels:                          
                                         disabled_pixels[pix_str] += 1
                                     else:
-                                        disabled_pixels[pix_str] = 1
+                                        disabled_pixels[pix_str] = 1                        
                                     logging.info("DISABLE: %d, %d", col, row)
                                 logging.warning("DISABLE OUT OF RANGE: %d, %d", col, row)
                                 
@@ -219,7 +217,7 @@ class NoiseScan(ScanBase):
             #dec_threshod = True
             
             msg = 'MEGA_HIT:'
-            if mage_hit:
+            if mega_hit:
                 for pix in hit_pixels:
                     col = pix / 129
                     row = pix % 129

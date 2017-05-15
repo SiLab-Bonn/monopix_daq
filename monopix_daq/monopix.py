@@ -1,9 +1,11 @@
-import time, string, os ,sys
-
-import numpy as np
+import time
+import string
+import os
+import sys
 import bitarray
-
 import logging
+import numpy as np
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -110,7 +112,7 @@ class monopix(Dut):
         self['VDDA'].set_voltage(1.8, unit='V')
         self['VDDA'].set_enable(True)
         
-        self['VDD_BCID_BUFF'].set_voltage(1.8, unit='V')
+        self['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         self['VDD_BCID_BUFF'].set_enable(True)
         
         self['VPC'].set_voltage(1.5, unit='V')

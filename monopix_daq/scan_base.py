@@ -1,13 +1,14 @@
-
 import logging
 import basil
-from monopix import monopix
-from fifo_readout import FifoReadout
-from contextlib import contextmanager
 import time
 import os
 import tables as tb
 import yaml
+from monopix import monopix
+from fifo_readout import FifoReadout
+from contextlib import contextmanager
+
+import online_monitor.sender
 
 class MetaTable(tb.IsDescription):
     index_start = tb.UInt32Col(pos=0)
@@ -35,6 +36,7 @@ class ScanBase(object):
         
         self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
         self.output_filename = os.path.join(self.working_dir, self.run_name)
+        self.socket=None
         
         self.fh = logging.FileHandler(self.output_filename + '.log')
         self.fh.setLevel(logging.DEBUG)
@@ -64,6 +66,15 @@ class ScanBase(object):
         
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
         
+        
+        addr="tcp://127.0.0.1:5500" ### TODO get from yaml conf file?
+        if (addr!=""): 
+            try:
+                self.socket=online_monitor.sender.init(addr)
+            except:
+                logging.info('error data_send.data_send_init %s'%addr)
+                self.socket=None
+        
         self.dut.power_up()
 
         time.sleep(0.1)
@@ -85,6 +96,12 @@ class ScanBase(object):
 
         self.h5_file.close()
         logging.info('Data Output Filename: %s', self.output_filename + '.h5')
+
+        if self.socket!=None:
+           try:
+               online_monitor.sender.close(self.socket)
+           except:
+               pass
         
         logging.info('Power Status: %s', str(self.dut.power_status()))
         self.dut.power_down()
@@ -145,6 +162,12 @@ class ScanBase(object):
         self.meta_data_table.row.append()
         self.meta_data_table.flush()
         #print len_raw_data
+        
+        if self.socket!=None:
+            try:
+                online_monitor.sender.send_data(self.socket,data_tuple)
+            except:
+                logging.info("error: send_data")
         
     def handle_err(self, exc):
         msg='%s' % exc[1]

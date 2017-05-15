@@ -1,0 +1,15 @@
+converter :
+    DUT0_Interpreter :
+        kind : monopix_converter
+        frontend : tcp://127.0.0.1:5500
+        backend : tcp://127.0.0.1:5600
+    DUT0_Histogrammer :
+        kind : monopix_histogrammer
+        frontend : tcp://127.0.0.1:5600
+        backend : tcp://127.0.0.1:5700
+        noisy_threshold : 1
+
+receiver :
+    DUT0 :
+        kind : monopix_receiver
+        frontend : tcp://127.0.0.1:5700
