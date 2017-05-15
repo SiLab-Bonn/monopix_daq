@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 local_configuration = {
-    #'mask_filename': '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170424_TestBeam_MIPs+Bias/noise_tune/20170424_094650_noise_scan.h5',
+    #'mask_filename': '',
     "TH": 0.855,
     "columns": range(24, 28),
     "threshold_overdrive" : 0.007

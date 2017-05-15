@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     "column_enable": range(12,16),              #Range of columns to be considered
-    "start_threshold": 0.79,                   #Initial global Threshold value (in Volts)
+    "start_threshold": 0.79,                    #Initial global Threshold value (in Volts)
     "stop_on_disabled": 6                       #Maximum number of pixels 
 }
 
@@ -73,7 +73,7 @@ class NoiseScan(ScanBase):
         self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1    #Why monitor enabled in noise scan and not in threshold scan? (Check if when enable it makes a difference)
         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
      
-        PREAMP_EN = self.dut.PIXEL_CONF['PREAMP_EN'].copy() #Making an independent copy (IDCS)
+        PREAMP_EN = self.dut.PIXEL_CONF['PREAMP_EN'].copy() 
      
         mask = 32                                           #Mask step (IDCS)
         for pix_col in column_enable:
