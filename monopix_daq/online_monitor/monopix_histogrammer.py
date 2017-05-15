@@ -27,7 +27,7 @@ class MonopixHistogrammer(Transceiver):
     def setup_interpretation(self):
         self.occupancy = np.zeros(shape=(36,129), dtype=np.int32)
         self.tot = np.zeros(256, dtype=np.int32)
-        self.pix= [0xFFFF,0xFFFF] ########[col,row] for single pixel [0xFFFF,0xFFFF] for all pixel
+        self.pix= [25,64] #[25,64] #[0xFFFF,0xFFFF] ########[col,row] for single pixel [0xFFFF,0xFFFF] for all pixel
         # Variables
         self.n_readouts = 0
         self.readout = 0

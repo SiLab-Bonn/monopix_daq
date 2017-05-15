@@ -12,7 +12,7 @@ def _interpreter(raw_data):
          ret['col'][:] = raw_data & 0b111111
          te =  (raw_data >> 14 ) & 0xff
          le = (raw_data >> 22) & 0xff
-         ret['tot'][:] = (le - te) & 0xff
+         ret['tot'][:] = (te - le) & 0xff
     return ret
 
 class MonopixConverter(Transceiver):

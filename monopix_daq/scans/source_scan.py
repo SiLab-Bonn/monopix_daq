@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     #'mask_filename': '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170424_TestBeam_MIPs+Bias/noise_tune/20170424_094650_noise_scan.h5',
-    "TH": 0.784,
+    "TH": 0.855,
     "columns": range(24, 28),
     "threshold_overdrive" : 0.007
 }
@@ -40,6 +40,9 @@ class SourceScan(ScanBase):
         self.dut["CONF_SR"]["MONITOR_EN"] = 0
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
+        
+        #VPFB Feedback
+        self.dut["CONF_SR"]["VPFB"] = 4
 
         self.dut.write_global_conf()
 
@@ -131,7 +134,7 @@ class SourceScan(ScanBase):
             self.dut['data_rx'].reset()
             self.dut['data_rx'].set_en(True)
              
-            for i in range(1):
+            for i in range(2000):
                 time.sleep(10)
                 logging.info("Time = " + str(i) + '-'*20)
                 
