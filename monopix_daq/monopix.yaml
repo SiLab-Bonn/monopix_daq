@@ -61,6 +61,9 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
+      - name    : EN_GRAY_RESET_WITH_TDC_PULSE
+        size    : 1
+        offset  : 10
       - name    : EN_DATA_CMOS
         size    : 1
         offset  : 9
