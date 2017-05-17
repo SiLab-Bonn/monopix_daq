@@ -15,10 +15,10 @@ local_configuration = {
     "how_long": 60,
     "repeat": 1000,
     #"scan_injection": [0.0, 0.5, 0.005],
-    "scan_injection": [0.3, 1.7, 0.05],
+    "scan_injection": [0.8, 0.802, 0.05],
     "threshold_range": [0.855, 0.855, -0.001],#[1.035, 1.035, -0.001],#[0.7818, 0.7818, -0.001], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
     #"threshold_range": [0., 0.9, -0.001],
-    "pixel":  [25,64],
+    "pixel":  [27,128],
     "VPFBvalue": 4#56#48
 }
 
@@ -176,7 +176,7 @@ class ScanSingle(ScanBase):
                     
                 logging.info(msg)
             
-            return tot_hist[1:-1]
+            return tot_hist[0:]
 
         th_scan_range = np.arange(threshold_range[0], threshold_range[1], threshold_range[2])
         if len(th_scan_range) == 0:
