@@ -42,12 +42,17 @@ class ScanSingle(ScanBase):
 
         #self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
         
-        self.dut['inj'].set_delay(20*64)
-        self.dut['inj'].set_width(20*64)
+        self.dut['inj'].set_delay(5*256)
+        self.dut['inj'].set_width(5*256)
         self.dut['inj'].set_repeat(repeat)
-        self.dut['inj'].set_en(False)
+        self.dut['inj'].set_en(True)
         self.dut['gate_tdc'].set_en(False)
+        self.dut['gate_tdc'].set_delay(10)
+        self.dut['gate_tdc'].set_width(2)
+        self.dut['gate_tdc'].set_repeat(1)
         
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
+
         
         self.dut.write_global_conf()
         
@@ -202,7 +207,7 @@ class ScanSingle(ScanBase):
                     self.dut['fifo'].reset()
                     self.dut['data_rx'].set_en(True)
 
-                    self.dut['inj'].start()
+                    self.dut['gate_tdc'].start()
                     while not self.dut['inj'].is_done():
                         pass
                     
