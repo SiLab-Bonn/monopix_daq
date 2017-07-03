@@ -176,7 +176,6 @@ localparam DATA_RX_HIGHADDR = 16'h0600-1;
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-1;
 
-
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
 wire BUS_RD, BUS_WR;
@@ -444,8 +443,6 @@ sram_fifo #(
     .FIFO_NEAR_FULL(),
     .FIFO_READ_ERROR()
 );
-    
-    
 
 ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_BX) );
 //ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );

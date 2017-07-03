@@ -60,15 +60,37 @@ assign RST = BUS_RST | SOFT_RST;
 reg CONF_EN;
 reg CONF_DISSABLE_GRAY_DEC;
 
+reg [7:0] CONF_START_FREEZE;
+reg [7:0] CONF_STOP_FREEZE;
+reg [7:0] CONF_START_READ;
+reg [7:0] CONF_STOP_READ;
+reg [7:0] CONF_STOP;
+
 always @(posedge BUS_CLK) begin
     if(RST) begin
         CONF_EN <= 0;
         CONF_DISSABLE_GRAY_DEC <= 0;
+		  CONF_START_FREEZE <= 3;
+		  CONF_START_READ <= 6;
+		  CONF_STOP_READ <= 12;
+		  CONF_STOP_FREEZE <= 15;
+		  CONF_STOP <= 60;
     end
     else if(BUS_WR) begin
-        if(BUS_ADD == 2)
+        if(BUS_ADD == 2) begin
             CONF_EN <= BUS_DATA_IN[0];
             CONF_DISSABLE_GRAY_DEC <= BUS_DATA_IN[1];
+		  end
+		  else if(BUS_ADD == 4)
+            CONF_START_FREEZE <= BUS_DATA_IN;
+		  else if(BUS_ADD == 5)
+            CONF_STOP_FREEZE <= BUS_DATA_IN;
+		  else if(BUS_ADD == 6)
+            CONF_START_READ <= BUS_DATA_IN;
+		  else if(BUS_ADD == 7)
+            CONF_STOP_READ <= BUS_DATA_IN;
+		  else if(BUS_ADD == 8)
+            CONF_STOP <= BUS_DATA_IN;
     end
 end
 
@@ -82,6 +104,16 @@ always @(posedge BUS_CLK) begin
             BUS_DATA_OUT <= {6'b0, CONF_DISSABLE_GRAY_DEC, CONF_EN};
         else if(BUS_ADD == 3)
             BUS_DATA_OUT <= LOST_DATA_CNT;
+			else if(BUS_ADD == 4)
+            BUS_DATA_OUT <= CONF_START_FREEZE;
+			else if(BUS_ADD == 5)
+            BUS_DATA_OUT <= CONF_STOP_FREEZE;
+			else if(BUS_ADD == 6)
+            BUS_DATA_OUT <= CONF_START_READ;
+			else if(BUS_ADD == 7)
+            BUS_DATA_OUT <= CONF_STOP_READ;
+		  	else if(BUS_ADD == 8)
+            BUS_DATA_OUT <= CONF_STOP;
         else
             BUS_DATA_OUT <= 8'b0;
     end
@@ -95,9 +127,9 @@ assign RST_SYNC = RST_SOFT_SYNC;
 wire CONF_EN_SYNC;
 assign CONF_EN_SYNC  = CONF_EN;
 
-//
-parameter NOP  = 4'b0001, TOKEN_WAIT = 4'b0010, READ_STATE = 4'b0100, DATA = 4'b1000;
-reg [3:0] state, next_state;
+
+parameter NOP  = 5'b00001, WAIT = 5'b00010;
+reg [4:0] state, next_state;
 
 always@(posedge CLK_BX)
  if(RST_SYNC)
@@ -112,15 +144,9 @@ always@(*) begin : set_next_state
     case (state)
         NOP:
             if(RX_TOKEN & CONF_EN)
-                next_state = TOKEN_WAIT;   
-        TOKEN_WAIT: 
-            if(DelayCnt == 2)
-                next_state = READ_STATE;
-        READ_STATE:
-            if(DelayCnt == 10) ///1)
-                next_state = DATA;  
-        DATA: 
-            if(DelayCnt == 32) //2)
+                next_state = WAIT;   
+        WAIT: 
+            if(DelayCnt == CONF_STOP)
                 next_state = NOP;
     endcase
 end
@@ -132,10 +158,10 @@ else if(DelayCnt != 8'hff)
     DelayCnt <= DelayCnt + 1;
 
 always@(posedge CLK_BX)
-    RX_READ <= (state == READ_STATE); 
+    RX_READ <= (DelayCnt >= CONF_START_READ && DelayCnt <= CONF_STOP_READ); 
 
 always@(posedge CLK_BX)
-    RX_FREEZE <= (state == TOKEN_WAIT || next_state == READ_STATE );
+    RX_FREEZE <= (DelayCnt >= CONF_START_FREEZE && DelayCnt <= CONF_STOP_FREEZE); 
 
 reg [1:0] read_dly;
 always@(posedge CLK_BX)

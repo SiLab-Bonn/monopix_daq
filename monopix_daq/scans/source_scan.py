@@ -180,7 +180,7 @@ class SourceScan(ScanBase):
         if h5_filename == '':
             h5_filename = self.output_filename +'.h5'
         
-        logging.info('Anallyzing: %s', h5_filename)
+        logging.info('Analyzing: %s', h5_filename)
         np.set_printoptions(linewidth=240)
          
         with tb.open_file(h5_filename, 'r+') as in_file_h5:
