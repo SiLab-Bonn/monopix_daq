@@ -1,5 +1,5 @@
 from monopix_daq.scan_base import ScanBase
-from monopix_daq.analysis_whatever import analyze_raw_data as analysis
+from monopix_daq import analysis
 
 from matplotlib import pyplot as plt
 
@@ -135,8 +135,8 @@ class AnalogScan(ScanBase):
             dcol = int(pix_col / 2)
             self.dut['CONF_SR']['ColRO_En'][35 - pix_col] = 1
 
-#         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = np.load(file_path + 'trim_values.npy')
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+#         self.dut.PIXEL_CONF['TRIM_EN'][:] = np.load(file_path + 'trim_values.npy')
         print self.dut.PIXEL_CONF['TRIM_EN'][12:16, :]
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
@@ -161,7 +161,7 @@ class AnalogScan(ScanBase):
 
         plt.ylim(0, 130)
 #         plt.clf()
-        plt.savefig(file_path + '/s_curve_tuned.pdf')
+        plt.savefig(file_path + '/s_curve_untuned.pdf')
         plt.clf()
 
     def scan_loop(self, pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat):
