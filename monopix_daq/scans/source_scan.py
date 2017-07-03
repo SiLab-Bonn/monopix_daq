@@ -17,9 +17,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     #'mask_filename': '',
-    "TH": 0.855,
+    "TH": 0.766,
     "columns": range(24, 28),
-    "threshold_overdrive" : 0.007
+    "threshold_overdrive" : 0.006
 }
 
 class SourceScan(ScanBase):
@@ -40,6 +40,7 @@ class SourceScan(ScanBase):
         self.dut["CONF_SR"]["MONITOR_EN"] = 0
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
+        self.dut["CONF_SR"]["LSBdacL"] = 45
         
         #VPFB Feedback
         self.dut["CONF_SR"]["VPFB"] = 4
@@ -180,7 +181,7 @@ class SourceScan(ScanBase):
         if h5_filename == '':
             h5_filename = self.output_filename +'.h5'
         
-        logging.info('Anallyzing: %s', h5_filename)
+        logging.info('Analyzing: %s', h5_filename)
         np.set_printoptions(linewidth=240)
          
         with tb.open_file(h5_filename, 'r+') as in_file_h5:

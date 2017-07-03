@@ -18,8 +18,8 @@ class MetaTable(tb.IsDescription):
     timestamp_stop = tb.Float64Col(pos=4)
     scan_param_id = tb.UInt16Col(pos=5)
     error = tb.UInt32Col(pos=6)
-    
-    
+
+
 class ScanBase(object):
     '''Basic run meta class.
 
@@ -29,22 +29,22 @@ class ScanBase(object):
     def __init__(self, dut_conf=None):
         logging.info('Initializing %s', self.__class__.__name__)
         self.dut_conf = dut_conf
-        
-        self.working_dir = os.path.join(os.getcwd(),"output_data")
+
+        self.working_dir = os.path.join(os.getcwd(), "output_data")
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
-        
+
         self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
         self.output_filename = os.path.join(self.working_dir, self.run_name)
-        self.socket=None
-        
+
         self.fh = logging.FileHandler(self.output_filename + '.log')
         self.fh.setLevel(logging.DEBUG)
         self.logger = logging.getLogger()
         self.logger.addHandler(self.fh)
-        
+
         self.dut = monopix(self.dut_conf)
-        
+        self.dut.init()
+
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
 
@@ -52,18 +52,17 @@ class ScanBase(object):
         return str(os.path.dirname(os.path.dirname(basil.__file__)))
 
     def start(self, **kwargs):
-                
-       
-        self.dut.init()
-        
+
+        # self.dut.init()
+
         self._first_read = False
         self.scan_param_id = 0
-        
-        filename = self.output_filename +'.h5'
+
+        filename = self.output_filename + '.h5'
         self.h5_file = tb.open_file(filename, mode='w', title=self.scan_id)
-        self.raw_data_earray = self.h5_file.create_earray (self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
+        self.raw_data_earray = self.h5_file.create_earray(self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
         self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)
-        
+
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
         
         
@@ -78,19 +77,19 @@ class ScanBase(object):
         self.dut.power_up()
 
         time.sleep(0.1)
-        
+
         self.fifo_readout = FifoReadout(self.dut)
-        
+
         #
         # some init
         #
-        
+
         logging.info('Power Status: %s', str(self.dut.power_status()))
-        
+
         self.scan(**kwargs)
-        
+
         self.fifo_readout.print_readout_status()
-        
+
         self.meta_data_table.attrs.power_status = yaml.dump(self.dut.power_status())
         self.meta_data_table.attrs.dac_status = yaml.dump(self.dut.dac_status())
 
@@ -105,10 +104,10 @@ class ScanBase(object):
         
         logging.info('Power Status: %s', str(self.dut.power_status()))
         self.dut.power_down()
-        #self.logger.removeHandler(self.fh)
-        
+        # self.logger.removeHandler(self.fh)
+
         return self.output_filename + '.h5'
-        
+
     def analyze(self):
         raise NotImplementedError('ScanBase.analyze() not implemented')
 
@@ -118,18 +117,18 @@ class ScanBase(object):
     @contextmanager
     def readout(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', 10.0)
-        
-        #self.fifo_readout.readout_interval = 10
+
+        # self.fifo_readout.readout_interval = 10
         if not self._first_read:
             time.sleep(0.1)
             self.fifo_readout.print_readout_status()
             self._first_read = True
-            
+
         self.start_readout(*args, **kwargs)
         yield
         self.fifo_readout.stop(timeout=timeout)
 
-    def start_readout(self, scan_param_id = 0, *args, **kwargs):
+    def start_readout(self, scan_param_id=0, *args, **kwargs):
         # Pop parameters for fifo_readout.start
         callback = kwargs.pop('callback', self.handle_data)
         clear_buffer = kwargs.pop('clear_buffer', False)
@@ -143,13 +142,13 @@ class ScanBase(object):
     def handle_data(self, data_tuple):
         '''Handling of the data.
         '''
-        #print data_tuple[0].shape[0] #, data_tuple
-        
+        # print data_tuple[0].shape[0] #, data_tuple
+
         total_words = self.raw_data_earray.nrows
-        
+
         self.raw_data_earray.append(data_tuple[0])
         self.raw_data_earray.flush()
-        
+
         len_raw_data = data_tuple[0].shape[0]
         self.meta_data_table.row['timestamp_start'] = data_tuple[1]
         self.meta_data_table.row['timestamp_stop'] = data_tuple[2]

@@ -86,7 +86,7 @@ class FifoReadout(object):
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
-        logging.info('Starting FIFO readout...')
+#         logging.info('Starting FIFO readout...')
         self.callback = callback
         self.errback = errback
         self.fill_buffer = fill_buffer
@@ -143,12 +143,12 @@ class FifoReadout(object):
             self.worker_thread.join()
         self.callback = None
         self.errback = None
-        logging.info('Stopped FIFO readout')
+#         logging.info('Stopped FIFO readout')
 
     def print_readout_status(self):
         tdc_discard_count = self.get_tdc_fifo_discard_count()
         data_rx_lost_count = self.get_data_rx_fifo_discard_count()
-        
+
         logging.info('Recived words: %d', self._record_count)
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['fifo']['FIFO_SIZE'])

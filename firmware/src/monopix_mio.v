@@ -176,7 +176,6 @@ localparam DATA_RX_HIGHADDR = 16'h0600-1;
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-1;
 
-
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
 wire BUS_RD, BUS_WR;
@@ -214,7 +213,7 @@ gpio
     );    
 
 wire RESET_CONF, LDDAC_CONF, LDPIX_CONF, SREN_CONF, EN_BX_CLK_CONF, EN_OUT_CLK_CONF, RESET_GRAY_CONF;
-wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF;
+wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF, EN_GRAY_RESET_WITH_TDC_PULSE;
 assign RESET_CONF = GPIO_OUT[0];
 assign LDDAC_CONF = GPIO_OUT[1];
 assign LDPIX_CONF = GPIO_OUT[2];
@@ -227,6 +226,7 @@ assign RESET_GRAY_CONF = GPIO_OUT[6];
 assign EN_TEST_PATTERN_CONF = GPIO_OUT[7];
 assign EN_DRIVER_CONF = GPIO_OUT[8];
 assign EN_DATA_CMOS_CONF = GPIO_OUT[9];
+assign EN_GRAY_RESET_WITH_TDC_PULSE = GPIO_OUT[10];
 
 wire CONF_CLK;
 assign CONF_CLK = CLK8;
@@ -288,7 +288,7 @@ pulse_gen
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .PULSE_CLK(CONF_CLK), //~CLK40),
+    .PULSE_CLK(CLK40), //~CLK40),
     .EXT_START(SLD | GATE_TDC),
     .PULSE(INJECTION) //DUT_INJ
 );
@@ -307,7 +307,7 @@ pulse_gen
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .PULSE_CLK(CONF_CLK),
+    .PULSE_CLK(CLK40),
     .EXT_START(1'b0),
     .PULSE(GATE_TDC) 
 );    
@@ -443,8 +443,6 @@ sram_fifo #(
     .FIFO_NEAR_FULL(),
     .FIFO_READ_ERROR()
 );
-    
-    
 
 ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_BX) );
 //ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );
@@ -458,7 +456,7 @@ always@(negedge CLK40)
 reg RST_GRAY_reg;
 assign RST_GRAY = RST_GRAY_reg;
 always@(negedge CLK40)
-    RST_GRAY_reg <= RESET_GRAY_CONF;
+    RST_GRAY_reg <= RESET_GRAY_CONF | (GATE_TDC & EN_GRAY_RESET_WITH_TDC_PULSE);
 
 assign EN_TEST_PATTERN = EN_TEST_PATTERN_CONF;
 assign EN_DRIVER = EN_DRIVER_CONF;
