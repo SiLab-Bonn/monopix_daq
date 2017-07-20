@@ -3,6 +3,7 @@ from monopix_daq.scan_base import ScanBase
 from matplotlib import pyplot as plt
 
 import time
+import os
 
 import numpy as np
 import tables as tb
@@ -18,7 +19,7 @@ show_info = False
 
 
 class Tuning(ScanBase):
-    scan_id = "tuning"
+    scan_id = "fast_tuning"
 
     def get_filename(self):
         return self.output_filename
@@ -39,17 +40,23 @@ class Tuning(ScanBase):
         self.dut['VDDD'].set_voltage(1.7, unit='V')
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
 
-        self.dut['inj'].set_delay(20 * 64)
-        self.dut['inj'].set_width(20 * 64)
+        self.dut['inj'].set_delay(20 * 256 + 10)
+        self.dut['inj'].set_width(20 * 256 - 10)
         self.dut['inj'].set_repeat(repeat)
-        self.dut['inj'].set_en(False)
+        self.dut['inj'].set_en(True)
+        self.dut['gate_tdc'].set_en(False)
+        self.dut['gate_tdc'].set_delay(10)
+        self.dut['gate_tdc'].set_width(2)
+        self.dut['gate_tdc'].set_repeat(1)
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
 
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
         self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 0
+        self.dut["CONF_SR"]["MONITOR_EN"] = 1
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
         self.dut["CONF_SR"]["LSBdacL"] = 45
+        self.dut["CONF_SR"]["VPFB"] = 32
 
         self.dut.write_global_conf()
 
@@ -111,7 +118,7 @@ class Tuning(ScanBase):
 
         else:
             # first time, get TRIM_EN from configuration
-            if np.any(TRIM_EN is None):
+            if bit_index == 3:
                 TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()
                 for pix_col in columns:
                     TRIM_EN[pix_col, :] = 8
@@ -125,6 +132,9 @@ class Tuning(ScanBase):
             dcol = int(pix_col / 2)
             self.dut['CONF_SR']['ColRO_En'][35 - pix_col] = 1
 
+        print '### Scanning with setting: ###'
+        print TRIM_EN[24:25, :]
+
         self.dut.PIXEL_CONF['TRIM_EN'][:] = TRIM_EN[:]
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
@@ -133,6 +143,11 @@ class Tuning(ScanBase):
 
         logging.info('Threshold: %f', TH)
         self.dut['TH'].set_voltage(TH, unit='V')
+
+        self.hits = None
+
+        self.hits_data_type = {'names': ['inj', 'col', 'row', 'hist'], 'formats': [np.float64, 'uint16', 'uint16', 'uint16']}
+        self.hits = np.recarray((0), dtype=self.hits_data_type)
 
         for pix_col_indx, pix_col in enumerate(columns):
 
@@ -148,12 +163,16 @@ class Tuning(ScanBase):
             # begin scan loop here
             self.scan_loop(pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat)
 
-    def scan_loop(self, pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat):
+    def get_hits(self):
+        return self.hits
+
+    def get_threshold_setting(self):
+        return self.TRIM_EN
+
+    def scan_loop(self, pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat, inj_value=0.5):
 
         # activate mask
         for idx, mask_step in enumerate(mask_steps):
-            # raw_input("New mask starts now. Check data and press Enter to proceed")
-
             dcol = int(pix_col / 2)
             self.dut['CONF_SR']['INJ_EN'].setall(False)
             # self.dut['CONF_SR']['PREAMP_EN'].setall(False)
@@ -177,16 +196,12 @@ class Tuning(ScanBase):
 
             time.sleep(0.1)
 
-            data_type = {'names': ['inj', 'col', 'row', 'hist'], 'formats': [np.float64, 'uint16', 'uint16', 'uint16']}
-            hits = np.recarray((0), dtype=data_type)
-
             # for given mask change injection value
-            inj_value = 0.2
+            inj_value = 0.15
             param_id = pix_col_indx * len(scan_range) * mask + idx * len(scan_range)
 
             if show_info:
                 logging.info('Scan : Column = %s MaskId=%d InjV=%f ID=%d)', pix_col, idx, inj_value, param_id)
-
 
             if self.pulser:
                 self.pulser['Pulser'].set_voltage(self.INJ_LO, float(self.INJ_LO + inj_value), unit='V')
@@ -207,17 +222,24 @@ class Tuning(ScanBase):
 
             with self.readout(scan_param_id=param_id, fill_buffer=True, clear_buffer=True):
 
-                print "injecting to pixels ", np.where(mask_step)[0]
-
                 self.dut['data_rx'].reset()
                 self.dut['fifo'].reset()
+
+                self.dut['data_rx'].CONF_START_FREEZE = 88
+                self.dut['data_rx'].CONF_START_READ = 92
+                self.dut['data_rx'].CONF_STOP_FREEZE = 98
+                self.dut['data_rx'].CONF_STOP_READ = 94
+                self.dut['data_rx'].CONF_STOP = 110
+
                 self.dut['data_rx'].set_en(True)
 
-                self.dut['inj'].start()
+                # self.dut['inj'].start()
+                self.dut['gate_tdc'].start()
+
                 while not self.dut['inj'].is_done():
                     pass
 
-                time.sleep(0.2)
+                time.sleep(0.1)
 
                 self.dut['data_rx'].set_en(False)
                 self.dut['TH'].set_voltage(1.5, unit='V')
@@ -233,6 +255,7 @@ class Tuning(ScanBase):
             logging.info('Scan Pixel Finished: V=%f DATA_COUNT=%d', inj_value, data_size)
 
             hit_data = self.dut.interpret_rx_data(data)
+            hit_data = hit_data[hit_data['le'] < 25]
             pixel_data = hit_data['col'] * 129 + hit_data['row']
             hit_pixels = np.unique(pixel_data)
             hist = np.bincount(pixel_data)
@@ -241,12 +264,21 @@ class Tuning(ScanBase):
 
             msg = ' '
 
+            # Give id to pixels, starting from 0 at (col, row) = (0, 0)
+            for activated_pixel_id in pix_col * 129 + np.where(mask_step)[0]:
+                if activated_pixel_id in hit_pixels:
+                    # There was a hit in this pixel
+                    self.hits = np.append(self.hits, np.array([tuple([inj_value, activated_pixel_id / 129, activated_pixel_id % 129, hist[activated_pixel_id]])], dtype=self.hits_data_type))
+                else:
+                    # There was no hit in this pixel (although charge was injected). Set hist to 0
+                    self.hits = np.append(self.hits, np.array([tuple([inj_value, activated_pixel_id / 129, activated_pixel_id % 129, 0])], dtype=self.hits_data_type))
+
             if data_size:
                 for pix in hit_pixels:
                     col = pix / 129
                     row = pix % 129
                     msg += '[%d, %d]=%d ' % (col, row, hist[pix])
-                    hits = np.append(hits, np.array([tuple([inj_value, col, row, hist[pix]])], dtype=data_type))
+#                     self.hits = np.append(self.hits, np.array([tuple([inj_value, col, row, hist[pix]])], dtype=self.hits_data_type))
                 logging.info(msg)
 
             if data_size > 1000000:
@@ -254,104 +286,168 @@ class Tuning(ScanBase):
 
                 return
 
-            time.sleep(2)
+            time.sleep(.5)
 
-            logging.info("Analyze data of column %d" % pix_col)
-            TRIM_EN = self.calculate_pixel_threshold(pix_col, hits, mask_step, TRIM_EN, repeat)
-
+        # format hits
         self.TRIM_EN = TRIM_EN
 
-    def calculate_pixel_threshold(self, col, hits, mask_step, TRIM_EN, repeat):
-        # TODO: ignore pixels that are not in mask
-        # Iterate over all pixels
+    def analyze(self, h5_filename=''):
+        # Added analyze from source_scan to check if it saves le and te
 
-        hist = np.zeros(shape=len(np.where(mask_step)[0]))
+        if h5_filename == '':
+            h5_filename = self.output_filename + '.h5'
 
-        for row in np.where(mask_step)[0]:
-            pixel = hits[hits["row"] == row]
+        logging.info('Analyzing: %s', h5_filename)
+        np.set_printoptions(linewidth=240)
 
-            if len(pixel) == 0:
-                pixel = np.array([tuple([0.2, col, row, 0])], dtype=hits.dtype)
+        with tb.open_file(h5_filename, 'r+') as in_file_h5:
+            raw_data = in_file_h5.root.raw_data[:]
+            meta_data = in_file_h5.root.meta_data[:]
 
-            hist = pixel["hist"][0]
-            print '====='
-            print col, row, hist
+            # print raw_data
+            hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
+            lista = list(hit_data.dtype.descr)
+            new_dtype = np.dtype(lista + [('InjV', 'float'), ('tot', 'uint8')])
+            new_hit_data = np.zeros(shape=hit_data.shape, dtype=new_dtype)
+            for field in hit_data.dtype.names:
+                new_hit_data[field] = hit_data[field]
+            # new_hit_data['InjV'] = local_configuration['scan_injection'][0] + hit_data['scan_param_id']*local_configuration['scan_injection'][2]
 
-#             # fit s curve
-#             A, mu, sigma = analysis.fit_scurve(hist, scan_range, repeat)
-#             self.mus = np.append(self.mus, mu)
-# #             plt.title('scurve for pixel %d' % pixel)
-# #             plt.step(scan_range, hist)
-#             plt.plot(np.arange(scan_range[0], scan_range[-1], 0.001), analysis.scurve(np.arange(scan_range[0], scan_range[-1], 0.001), A, mu, sigma))
+            tot = hit_data['te'] - hit_data['le']
+            neg = hit_data['te'] < hit_data['le']
+            print np.bincount(hit_data['le'])
+            tot[neg] = hit_data['te'][neg] + (255 - hit_data['le'][neg])
+            new_hit_data['tot'] = tot
 
-            # calculate TRIM_EN for next iteration here
-            if bit_index >= 0:
-                TRIM_EN[col, row] = bit_switching(bit_index, repeat / 2, hist, TRIM_EN[col, row])
-        return TRIM_EN
+            in_file_h5.create_table(in_file_h5.root, 'hit_data', new_hit_data, filters=self.filter_tables)
 
 
-def bit_switching(bit_index, target_threshold, fitted_threshold, old_threshold):
+def calculate_new_threshold_settings(bit_index, n_inj, hist_map, old_threshold):
     new_threshold = old_threshold
 
     # TODO can be omitted when saving closest distance
     # check if optimal threshold is already found
-    if np.abs(fitted_threshold - target_threshold) < 3:
-        # threshold is close to target threshold
-        return old_threshold
 
     # in any case, switch next bit (if bit is not least significant) to 1
     if bit_index > 0:
-        new_threshold = old_threshold | (1 << bit_index - 1)
+        new_threshold = new_threshold | (1 << bit_index - 1)
 
-    if fitted_threshold < target_threshold:
-        # use lower threshold value
-        new_threshold = ~(1 << bit_index) & new_threshold
-
-    else:
-        # use larger threshold value
-        pass
-
-    print bit_index, bin(old_threshold), fitted_threshold, bin(new_threshold)
-
+    # If needed raise threshold, otherwise keep 0
+    new_threshold[hist_map < (n_inj / 2)] = ~(1 << bit_index) & new_threshold[hist_map < (n_inj / 2)]
     return new_threshold
 
 
+def calculate_hist_map(hits, n_inj, old_threshold_setting):
+    hist_map = np.zeros_like(old_threshold_setting, dtype=np.uint16)
+    noisy = np.full_like(hist_map, True)
+
+    # Iterate over all pixels
+    for pixel in hits:
+        hist_map[pixel["col"], pixel["row"]] = pixel["hist"]
+
+    # exclude non-noisy pixels from mask
+    noisy[hist_map < n_inj] = False
+
+    return hist_map
+
+
+# Initialize here
+columns = (24, 28)
+
 scan = Tuning()
 configuration = {
-    "repeat": 400,
+    "repeat": 200,
     "mask_filename": '',
     "scan_range": [0.01, 0.5, 0.025],
     "mask": 8,
-    "TH": 0.770,
-    "columns": range(8, 12),
+    "TH": 0.769,
+    "columns": range(columns[0], columns[1]),
     "threshold_overdrive": 0.006
 }
 
-file_path = '/home/silab/Desktop/tuning/fast_tuning_test/new_method_good_chip_8-12'
+file_path = '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170720_FastTuning/22_cols24-27_target0,15_TH0,769_VPFB4'
+if not os.path.exists(file_path):
+    os.makedirs(file_path)
+    print "Created folder:"
+    print file_path
 
 # MAIN LOOP
 scan.configure(**configuration)
-TRIM_EN = None
+TRIM_EN = np.full((36, 129), 8, dtype=np.uint8)
+
+best_threshold_setting = None  # best trim settings
+hist_best = None  # hits for best trim setting
 
 # bit_index counts down from 3 to 0
 for bit_index in np.arange(3, -1, -1):
-    scan.start(TRIM_EN=TRIM_EN, **configuration)
-    TRIM_EN = scan.TRIM_EN
-    trim_vals = TRIM_EN
-    np.save(file_path + "/trim_values_step" + str(3 - bit_index) + ".npy", trim_vals)
-    print trim_vals[8:12, :].reshape(-1)
-    plt.hist(trim_vals[8:12, :].reshape(-1), bins=np.arange(-0.5, 16.5, 1))
+    scan.start(TRIM_EN=TRIM_EN.copy(), **configuration)
+    threshold_setting = scan.get_threshold_setting()
+
+#     print threshold_setting[columns[0]:columns[1], :]
+
+    trim_vals = threshold_setting
+    hits = scan.get_hits()
+
+    if len(hits) != 129 * (columns[1] - columns[0]):
+        logging.error("Some hits were lost, information is missing!")
+        raw_input("Proceed anyway?")
+
+    # Calculate hsit_map
+    hist_map = calculate_hist_map(hits, configuration["repeat"], threshold_setting)
+
+    # Store best setting on the fly since search algo does not always
+    # converge to best value
+    if not np.any(best_threshold_setting):
+        best_threshold_setting = TRIM_EN
+        hist_best = hist_map
+    else:
+        selection = np.abs(hist_best - float(configuration["repeat"]) / 2) > np.abs(hist_map - float(configuration["repeat"]) / 2)
+        logging.info("Updating %s values" % np.count_nonzero(selection))
+        best_threshold_setting[selection] = TRIM_EN[selection]
+        hist_best[selection] = hist_map[selection]
+
+    np.save(file_path + "/trim_values_step" + str(3 - bit_index) + ".npy", best_threshold_setting)
+#     print new_threshold_setting[columns[0]:columns[1], :].reshape(-1)
+    plt.hist(best_threshold_setting[columns[0]:columns[1], :].reshape(-1), bins=np.arange(-0.5, 16.5, 1))
     plt.savefig(file_path + '/trim_0' + str(3 - bit_index) + '.pdf')
+#     plt.show()
     plt.clf()
 
-# scan again for bit_index = 0
-scan.start(TRIM_EN=TRIM_EN, **configuration)
-TRIM_EN = scan.TRIM_EN
-mus = scan.mus
-trim_vals = TRIM_EN[8:12, :].reshape(-1)
-plt.clf()
-plt.hist(trim_vals, bins=np.arange(-0.5, 16.5, 1))
-plt.savefig(file_path + '/trim_04.pdf')
+    new_threshold_setting = calculate_new_threshold_settings(bit_index, configuration["repeat"], hist_map, TRIM_EN)
 
-np.save(file_path + '/trim_values.npy', TRIM_EN)
+    TRIM_EN = new_threshold_setting
+
+# scan with last bit 0
+
+fixed_TRIM = np.copy(~(1 << 0) & TRIM_EN)
+# Scan last bit with 0
+scan.start(TRIM_EN=fixed_TRIM.copy(), **configuration)
+threshold_setting = scan.get_threshold_setting()
+
+#     print threshold_setting[columns[0]:columns[1], :]
+
+trim_vals = threshold_setting
+hits = scan.get_hits()
+
+if len(hits) != 129 * (columns[1] - columns[0]):
+    logging.error("Some hits were lost, information is missing!")
+    raw_input("Proceed anyway?")
+
+# Calculate hsit_map
+hist_map = calculate_hist_map(hits, configuration["repeat"], threshold_setting)
+
+# Store best setting on the fly since search algo does not always converge to best value
+if not np.any(best_threshold_setting):
+    best_threshold_setting = fixed_TRIM
+    hist_best = hist_map
+else:
+    selection = np.abs(hist_best - float(configuration["repeat"]) / 2) > np.abs(hist_map - float(configuration["repeat"]) / 2)
+    logging.info("Updating %s values" % np.count_nonzero(selection))
+    best_threshold_setting[selection] = fixed_TRIM[selection]
+    hist_best[selection] = hist_map[selection]
+
+np.save(file_path + "/trim_values_step" + str(4) + ".npy", best_threshold_setting)
+plt.hist(best_threshold_setting[columns[0]:columns[1], :].reshape(-1), bins=np.arange(-0.5, 16.5, 1))
+plt.savefig(file_path + '/trim_0' + str(4) + '.pdf')
+plt.clf()
 

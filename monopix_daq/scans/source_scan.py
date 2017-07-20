@@ -17,18 +17,40 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     #'mask_filename': '',
-    "TH": 0.766,
-    "columns": range(24, 28),
+    #'masknpy_filename': '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170710_FastTuning/21_cols25-27_target0,55_TH0,855_VPFB4/trim_values.npy',
+    "TH": 0.855,
+    "columns": range(0, 35),
     "threshold_overdrive" : 0.006
 }
 
 class SourceScan(ScanBase):
     scan_id = "source_scan"
 
-    def scan(self, TH = 1.5, column_enable = [], mask_filename = '', threshold_overdrive = 0.001, columns = range(36), **kwargs):
+    def scan(self, TH = 1.5, column_enable = [], mask_filename = '', masknpy_filename = '', threshold_overdrive = 0.001, columns = range(36), **kwargs):
 
 #        self.dut['fifo'].reset()
 #        self.dut.write_global_conf()
+
+        self.dut['data_rx'].reset()
+        self.dut['fifo'].reset()
+        
+        ###TEST control Firmware
+        #self.dut['FREEZE_S']['FRZ_s']=21
+        #self.dut['FREEZE_S'].write()
+        
+        print "BEFORE:"
+        print self.dut['data_rx'].CONF_START_FREEZE
+        print self.dut['data_rx'].CONF_START_READ
+        print self.dut['data_rx'].CONF_STOP_FREEZE
+        print self.dut['data_rx'].CONF_STOP_READ
+        print self.dut['data_rx'].CONF_STOP
+
+        self.dut['data_rx'].CONF_START_FREEZE = 88
+        self.dut['data_rx'].CONF_START_READ = 92
+        self.dut['data_rx'].CONF_STOP_FREEZE = 98
+        self.dut['data_rx'].CONF_STOP_READ = 94
+        self.dut['data_rx'].CONF_STOP = 110
+
         self.dut['TH'].set_voltage(1.5, unit='V')
         
         self.dut['VDDD'].set_voltage(1.7, unit='V')        
@@ -100,6 +122,12 @@ class SourceScan(ScanBase):
                 scan_kwargs = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
                 columns = scan_kwargs['column_enable']
                 logging.info('Column Enable: %s', str(columns))
+                
+        elif masknpy_filename:
+            trim_values= np.load(masknpy_filename)
+            for pix_col in columns:
+                TRIM_EN[pix_col,:] = trim_values[pix_col, :]
+                self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1
         
         else:
             for pix_col in columns:
@@ -113,6 +141,9 @@ class SourceScan(ScanBase):
         
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
+
+        #print self.dut.PIXEL_CONF['TRIM_EN'][25:28, :]
+        #time.sleep(10)
         
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF'].write()
@@ -133,9 +164,17 @@ class SourceScan(ScanBase):
         with self.readout(scan_param_id = 0, fill_buffer=True, clear_buffer=True):
             
             self.dut['data_rx'].reset()
+            self.dut['fifo'].reset()
+
+            self.dut['data_rx'].CONF_START_FREEZE = 88
+            self.dut['data_rx'].CONF_START_READ = 92
+            self.dut['data_rx'].CONF_STOP_FREEZE = 98
+            self.dut['data_rx'].CONF_STOP_READ = 94
+            self.dut['data_rx'].CONF_STOP = 110
+
             self.dut['data_rx'].set_en(True)
              
-            for i in range(2000):
+            for i in range(18):
                 time.sleep(10)
                 logging.info("Time = " + str(i) + '-'*20)
                 

@@ -70,11 +70,11 @@ always @(posedge BUS_CLK) begin
     if(RST) begin
         CONF_EN <= 0;
         CONF_DISSABLE_GRAY_DEC <= 0;
-		  CONF_START_FREEZE <= 3;
-		  CONF_START_READ <= 6;
-		  CONF_STOP_READ <= 12;
-		  CONF_STOP_FREEZE <= 15;
-		  CONF_STOP <= 60;
+		  CONF_START_FREEZE <= 88;
+		  CONF_START_READ <= 92;
+		  CONF_STOP_READ <= 94;
+		  CONF_STOP_FREEZE <= 98;
+		  CONF_STOP <= 110;
     end
     else if(BUS_WR) begin
         if(BUS_ADD == 2) begin

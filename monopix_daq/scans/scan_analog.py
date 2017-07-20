@@ -44,16 +44,30 @@ class AnalogScan(ScanBase):
             self.pulser = None
             logging.info('External injector not connected. Switch to internal one')
 
+        self.dut['data_rx'].reset()
+        self.dut['fifo'].reset()
+
+        self.dut['data_rx'].CONF_START_FREEZE = 88
+        self.dut['data_rx'].CONF_START_READ = 92
+        self.dut['data_rx'].CONF_STOP_FREEZE = 98
+        self.dut['data_rx'].CONF_STOP_READ = 94
+        self.dut['data_rx'].CONF_STOP = 110
+
         self.dut['INJ_LO'].set_voltage(self.INJ_LO, unit='V')
 
         self.dut['TH'].set_voltage(1.5, unit='V')
         self.dut['VDDD'].set_voltage(1.7, unit='V')
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
 
-        self.dut['inj'].set_delay(20 * 64)
-        self.dut['inj'].set_width(20 * 64)
+        self.dut['inj'].set_delay(20 * 256 + 10)
+        self.dut['inj'].set_width(20 * 256 - 10)
         self.dut['inj'].set_repeat(repeat)
-        self.dut['inj'].set_en(False)
+        self.dut['inj'].set_en(True)
+        self.dut['gate_tdc'].set_en(False)
+        self.dut['gate_tdc'].set_delay(10)
+        self.dut['gate_tdc'].set_width(2)
+        self.dut['gate_tdc'].set_repeat(1)
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
 
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
         self.dut["CONF_SR"]["INJECT_EN"] = 1
@@ -61,6 +75,8 @@ class AnalogScan(ScanBase):
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
         self.dut["CONF_SR"]["LSBdacL"] = 45
+        
+        self.dut["CONF_SR"]["VPFB"] = 4
 
         self.dut.write_global_conf()
 
@@ -91,7 +107,8 @@ class AnalogScan(ScanBase):
 
     def scan(self, repeat=100, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, TRIM_EN=None, **kwargs):
         self.configure()
-        self.mus = np.zeros(shape=(0))
+        self.mus = np.zeros(shape=(36, 129), dtype='f')
+        self.sigmas = np.zeros(shape=(36, 129), dtype='f')
 
         # LOAD PIXEL DAC
         if mask_filename:
@@ -135,9 +152,8 @@ class AnalogScan(ScanBase):
             dcol = int(pix_col / 2)
             self.dut['CONF_SR']['ColRO_En'][35 - pix_col] = 1
 
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-#         self.dut.PIXEL_CONF['TRIM_EN'][:] = np.load(file_path + 'trim_values.npy')
-        print self.dut.PIXEL_CONF['TRIM_EN'][12:16, :]
+#         self.dut.PIXEL_CONF['TRIM_EN'][:] = 8
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = np.load(file_path + '/trim_values_step4.npy')
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
 
@@ -161,7 +177,7 @@ class AnalogScan(ScanBase):
 
         plt.ylim(0, 130)
 #         plt.clf()
-        plt.savefig(file_path + '/s_curve_untuned.pdf')
+        plt.savefig(file_path + '/s_curve_tuned.pdf')
         plt.clf()
 
     def scan_loop(self, pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat):
@@ -224,9 +240,18 @@ class AnalogScan(ScanBase):
 
                     self.dut['data_rx'].reset()
                     self.dut['fifo'].reset()
+
+                    self.dut['data_rx'].CONF_START_FREEZE = 88
+                    self.dut['data_rx'].CONF_START_READ = 92
+                    self.dut['data_rx'].CONF_STOP_FREEZE = 98
+                    self.dut['data_rx'].CONF_STOP_READ = 94
+                    self.dut['data_rx'].CONF_STOP = 110
+
                     self.dut['data_rx'].set_en(True)
 
-                    self.dut['inj'].start()
+                    # self.dut['inj'].start()
+                    self.dut['gate_tdc'].start()
+
                     while not self.dut['inj'].is_done():
                         pass
 
@@ -289,7 +314,10 @@ class AnalogScan(ScanBase):
 
             # fit s curve
             A, mu, sigma = analysis.fit_scurve(hist, scan_range, repeat)
-            self.mus = np.append(self.mus, mu)
+            self.mus[pixel / 129, pixel % 129] = mu
+            self.sigmas[pixel / 129, pixel % 129] = sigma
+
+
 #             plt.title('scurve for pixel %d' % pixel)
 #             plt.step(scan_range, hist)
             plt.plot(np.arange(scan_range[0], scan_range[-1], 0.001), analysis.scurve(np.arange(scan_range[0], scan_range[-1], 0.001), A, mu, sigma))
@@ -297,16 +325,16 @@ class AnalogScan(ScanBase):
 
 scan = AnalogScan()
 configuration = {
-    "repeat": 50,
+    "repeat": 100,
     "mask_filename": '',
-    "scan_range": [0.01, 0.5, 0.025],
+    "scan_range": [0.01, 0.3, 0.025],
     "mask": 8,
-    "TH": 0.770,
-    "columns": range(8, 12),
+    "TH": 0.769,
+    "columns": range(24, 28),
     "threshold_overdrive": 0.006
 }
 
-file_path = '/home/silab/Desktop/tuning/fast_tuning_test/new_method_good_chip_8-12/'
+file_path = '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170720_FastTuning/22_cols24-27_target0,15_TH0,769_VPFB4'
 
 # TODO make this a loop
 
@@ -317,11 +345,14 @@ TRIM_EN = scan.TRIM_EN
 # trim_vals = TRIM_EN[8:12, :].reshape(-1)
 
 mus = scan.mus
-np.save(file_path + '/analog_mus_values.npy', mus)
+sigmas = scan.sigmas
+np.save(file_path + '/mu_values.npy', mus)
+np.save(file_path + '/sigma_values.npy', sigmas)
+
+print len(np.where(np.logical_or(mus[24:28, :] > 0.2, mus[24:28, :] < 0.1))[0])
 
 # plt.clf()
 # plt.hist(trim_vals, bins=np.arange(-0.5, 16.5, 1))
 # plt.savefig(file_path + '/trim_01.pdf')
 
 plt.clf()
-

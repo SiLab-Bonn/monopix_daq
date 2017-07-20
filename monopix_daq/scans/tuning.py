@@ -35,6 +35,30 @@ class Tuning(ScanBase):
 
     def configure(self, repeat= 50, mask_filename='', scan_range=[0.25, 0.45, 0.025], TH=1.5, mask=16, columns=range(0, 36), target_injection=0.2, threshold_overdrive=0.006, **kwargs):
         
+        self.dut['fifo'].reset()
+        
+#        print "BEFORE:"
+#        print self.dut['data_rx'].CONF_START_FREEZE 
+#        print self.dut['data_rx'].CONF_START_READ 
+#        print self.dut['data_rx'].CONF_STOP_FREEZE 
+#        print self.dut['data_rx'].CONF_STOP_READ 
+#        print self.dut['data_rx'].CONF_STOP 
+#        
+#        
+#        self.dut['data_rx'].CONF_START_FREEZE = 5
+#        self.dut['data_rx'].CONF_START_READ = 42
+#        self.dut['data_rx'].CONF_STOP_FREEZE = 48
+#        self.dut['data_rx'].CONF_STOP_READ = 45
+#        self.dut['data_rx'].CONF_STOP = 58
+#        
+#        print "AFTER:"
+#        print self.dut['data_rx'].CONF_START_FREEZE 
+#        print self.dut['data_rx'].CONF_START_READ 
+#        print self.dut['data_rx'].CONF_STOP_FREEZE 
+#        print self.dut['data_rx'].CONF_STOP_READ 
+#        print self.dut['data_rx'].CONF_STOP 
+        
+        
         print "IN CONFIGURE"
         print repeat
         print scan_range
@@ -74,8 +98,6 @@ class Tuning(ScanBase):
         self.dut['gate_tdc'].set_repeat(1)
         self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
 
-
-
         
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
         self.dut["CONF_SR"]["INJECT_EN"] = 1
@@ -83,6 +105,7 @@ class Tuning(ScanBase):
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
         self.dut["CONF_SR"]["LSBdacL"] = 45
+        #self.dut["CONF_SR"]["VPFB"] = 4
 
         self.dut.write_global_conf()
 
@@ -438,13 +461,13 @@ configuration = {
     "mask_filename": '',
     "scan_range": [0.005, 0.545, 0.02],
     "mask": 8,
-    "TH": 0.764,
-    "columns": range(20, 24),
-    "target_injection": 0.23,
+    "TH": 0.768,
+    "columns": range(24, 28),
+    "target_injection": 0.15,
     "threshold_overdrive": 0.006
 }
 
-file_path = r'/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170609_ThresholdTuningWithINJ/51_cols20-23_target0,23_TH764_LSB45_GPACinj_ChristianChip_TomekTest_WithRectLE'
+file_path = r'/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170609_ThresholdTuningWithINJ/53_cols24-27_target0,15_TH768_LSB45_PLSRinj_TomekTest_WithRectLE_NoChanges'
 if not os.path.exists(file_path):
     os.makedirs(file_path)
 print "Created folder:"
