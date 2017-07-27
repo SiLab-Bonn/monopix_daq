@@ -216,7 +216,7 @@ class ScanTimeWalk(ScanBase):
             time.sleep(2)
             #time.sleep(0.2)
             
-            with self.readout(scan_param_id = inx  + len(inj_scan_range)*scan_dac_id, fill_buffer=True, clear_buffer=True):
+            with self.readout(scan_param_id = inx  + len(inj_scan_range) * scan_dac_id, fill_buffer=True, clear_buffer=True):
             
                 self.dut['data_rx'].reset()
                 self.dut['fifo'].reset()
@@ -235,43 +235,41 @@ class ScanTimeWalk(ScanBase):
             #tot_hist = print_hist(all_hits = True)
             #inj_scan_dict[float(vol)] = tot_hist.tolist()                                
 
-        
-    def analyze(self, scan_dac_id = 0, h5_filename  = ''):
-        #Added analyze from source_scan to check if it saves le and te
-        
+    def analyze(self, h5_filename=''):
+        # Added analyze from source_scan to check if it saves le and te
+
         if h5_filename == '':
             h5_filename = self.output_filename +'.h5'
         else:
             self._inj_scan_range = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2 , 2]
-        
+
         logging.info('Analyzing: %s', h5_filename)
         np.set_printoptions(linewidth=240)
-         
+
         with tb.open_file(h5_filename, 'r+') as in_file_h5:
             raw_data = in_file_h5.root.raw_data[:]
             meta_data = in_file_h5.root.meta_data[:]
-            
-            #print raw_data
+
+            # print raw_data
             hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
             lista = list(hit_data.dtype.descr)
             new_dtype = np.dtype(lista + [('InjV', 'float'), ('tot', 'uint8')])
             new_hit_data = np.zeros(shape=hit_data.shape, dtype=new_dtype)
             for field in hit_data.dtype.names:
                 new_hit_data[field] = hit_data[field]
-                
+
             find_injv = lambda x: self._inj_scan_range[x]
             find_injv_vec = np.vectorize(find_injv)
-            new_hit_data['InjV'] = find_injv_vec(hit_data['scan_param_id']%len(self._inj_scan_range))
-            
+            new_hit_data['InjV'] = find_injv_vec(hit_data['scan_param_id'] % len(self._inj_scan_range))
+
             tot = hit_data['te'] - hit_data['le']
-            neg = hit_data['te']<hit_data['le']
+            neg = hit_data['te'] < hit_data['le']
             tot[neg] = hit_data['te'][neg] + (255 - hit_data['le'][neg])
             new_hit_data['tot'] = tot
-            
+
             in_file_h5.create_table(in_file_h5.root, 'hit_data', new_hit_data, filters=self.filter_tables)
-            
-    
-    def get_timewalk_distance(self, allow_overshoot = False, tot_min = 5, scan_dac_id =0, h5_filename = ''):
+
+    def get_timewalk_distance(self, allow_overshoot=False, tot_min=5, scan_dac_id =0, h5_filename = ''):
 
         if h5_filename == '':
             h5_filename = self.output_filename +'.h5'
@@ -280,9 +278,9 @@ class ScanTimeWalk(ScanBase):
 
         with tb.open_file(h5_filename, 'r') as in_file_h5:
             new_hit_data = in_file_h5.root.hit_data[:]
-            
+
             scan_dac_selection = np.logical_and(new_hit_data["scan_param_id"] > scan_dac_id*len(self._inj_scan_range), new_hit_data["scan_param_id"] < (scan_dac_id+1)*len(self._inj_scan_range))
-            
+
             tot_vals = np.unique(new_hit_data[scan_dac_selection]['tot'])
             tot_vals = np.unique(filter(lambda x : x >= tot_min, tot_vals))
             has_overshoot = {}
@@ -290,18 +288,18 @@ class ScanTimeWalk(ScanBase):
                 if val < tot_min:
                     continue
                 has_overshoot[val] = np.logical_and(new_hit_data[scan_dac_selection]['le'] > 10, new_hit_data[scan_dac_selection]['tot'] == val).any()
-            
-            if not allow_overshoot:    
+
+            if not allow_overshoot:
                 mintot = new_hit_data[scan_dac_selection]['tot'] == np.amin(tot_vals)
                 maxtot = new_hit_data[scan_dac_selection]['tot'] == np.amax(tot_vals)
-            
+
             else:
                 mintot = new_hit_data[scan_dac_selection]['tot'] == np.ma.min(np.ma.array(tot_vals, mask = np.array(has_overshoot.values())))
                 maxtot = new_hit_data[scan_dac_selection]['tot'] == np.ma.max(np.ma.array(tot_vals, mask = np.array(has_overshoot.values())))
 
             self.le_mintot = np.mean(new_hit_data[scan_dac_selection][mintot]['le'])
             self.le_maxtot = np.mean(new_hit_data[scan_dac_selection][maxtot]['le'])
-                
+
         return self.le_mintot - self.le_maxtot
 
     

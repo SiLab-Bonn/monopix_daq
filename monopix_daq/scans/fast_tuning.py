@@ -10,7 +10,6 @@ import tables as tb
 import yaml
 
 from progressbar import ProgressBar
-from basil.dut import Dut
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -21,73 +20,14 @@ show_info = False
 class Tuning(ScanBase):
     scan_id = "fast_tuning"
 
-    def get_filename(self):
-        return self.output_filename
+    def get_hits(self):
+        return self.hits
 
-    def configure(self, repeat=1000, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, **kwargs):
-        self.INJ_LO = 0.2
-        try:
-            self.pulser = Dut('../agilent33250a_pyserial.yaml')  # should be absolute path
-            self.pulser.init()
-            logging.info('Connected to ' + str(self.pulser['Pulser'].get_info()))
-        except (RuntimeError, OSError):
-            self.pulser = None
-            logging.info('External injector not connected. Switch to internal one')
+    def get_threshold_setting(self):
+        return self.TRIM_EN
 
-        self.dut['INJ_LO'].set_voltage(self.INJ_LO, unit='V')
-
-        self.dut['TH'].set_voltage(1.5, unit='V')
-        self.dut['VDDD'].set_voltage(1.7, unit='V')
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
-
-        self.dut['inj'].set_delay(20 * 256 + 10)
-        self.dut['inj'].set_width(20 * 256 - 10)
-        self.dut['inj'].set_repeat(repeat)
-        self.dut['inj'].set_en(True)
-        self.dut['gate_tdc'].set_en(False)
-        self.dut['gate_tdc'].set_delay(10)
-        self.dut['gate_tdc'].set_width(2)
-        self.dut['gate_tdc'].set_repeat(1)
-        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
-
-        self.dut["CONF_SR"]["PREAMP_EN"] = 1
-        self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 1
-        self.dut["CONF_SR"]["REGULATOR_EN"] = 1
-        self.dut["CONF_SR"]["BUFFER_EN"] = 1
-        self.dut["CONF_SR"]["LSBdacL"] = 45
-        self.dut["CONF_SR"]["VPFB"] = 32
-
-        self.dut.write_global_conf()
-
-        self.dut['CONF']['EN_OUT_CLK'] = 1
-        self.dut['CONF']['EN_BX_CLK'] = 1
-        self.dut['CONF']['EN_DRIVER'] = 1
-        self.dut['CONF']['EN_DATA_CMOS'] = 0
-
-        self.dut['CONF']['RESET_GRAY'] = 1
-        self.dut['CONF']['EN_TEST_PATTERN'] = 0
-        self.dut['CONF']['RESET'] = 1
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET'] = 0
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET_GRAY'] = 0
-        self.dut['CONF'].write()
-
-        self.dut['CONF_SR']['MON_EN'].setall(True)
-        self.dut['CONF_SR']['INJ_EN'].setall(False)
-        self.dut['CONF_SR']['ColRO_En'].setall(False)
-
-        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-
-    def scan(self, repeat=1000, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, TRIM_EN=None, **kwargs):
+    def scan(self, repeat=1000, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, TRIM_EN=None):
         self.configure(repeat=repeat, columns=columns)
-        self.mus = np.zeros(shape=(0))
 
         # LOAD PIXEL DAC
         if mask_filename:
@@ -163,13 +103,7 @@ class Tuning(ScanBase):
             # begin scan loop here
             self.scan_loop(pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat)
 
-    def get_hits(self):
-        return self.hits
-
-    def get_threshold_setting(self):
-        return self.TRIM_EN
-
-    def scan_loop(self, pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, repeat, inj_value=0.5):
+    def scan_loop(self, pix_col_indx, pix_col, mask, mask_steps, TRIM_EN, TH, scan_range, inj_value=0.5):
 
         # activate mask
         for idx, mask_step in enumerate(mask_steps):
@@ -291,36 +225,6 @@ class Tuning(ScanBase):
         # format hits
         self.TRIM_EN = TRIM_EN
 
-    def analyze(self, h5_filename=''):
-        # Added analyze from source_scan to check if it saves le and te
-
-        if h5_filename == '':
-            h5_filename = self.output_filename + '.h5'
-
-        logging.info('Analyzing: %s', h5_filename)
-        np.set_printoptions(linewidth=240)
-
-        with tb.open_file(h5_filename, 'r+') as in_file_h5:
-            raw_data = in_file_h5.root.raw_data[:]
-            meta_data = in_file_h5.root.meta_data[:]
-
-            # print raw_data
-            hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
-            lista = list(hit_data.dtype.descr)
-            new_dtype = np.dtype(lista + [('InjV', 'float'), ('tot', 'uint8')])
-            new_hit_data = np.zeros(shape=hit_data.shape, dtype=new_dtype)
-            for field in hit_data.dtype.names:
-                new_hit_data[field] = hit_data[field]
-            # new_hit_data['InjV'] = local_configuration['scan_injection'][0] + hit_data['scan_param_id']*local_configuration['scan_injection'][2]
-
-            tot = hit_data['te'] - hit_data['le']
-            neg = hit_data['te'] < hit_data['le']
-            print np.bincount(hit_data['le'])
-            tot[neg] = hit_data['te'][neg] + (255 - hit_data['le'][neg])
-            new_hit_data['tot'] = tot
-
-            in_file_h5.create_table(in_file_h5.root, 'hit_data', new_hit_data, filters=self.filter_tables)
-
 
 def calculate_new_threshold_settings(bit_index, n_inj, hist_map, old_threshold):
     new_threshold = old_threshold
@@ -360,19 +264,19 @@ configuration = {
     "mask_filename": '',
     "scan_range": [0.01, 0.5, 0.025],
     "mask": 8,
-    "TH": 0.769,
+    "TH": 0.766,
     "columns": range(columns[0], columns[1]),
     "threshold_overdrive": 0.006
 }
 
-file_path = '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170720_FastTuning/22_cols24-27_target0,15_TH0,769_VPFB4'
+file_path = '/home/silab/Desktop/tuning/test_tuning'
 if not os.path.exists(file_path):
     os.makedirs(file_path)
     print "Created folder:"
     print file_path
 
 # MAIN LOOP
-scan.configure(**configuration)
+scan.configure(injection=True, **configuration)
 TRIM_EN = np.full((36, 129), 8, dtype=np.uint8)
 
 best_threshold_setting = None  # best trim settings
@@ -418,13 +322,11 @@ for bit_index in np.arange(3, -1, -1):
     TRIM_EN = new_threshold_setting
 
 # scan with last bit 0
-
 fixed_TRIM = np.copy(~(1 << 0) & TRIM_EN)
-# Scan last bit with 0
 scan.start(TRIM_EN=fixed_TRIM.copy(), **configuration)
 threshold_setting = scan.get_threshold_setting()
 
-#     print threshold_setting[columns[0]:columns[1], :]
+# print threshold_setting[columns[0]:columns[1], :]
 
 trim_vals = threshold_setting
 hits = scan.get_hits()
@@ -451,3 +353,4 @@ plt.hist(best_threshold_setting[columns[0]:columns[1], :].reshape(-1), bins=np.a
 plt.savefig(file_path + '/trim_0' + str(4) + '.pdf')
 plt.clf()
 
+print scan.analyze()

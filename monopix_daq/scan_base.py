@@ -10,6 +10,7 @@ from contextlib import contextmanager
 
 import online_monitor.sender
 
+
 class MetaTable(tb.IsDescription):
     index_start = tb.UInt32Col(pos=0)
     index_stop = tb.UInt32Col(pos=1)
@@ -48,6 +49,75 @@ class ScanBase(object):
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
 
+    def configure(self, injection=False, repeat=1000, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, **kwargs):
+        self.dut['data_rx'].reset()
+        self.dut['fifo'].reset()
+
+        self.dut['TH'].set_voltage(1.5, unit='V')
+        self.dut['VDDD'].set_voltage(1.7, unit='V')
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
+        # self.dut['VPC'].set_voltage(1.5, unit='V')
+
+        # If this is a scan with injection, initialize pulser and set needed values otherwise skip
+        if injection:
+            from basil.dut import Dut
+
+            self.INJ_LO = 0.2
+            try:
+                self.pulser = Dut('../agilent33250a_pyserial.yaml')  # should be absolute path
+                self.pulser.init()
+                logging.info('Connected to ' + str(self.pulser['Pulser'].get_info()))
+            except (RuntimeError, OSError):
+                self.pulser = None
+                logging.info('External injector not connected. Switch to internal one')
+
+                self.dut['INJ_LO'].set_voltage(self.INJ_LO, unit='V')
+
+            self.dut['inj'].set_delay(20 * 256 + 10)
+            self.dut['inj'].set_width(20 * 256 - 10)
+            self.dut['inj'].set_repeat(repeat)
+            self.dut['inj'].set_en(True)
+            self.dut['gate_tdc'].set_en(False)
+            self.dut['gate_tdc'].set_delay(10)
+            self.dut['gate_tdc'].set_width(2)
+            self.dut['gate_tdc'].set_repeat(1)
+            self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
+
+        self.dut["CONF_SR"]["PREAMP_EN"] = 1
+        self.dut["CONF_SR"]["INJECT_EN"] = 1
+        self.dut["CONF_SR"]["MONITOR_EN"] = 1
+        self.dut["CONF_SR"]["REGULATOR_EN"] = 1
+        self.dut["CONF_SR"]["BUFFER_EN"] = 1
+        self.dut["CONF_SR"]["LSBdacL"] = 45
+        self.dut["CONF_SR"]["VPFB"] = 32
+
+        self.dut.write_global_conf()
+
+        self.dut['CONF']['EN_OUT_CLK'] = 1
+        self.dut['CONF']['EN_BX_CLK'] = 1
+        self.dut['CONF']['EN_DRIVER'] = 1
+        self.dut['CONF']['EN_DATA_CMOS'] = 0
+
+        self.dut['CONF']['RESET_GRAY'] = 1
+        self.dut['CONF']['EN_TEST_PATTERN'] = 0
+        self.dut['CONF']['RESET'] = 1
+        self.dut['CONF'].write()
+
+        self.dut['CONF']['RESET'] = 0
+        self.dut['CONF'].write()
+
+        self.dut['CONF']['RESET_GRAY'] = 0  # Why do we enable and disable RESETs? (IDCS) ---Time while you write in between.
+        self.dut['CONF'].write()
+
+        self.dut['CONF_SR']['MON_EN'].setall(True)
+        self.dut['CONF_SR']['INJ_EN'].setall(False)
+        self.dut['CONF_SR']['ColRO_En'].setall(False)
+
+        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+
     def get_basil_dir(self):
         return str(os.path.dirname(os.path.dirname(basil.__file__)))
 
@@ -64,16 +134,15 @@ class ScanBase(object):
         self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)
 
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
-        
-        
-        addr="tcp://127.0.0.1:5500" ### TODO get from yaml conf file?
-        if (addr!=""): 
+
+        addr = "tcp://127.0.0.1:5500"  # TODO get from yaml conf file?
+        if (addr != ""):
             try:
-                self.socket=online_monitor.sender.init(addr)
+                self.socket = online_monitor.sender.init(addr)
             except:
-                logging.info('error data_send.data_send_init %s'%addr)
-                self.socket=None
-        
+                logging.info('error data_send.data_send_init %s' % addr)
+                self.socket = None
+
         self.dut.power_up()
 
         time.sleep(0.1)
@@ -96,20 +165,64 @@ class ScanBase(object):
         self.h5_file.close()
         logging.info('Data Output Filename: %s', self.output_filename + '.h5')
 
-        if self.socket!=None:
-           try:
-               online_monitor.sender.close(self.socket)
-           except:
-               pass
-        
+        if self.socket is not None:
+            try:
+                online_monitor.sender.close(self.socket)
+            except:
+                pass
+
         logging.info('Power Status: %s', str(self.dut.power_status()))
         self.dut.power_down()
         # self.logger.removeHandler(self.fh)
 
         return self.output_filename + '.h5'
 
-    def analyze(self):
-        raise NotImplementedError('ScanBase.analyze() not implemented')
+    def analyze(self, h5_filename='', param_func=None):
+        """
+
+        Parameters
+        ----------
+        param_func : function
+            Function to call on the values in scan_param_id column to
+            get desired information (e.g. retrieve injection votlage)
+
+        Returns
+        -------
+        out : Numpy recarray with hit information (col, row, le, te, scan_param_id, TBD, tot)
+        """
+        import numpy as np
+        # Added analyze from source_scan to check if it saves le and te
+
+        if h5_filename == '':
+            h5_filename = self.output_filename + '.h5'
+
+        logging.info('Analyzing: %s', h5_filename)
+        np.set_printoptions(linewidth=240)
+
+        with tb.open_file(h5_filename, 'r+') as in_file_h5:
+            raw_data = in_file_h5.root.raw_data[:]
+            meta_data = in_file_h5.root.meta_data[:]
+
+            # print raw_data
+            hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
+            lista = list(hit_data.dtype.descr)
+            new_dtype = np.dtype(lista + [('InjV', 'float'), ('tot', 'uint8')])
+            new_hit_data = np.zeros(shape=hit_data.shape, dtype=new_dtype)
+            for field in hit_data.dtype.names:
+                new_hit_data[field] = hit_data[field]
+
+            # TODO: Get InjV without additional parameters. Better save directly if needed
+            # new_hit_data['InjV'] = hit_data['scan_param_id']
+
+            tot = hit_data['te'] - hit_data['le']
+            neg = hit_data['te'] < hit_data['le']
+            print np.bincount(hit_data['le'])
+            tot[neg] = hit_data['te'][neg] + (255 - hit_data['le'][neg])
+            new_hit_data['tot'] = tot
+
+            in_file_h5.create_table(in_file_h5.root, 'hit_data', new_hit_data, filters=self.filter_tables)
+
+        return new_hit_data
 
     def scan(self, **kwargs):
         raise NotImplementedError('ScanBase.scan() not implemented')
@@ -160,17 +273,17 @@ class ScanBase(object):
         self.meta_data_table.row['scan_param_id'] = self.scan_param_id
         self.meta_data_table.row.append()
         self.meta_data_table.flush()
-        #print len_raw_data
-        
-        if self.socket!=None:
+        # print len_raw_data
+
+        if self.socket is not None:
             try:
-                online_monitor.sender.send_data(self.socket,data_tuple)
+                online_monitor.sender.send_data(self.socket, data_tuple)
             except:
                 logging.info("error: send_data")
-        
+
     def handle_err(self, exc):
-        msg='%s' % exc[1]
+        msg = '%s' % exc[1]
         if msg:
-            logging.error('%s%s Aborting run...', msg, msg[-1] )
+            logging.error('%s%s Aborting run...', msg, msg[-1])
         else:
             logging.error('Aborting run...')
