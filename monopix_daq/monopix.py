@@ -51,8 +51,8 @@ class monopix(Dut):
         
         self['CONF_SR'].write()
         while not self['CONF_SR'].is_ready:
-            pass
-        
+            time.sleep(0.001)
+
         self['CONF']['LDDAC'] = 0
         self['CONF'].write()
         
@@ -74,11 +74,10 @@ class monopix(Dut):
         
         self['CONF_SR'].write()
         while not self['CONF_SR'].is_ready:
-            pass
+            time.sleep(0.001)
         
         self['CONF']['LDPIX'] = 0
         self['CONF'].write()
-        
         
     def write_pixel_conf(self):
 
@@ -185,14 +184,20 @@ class monopix(Dut):
                 else:
                     ret = int_pix_data
         else:
+            raw_data=raw_data[raw_data&0xC0000000==0x0] ##TODO hard corded ID
+            for i in range(len(raw_data)):
+                if raw_data[i]&0xF0000000 == 0x10000000:
+                   break
+                else:
+                   logging.info("trash data..%d %x"%(i,raw_data[i])))
+            raw_data=raw_data[i:]
             size = len(raw_data)
-            ret = np.recarray((size), dtype=data_type) 
+            ret = np.recarray((size)/3, dtype=data_type) 
             if size:
-                ret['row'][:] = (raw_data >> 6) & 0xff
-                ret['col'][:] = raw_data & 0b111111
-                ret['te'][:] =  (raw_data >> 14 ) & 0xff
-                ret['le'][:] = (raw_data >> 22) & 0xff
-            
+                ret['col'][:] = raw_data[::3] & 0b111111
+                ret['row'][:] = (raw_data[::3] >> 8) & 0xff
+                ret['te'][:] =  raw_data[1::3] & 0xff
+                ret['le'][:] = (raw_data[1::3] >> 8) & 0xff
         return ret
         
         

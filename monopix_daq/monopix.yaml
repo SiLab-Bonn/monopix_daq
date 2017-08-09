@@ -8,7 +8,8 @@ transfer_layer:
       type  : SiUsb
       init : 
         timeout  : 600
-        bit_file : ../firmware/ise/monopix_mio.bit
+        bit_file : ../firmware/bit/monopix_mio.bit
+        avoid_download : False
 
 hw_drivers:
   - name      : GPAC
@@ -16,13 +17,25 @@ hw_drivers:
     interface : intf
     base_addr : 0x00000
     init :
-        no_calibration : False
+        no_calibration : True
         
   - name      : gpio
     type      : gpio
     interface : intf
     base_addr : 0x10000
     size      : 16
+    
+  - name      : tlu
+    type      : tlu
+    interface : intf
+    base_addr : 0x10600
+    size      : 8
+    
+  - name      : timestamp
+    type      : timestamp
+    interface : intf
+    base_addr : 0x10700
+    size      : 8
     
   - name      : spi
     type      : spi
@@ -61,6 +74,9 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
+      - name    : EN_GRAY_RESET_WITH_TDC_PULSE
+        size    : 1
+        offset  : 10
       - name    : EN_DATA_CMOS
         size    : 1
         offset  : 9
