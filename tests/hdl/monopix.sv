@@ -159,8 +159,12 @@ wire [5:0] addr_this;
 assign addr_this = this_token_save ? ColAddr : 0;
 assign ColAddrOut = addr_this | ColAddrIn;
 
+reg [23:0] col_data_save;
+always@(negedge Read)
+    col_data_save <= ColData;
+
 wire [23:0] data_this;
-assign data_this = this_token_save ? ColData : 0;
+assign data_this = this_token_save ? col_data_save : 0;
 assign ColDataOut = data_this | ColDataIn;
 
 assign BcidCol = Bcid & {8{Enable}};
