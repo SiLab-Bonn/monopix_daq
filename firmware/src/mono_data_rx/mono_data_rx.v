@@ -23,6 +23,8 @@ module mono_data_rx
     input wire BUS_WR,
     input wire BUS_RD,
     
+    input wire [63:0] TIMESTAMP,
+	 
     input wire CLK_BX,
     input wire RX_TOKEN, RX_DATA, RX_CLK,
     output wire RX_READ, RX_FREEZE, 
@@ -74,6 +76,7 @@ mono_data_rx_core
     .RX_CLK(RX_CLK),
     .RX_READ(RX_READ),
     .RX_FREEZE(RX_FREEZE),
+    .TIMESTAMP(TIMESTAMP),
     
     .FIFO_READ(FIFO_READ),
     .FIFO_EMPTY(FIFO_EMPTY),
