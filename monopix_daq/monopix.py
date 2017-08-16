@@ -79,6 +79,7 @@ class monopix(Dut):
         self['CONF']['LDPIX'] = 0
         self['CONF'].write()
         
+        
     def write_pixel_conf(self):
 
         for pix_bit in ['PREAMP_EN','INJECT_EN','MONITOR_EN']:
@@ -167,38 +168,7 @@ class monopix(Dut):
         return ret
     
     def interpret_rx_data(self, raw_data, meta_data = []):
-        data_type = {'names':['col','row','le','te','scan_param_id'], 'formats':['uint16','uint16','uint8','uint8','uint16']}
-        ret = np.recarray((0), dtype=data_type) 
-        if len(meta_data):
-            param, index = np.unique(meta_data['scan_param_id'], return_index=True)
-            index = index[1:]
-            index = np.append(index, meta_data.shape[0])
-            index = index - 1
-            stops = meta_data['index_stop'][index]
-            split = np.split(raw_data, stops)
-            for i in range(len(split[:-1])):
-                int_pix_data = self.interpret_rx_data(split[i])
-                int_pix_data['scan_param_id'][:] = param[i]
-                if len(ret):
-                    ret = np.hstack((ret, int_pix_data))
-                else:
-                    ret = int_pix_data
-        else:
-            raw_data=raw_data[raw_data&0xC0000000==0x0] ##TODO hard corded ID
-            for i in range(len(raw_data)):
-                if raw_data[i]&0xF0000000 == 0x10000000:
-                   break
-                else:
-                   logging.info("trash data..%d %x"%(i,raw_data[i])))
-            raw_data=raw_data[i:]
-            size = len(raw_data)
-            ret = np.recarray((size)/3, dtype=data_type) 
-            if size:
-                ret['col'][:] = raw_data[::3] & 0b111111
-                ret['row'][:] = (raw_data[::3] >> 8) & 0xff
-                ret['te'][:] =  raw_data[1::3] & 0xff
-                ret['le'][:] = (raw_data[1::3] >> 8) & 0xff
-        return ret
+        raise(NotImplementedError)
         
         
 if __name__=="__main__":

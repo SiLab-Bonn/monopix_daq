@@ -96,7 +96,7 @@ class ScanBase(object):
         self.meta_data_table.attrs.dac_status = yaml.dump(self.dut.dac_status())
         tmp={}
         for k in self.dut.PIXEL_CONF.keys():
-            tmp[k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+            tmp["pix_"+k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
         self.meta_data_table.attrs.pixel_conf=yaml.dump(tmp)
         
         ### close file
