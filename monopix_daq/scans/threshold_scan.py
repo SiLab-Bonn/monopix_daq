@@ -241,7 +241,7 @@ class ThresholdScan(ScanBase):
             #in_file_h5.create_table(in_file_h5.root, 'hit_data', hit_data, filters=self.filter_tables)
     
             import yaml
-            import monopix_daq.analysis as analysis
+            import monopix_daq.analysis.analysis as analysis
             scan_args = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
             
             columns = scan_args['columns']
