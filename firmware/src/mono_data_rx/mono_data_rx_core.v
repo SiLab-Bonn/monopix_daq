@@ -28,7 +28,7 @@ endmodule
 module mono_data_rx_core
 #(
     parameter ABUSWIDTH = 16,
-    parameter IDENTYFIER = 0
+    parameter IDENTYFIER = 2'b00
 )(
     input wire CLK_BX,
     input wire RX_TOKEN, RX_DATA, RX_CLK,
@@ -136,10 +136,10 @@ always @(posedge BUS_CLK) begin
             BUS_DATA_OUT <= CONF_EXPOSURE_TIME[55:48];
          else if(BUS_ADD == 16) 
             BUS_DATA_OUT <= CONF_EXPOSURE_TIME[63:56];
-			else if(BUS_ADD == 17)
-			    BUS_DATA_OUT <= {7'b0,READY};
-		   //else if (BUS_ADD ==18)  ///debug
-			//    BUS_DATA_OUT <= TIMESTAMP[8:0];
+         else if(BUS_ADD == 17)
+            BUS_DATA_OUT <= {7'b0,READY};
+         else if (BUS_ADD ==18)  ///debug
+            BUS_DATA_OUT <= TIMESTAMP[8:0];
 		   //else if (BUS_ADD ==19)
 			//    BUS_DATA_OUT <= token_timestamp[8:0];
         else
@@ -157,7 +157,7 @@ assign CONF_EN_SYNC  = CONF_EN;
 
 assign READY = ~RX_FREEZE & CONF_EN;
 always@(posedge CLK_BX)
-    if (RST_SYNC | CONF_EXPOSURE_TIME_RST)
+    if (RST_SYNC | CONF_EXPOSURE_TIME_RST) //TODO this is not right
 	     CONF_EXPOSURE_TIME <= 64'b0;
     else if ( READY )
         CONF_EXPOSURE_TIME <= CONF_EXPOSURE_TIME+1;
@@ -193,21 +193,21 @@ always@(*) begin : set_next_state
     next_state = state; //default
     case (state)
         NOP:
-            if(RX_TOKEN & CONF_EN)
+            if(TOKEN_FF[0] & CONF_EN)
                 next_state = WAIT_ONE;   
         WAIT_ONE: 
             if(DelayCnt == CONF_STOP) begin
-                if(!RX_FREEZE & RX_TOKEN)
+                if(!RX_FREEZE & TOKEN_FF[0])
                     next_state = NOP_NEXT;
                 else 
                     next_state = NOP;
             end
         NOP_NEXT:
-            if(RX_TOKEN & CONF_EN)
+            if(TOKEN_FF[0] & CONF_EN)
                 next_state = WAIT_NEXT;        
         WAIT_NEXT:
             if(DelayCnt == CONF_STOP) begin
-                if(RX_TOKEN)
+                if(TOKEN_FF[0])
                     next_state = NOP_NEXT;
                 else
                     next_state = NOP;
@@ -229,7 +229,7 @@ always@(posedge CLK_BX)
         RX_FREEZE <= 1'b0;
     else if(DelayCnt == CONF_START_FREEZE)
         RX_FREEZE <= 1'b1;
-    else if(DelayCnt == CONF_STOP_FREEZE && !RX_TOKEN)
+    else if(DelayCnt == CONF_STOP_FREEZE && !TOKEN_FF[0])
         RX_FREEZE <= 1'b0;
          
     
@@ -254,6 +254,7 @@ always@(posedge RX_CLK)
     else if(cnt != 7'hff)
         cnt <= cnt + 1;
 
+        
 reg [29:0] ser;
 always@(posedge RX_CLK)
     ser <= {ser[28:0], RX_DATA};
@@ -305,7 +306,7 @@ assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? {token_timestamp,posssible_noise, 
 wire [82:0] cdc_data_out;
 wire cdc_fifo_empty, fifo_full, fifo_write;
 wire cdc_fifo_read;
-cdc_syncfifo #(.DSIZE(83), .ASIZE(3)) cdc_syncfifo_i
+cdc_syncfifo #(.DSIZE(83), .ASIZE(8)) cdc_syncfifo_i
 (
     .rdata(cdc_data_out),
     .wfull(wfull),
@@ -335,6 +336,7 @@ always@(posedge BUS_CLK)
         data_buf <= cdc_data_out;
 
 wire [29:0] fifo_write_data_byte [3:0];
+assign fifo_write_data_byte[3]=29'b0;
 assign fifo_write_data_byte[2]={2'b01,data_buf[42:31],data_buf[13:6],1'b0,data_buf[30],data_buf[5:0]};
 assign fifo_write_data_byte[1]={2'b10,data_buf[54:43],data_buf[29:22],data_buf[21:14]};
 assign fifo_write_data_byte[0]={2'b11,data_buf[82:55]};
@@ -343,7 +345,7 @@ wire [31:0] fifo_data_in;
 assign fifo_data_in = fifo_write_data_byte[byte2_cnt];
 
 
-gerneric_fifo #(.DATA_SIZE(30), .DEPTH(1024))  fifo_i
+gerneric_fifo #(.DATA_SIZE(30), .DEPTH(1023))  fifo_i
 ( .clk(BUS_CLK), .reset(RST), 
     .write(fifo_write),
     .read(FIFO_READ), 

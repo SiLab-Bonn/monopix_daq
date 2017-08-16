@@ -14,7 +14,7 @@ module mono_data_rx
     parameter BASEADDR = 16'h0000,
     parameter HIGHADDR = 16'h0000,
     parameter ABUSWIDTH = 16,
-    parameter IDENTYFIER = 0
+    parameter IDENTYFIER = 2'b00
 )(
     input wire BUS_CLK,
     input wire [ABUSWIDTH-1:0] BUS_ADD,

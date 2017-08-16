@@ -4,6 +4,8 @@ import time
 import os
 import tables as tb
 import yaml
+import numpy as np
+
 from monopix import monopix
 from fifo_readout import FifoReadout
 from contextlib import contextmanager
@@ -26,24 +28,34 @@ class ScanBase(object):
     Base class for scan- / tune- / analyse-class.
     '''
 
-    def __init__(self, dut_conf=None):
-        logging.info('Initializing %s', self.__class__.__name__)
-        self.dut_conf = dut_conf
+    def __init__(self, dut=None, send_addr="tcp://127.1.0.0:5500"):
         
+        #### files
         self.working_dir = os.path.join(os.getcwd(),"output_data")
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
-        
-        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
-        self.output_filename = os.path.join(self.working_dir, self.run_name)
-        self.socket=None
-        
+    
         self.fh = logging.FileHandler(self.output_filename + '.log')
+        self.fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
         self.fh.setLevel(logging.DEBUG)
         self.logger = logging.getLogger()
         self.logger.addHandler(self.fh)
+        logging.info('Initializing %s', self.__class__.__name__)
+
+        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
+        self.output_filename = os.path.join(self.working_dir, self.run_name)
         
-        self.dut = monopix(self.dut_conf)
+        #### monitor
+        self.socket=send_addr
+        
+        #### dut instance
+        if isinstance(dut,monopix.monopix):
+            self.dut=dut
+        else:
+            self.dut = monopix(dut)
+            self.dut.init()
+            self.dut.power_up()
+            
         
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -52,13 +64,10 @@ class ScanBase(object):
         return str(os.path.dirname(os.path.dirname(basil.__file__)))
 
     def start(self, **kwargs):
-                
-       
-        self.dut.init()
-        
         self._first_read = False
         self.scan_param_id = 0
         
+        #### open file
         filename = self.output_filename +'.h5'
         self.h5_file = tb.open_file(filename, mode='w', title=self.scan_id)
         self.raw_data_earray = self.h5_file.create_earray (self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
@@ -66,47 +75,41 @@ class ScanBase(object):
         
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
         
-        
-        addr="tcp://127.0.0.1:5500" ### TODO get from yaml conf file?
-        if (addr!=""): 
+        ### open socket for monitor
+        if (self.socket==""): 
+            self.socket=None
+        else:
             try:
                 self.socket=online_monitor.sender.init(addr)
             except:
-                logging.info('error data_send.data_send_init %s'%addr)
+                self.logger.warn('ScanBase.start:data_send.data_send_init failed addr=%s'%addr)
                 self.socket=None
         
-        self.dut.power_up()
-
-        time.sleep(0.1)
-        
         self.fifo_readout = FifoReadout(self.dut)
-        
-        #
-        # some init
-        #
-        
-        logging.info('Power Status: %s', str(self.dut.power_status()))
-        
-        self.scan(**kwargs)
-        
+        self.logger.info('Power Status: %s', str(self.dut.power_status()))
+        self.scan(**kwargs) 
         self.fifo_readout.print_readout_status()
+        self.logger.info('Power Status: %s', str(self.dut.power_status()))
         
+        ### save chip configurations
         self.meta_data_table.attrs.power_status = yaml.dump(self.dut.power_status())
         self.meta_data_table.attrs.dac_status = yaml.dump(self.dut.dac_status())
-
+        tmp={}
+        for k in self.dut.PIXEL_CONF.keys():
+            tmp[k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+        self.meta_data_table.attrs.pixel_conf=yaml.dump(tmp)
+        
+        ### close file
         self.h5_file.close()
-        logging.info('Data Output Filename: %s', self.output_filename + '.h5')
+        self.logger.info('Data Output Filename: %s', self.output_filename + '.h5')
 
+        ### close socket
         if self.socket!=None:
            try:
                online_monitor.sender.close(self.socket)
            except:
                pass
-        
-        logging.info('Power Status: %s', str(self.dut.power_status()))
-        self.dut.power_down()
-        #self.logger.removeHandler(self.fh)
-        
+
         return self.output_filename + '.h5'
         
     def analyze(self):
@@ -118,8 +121,7 @@ class ScanBase(object):
     @contextmanager
     def readout(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', 10.0)
-        
-        #self.fifo_readout.readout_interval = 10
+        self.fifo_readout.readout_interval=kwargs.pop('readout_interval', 0.003)
         if not self._first_read:
             time.sleep(0.1)
             self.fifo_readout.print_readout_status()
@@ -167,11 +169,20 @@ class ScanBase(object):
             try:
                 online_monitor.sender.send_data(self.socket,data_tuple)
             except:
-                logging.info("error: send_data")
+                self.logger.warn('ScanBase.hadle_data:sender.send_data failed')
+                try:
+                    online_monitor.sender.close(self.socket)
+                except:
+                    pass
+                self.socket=None
         
     def handle_err(self, exc):
         msg='%s' % exc[1]
         if msg:
-            logging.error('%s%s Aborting run...', msg, msg[-1] )
+            self.logger.error('%s%s Aborting run...', msg, msg[-1] )
         else:
-            logging.error('Aborting run...')
+            self.logger.error('Aborting run...')
+            
+    def close(self):
+        ## TODO close all streams once again
+        pass 
