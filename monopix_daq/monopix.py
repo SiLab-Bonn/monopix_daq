@@ -168,6 +168,7 @@ class monopix(Dut):
         return ret
     
     def interpret_rx_data(self, raw_data, meta_data = []):
+        ###TODO!
         raise(NotImplementedError)
         
         
