@@ -6,7 +6,7 @@ import tables as tb
 import yaml
 import numpy as np
 
-from monopix import monopix
+from monopix_daq import monopix
 from fifo_readout import FifoReadout
 from contextlib import contextmanager
 
@@ -34,17 +34,24 @@ class ScanBase(object):
         self.working_dir = os.path.join(os.getcwd(),"output_data")
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
+            
+        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
+        self.output_filename = os.path.join(self.working_dir, self.run_name)
     
         self.fh = logging.FileHandler(self.output_filename + '.log')
         self.fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
         self.fh.setLevel(logging.DEBUG)
         self.logger = logging.getLogger()
+        print "==========2========"
+        for log_hd in self.logger.handlers:
+             if isinstance(log_hd,logging.FileHandler ):
+                 self.logger.removeHandler(log_hd)
         self.logger.addHandler(self.fh)
         logging.info('Initializing %s', self.__class__.__name__)
+        print "=================="
+        for log_hd in self.logger.handlers:
+             print log_hd
 
-        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
-        self.output_filename = os.path.join(self.working_dir, self.run_name)
-        
         #### monitor
         self.socket=send_addr
         
@@ -80,9 +87,9 @@ class ScanBase(object):
             self.socket=None
         else:
             try:
-                self.socket=online_monitor.sender.init(addr)
+                self.socket=online_monitor.sender.init(self.socket)
             except:
-                self.logger.warn('ScanBase.start:data_send.data_send_init failed addr=%s'%addr)
+                self.logger.warn('ScanBase.start:data_send.data_send_init failed')
                 self.socket=None
         
         self.fifo_readout = FifoReadout(self.dut)

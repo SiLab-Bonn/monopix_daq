@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import tables as tb
 import yaml
-import monopix_daq.analysis.analysis as analysis
+
 import monopix_daq.scans.scan_single as scan_single
 
 from monopix_daq.scan_base import ScanBase

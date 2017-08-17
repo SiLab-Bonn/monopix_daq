@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import tables as tb
 import yaml
-import monopix_daq.analysis.analysis as analysis
+
 from monopix_daq.analsis.interprete_scan import interpret_rx_data,interpret_rx_data
 from monopix_daq.scan_base import ScanBase
 from progressbar import ProgressBar
