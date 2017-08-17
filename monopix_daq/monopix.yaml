@@ -1,15 +1,15 @@
 
 ---
 name    : monopix_daq
-version : 0.0.1
+version : 0.1.0
 
 transfer_layer:
     - name  : intf
       type  : SiUsb
       init : 
         timeout  : 600
-        bit_file : ../firmware/bit/monopix_mio.bit
-        avoid_download : False
+        bit_file : ../firmware/bit/monopix_mio_tlu.bit
+        avoid_download : True
 
 hw_drivers:
   - name      : GPAC
@@ -18,7 +18,7 @@ hw_drivers:
     base_addr : 0x00000
     init :
         no_calibration : True
-        
+  
   - name      : gpio
     type      : gpio
     interface : intf
@@ -119,6 +119,8 @@ registers:
     hw_driver   : GPAC
     arg_names   : [value]
     arg_add     : {'channel': 'PWR1'}
+    init        : 
+        value : 1.8
 
   - name        : VDD_BCID_BUFF
     type        : FunctionalRegister
