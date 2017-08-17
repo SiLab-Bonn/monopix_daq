@@ -16,8 +16,18 @@ class mono_data_rx(RegisterHardwareLayer):
                   'VERSION': {'descr': {'addr': 0, 'size': 8, 'properties': ['ro']}},
                   'EN': {'descr': {'addr': 2, 'size': 1, 'offset': 0}},
                   'DISSABLE_GRAY_DECODER': {'descr': {'addr': 2, 'size': 1, 'offset': 1}},
-                  'LOST_COUNT': {'descr': {'addr': 3, 'size': 8, 'properties': ['ro']}}}
-    _require_version = "==1"
+                  'LOST_COUNT': {'descr': {'addr': 3, 'size': 8, 'properties': ['ro']}},
+          'CONF_START_FREEZE': {'descr': {'addr': 4, 'size': 8}},
+          'CONF_STOP_FREEZE': {'descr': {'addr': 5, 'size': 8}},
+          'CONF_START_READ': {'descr': {'addr': 6, 'size': 8}},
+          'CONF_STOP_READ': {'descr': {'addr': 7, 'size': 8}},
+          'CONF_STOP': {'descr': {'addr': 8, 'size': 8}},
+          'EXPOSURE_TIME': {'descr': {'addr': 9, 'size': 64}},
+          'READY': {'descr': {'addr': 18, 'size': 1,'offset': 0, 'properties': ['ro']}},
+          'CNT2': {'descr': {'addr': 18, 'size': 8}},
+          }
+
+    _require_version = "==2"
 
     def __init__(self, intf, conf):
         super(mono_data_rx, self).__init__(intf, conf)
