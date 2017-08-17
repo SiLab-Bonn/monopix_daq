@@ -107,7 +107,6 @@ class ThresholdScanMonitor(ScanBase):
             #in_file_h5.create_table(in_file_h5.root, 'tdc_data', tdc_data, filters=self.filter_tables)
 
             import yaml
-            import monopix_daq.analysis.analysis as analysis
             scan_args = yaml.load(in_file_h5.root.meta_data.attrs.kwargs)
             
             scan_range = scan_args['scan_range']

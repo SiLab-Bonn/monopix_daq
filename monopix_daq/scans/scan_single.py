@@ -4,7 +4,7 @@ import numpy as np
 import tables as tb
 import yaml
 import monopix_daq.analysis.analysis as analysis
-
+from monopix_daq.analsis.interprete_scan import interpret_rx_data,interpret_rx_data
 from monopix_daq.scan_base import ScanBase
 from progressbar import ProgressBar
 from basil.dut import Dut
@@ -13,13 +13,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     "how_long": 60,
-    "repeat": 1000,
+    "repeat": 10000,
     #"scan_injection": [0.0, 0.5, 0.005],
-    "scan_injection": [0.8, 0.802, 0.05],
-    "threshold_range": [0.855, 0.855, -0.001],#[1.035, 1.035, -0.001],#[0.7818, 0.7818, -0.001], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
+    "scan_injection": [1.00, 1.301, 0.0025],
+    "threshold_range": [0.786, 0.786, -0.001],#[0.855, 0.855, -0.001],#[1.035, 1.035, -0.001],#[0.7818, 0.7818, -0.001], #[0.793, 0.793, -0.002],[29,64]  #[0.780, 0.780, -0.002]  [1,64]  #[21,64] [0.770, 0.770, -0.001]
     #"threshold_range": [0., 0.9, -0.001],
-    "pixel":  [27,128],
-    "VPFBvalue": 4#56#48
+    "pixel":  [25,64],
+    "VPFBvalue":4#56#48
 }
 
 class ScanSingle(ScanBase):
@@ -29,25 +29,62 @@ class ScanSingle(ScanBase):
         
         self.dut['fifo'].reset()
         
-        INJ_LO = -0.2
+        ###TEST control Firmware
+        #self.dut['FREEZE_S']['FRZ_s']=21
+        #self.dut['FREEZE_S'].write()
+        
+        print "BEFORE:"
+        print self.dut['data_rx'].CONF_START_FREEZE 
+        print self.dut['data_rx'].CONF_START_READ 
+        print self.dut['data_rx'].CONF_STOP_FREEZE 
+        print self.dut['data_rx'].CONF_STOP_READ 
+        print self.dut['data_rx'].CONF_STOP 
+        
+        
+        self.dut['data_rx'].CONF_START_FREEZE = 3
+        self.dut['data_rx'].CONF_START_READ = 40
+        self.dut['data_rx'].CONF_STOP_FREEZE = 50
+        self.dut['data_rx'].CONF_STOP_READ = 50
+        self.dut['data_rx'].CONF_STOP = 60
+        
+        print "AFTER:"
+        print self.dut['data_rx'].CONF_START_FREEZE 
+        print self.dut['data_rx'].CONF_START_READ 
+        print self.dut['data_rx'].CONF_STOP_FREEZE 
+        print self.dut['data_rx'].CONF_STOP_READ 
+        print self.dut['data_rx'].CONF_STOP 
+        
+        ###
+        
+        
+        INJ_LO = 0.3
         try:
             pulser = Dut('../agilent33250a_pyserial.yaml') #should be absolute path
             pulser.init()
             logging.info('Connected to '+str(pulser['Pulser'].get_info()))
-        except RuntimeError:
+        except (RuntimeError, OSError):
+            pulser = None
             logging.info('External injector not connected. Switch to internal one')
+        except:
+            pulser = None
+            logging.info('No serial')
 
-        #self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
+        self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
 
 
         #self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
         
-        self.dut['inj'].set_delay(20*64)
-        self.dut['inj'].set_width(20*64)
+        self.dut['inj'].set_delay(5*256)
+        self.dut['inj'].set_width(5*256)
         self.dut['inj'].set_repeat(repeat)
-        self.dut['inj'].set_en(False)
+        self.dut['inj'].set_en(True)
         self.dut['gate_tdc'].set_en(False)
+        self.dut['gate_tdc'].set_delay(10)
+        self.dut['gate_tdc'].set_width(2)
+        self.dut['gate_tdc'].set_repeat(1)
         
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
+
         
         self.dut.write_global_conf()
         
@@ -62,10 +99,13 @@ class ScanSingle(ScanBase):
         self.dut["CONF_SR"]["MONITOR_EN"] = 1
         self.dut["CONF_SR"]["REGULATOR_EN"] = 1
         self.dut["CONF_SR"]["BUFFER_EN"] = 1
+        
+            
 
         #LSB
         #self.dut["CONF_SR"]["LSBdacL"] = 60
         self.dut["CONF_SR"]["VPFB"] = VPFBvalue
+        #self.dut["CONF_SR"]["IComp"] = 16
         self.dut.write_global_conf()
 
         self.dut['CONF']['EN_OUT_CLK'] = 1
@@ -84,23 +124,29 @@ class ScanSingle(ScanBase):
         self.dut['CONF']['RESET_GRAY'] = 0
         self.dut['CONF'].write()
 
-        self.dut['CONF_SR']['MON_EN'].setall(False)
-        self.dut['CONF_SR']['INJ_EN'].setall(False)
-        self.dut['CONF_SR']['ColRO_En'].setall(False)
-        
-        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 1
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 1
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-            
         #LOAD PIXEL DAC
         pix_col = pixel[0]
         pix_row = pixel[1]
         dcol = int(pix_col/2)  
 
+        self.dut['CONF_SR']['MON_EN'].setall(False)
+        self.dut['CONF_SR']['INJ_EN'].setall(False)
+        self.dut['CONF_SR']['ColRO_En'].setall(False)
+        
+        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+        self.dut['CONF_SR']['MON_EN'][35-pix_col] = 1
+        #self.dut['CONF_SR']['MON_EN'][35-(pix_col+2)] = 1
+
         self.dut.PIXEL_CONF['TRIM_EN'][pix_col,pix_row] = 0
-        self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,pix_row] = 1
+        #self.dut.PIXEL_CONF['TRIM_EN'][pix_col+2,pix_row] = 0 #Another pixel readout for test
+        self.dut.PIXEL_CONF['PREAMP_EN'][pix_col,:] = 1
+        #self.dut.PIXEL_CONF['PREAMP_EN'][pix_col+2,:] = 1 ########
+        self.dut.PIXEL_CONF['MONITOR_EN'][pix_col,pix_row] = 1
         self.dut['CONF_SR']['ColRO_En'][35-pix_col] = 1
+        #self.dut['CONF_SR']['ColRO_En'][35-(pix_col+2)] = 1 ########
         
         np.set_printoptions(linewidth=260)
         
@@ -134,7 +180,7 @@ class ScanSingle(ScanBase):
             except ValueError:
                 data = []
 
-            hit_data = self.dut.interpret_rx_data(data)
+            hit_data = interpret_rx_data(data)
             data_size = len(data) 
             
             pixel_data = hit_data['col']*129+hit_data['row']
@@ -153,7 +199,7 @@ class ScanSingle(ScanBase):
 #                     if i> 1000:
 #                         break
             
-            scan_pixel = pix_col * 129 + pix_row                    
+            scan_pixel = pix_col * 129 + (pix_row)                    
             scan_pixel_hits = np.where(pixel_data == scan_pixel)[0]
             tot_hist = np.bincount(tot[scan_pixel_hits])
             
@@ -183,30 +229,34 @@ class ScanSingle(ScanBase):
             th_scan_range = [threshold_range[0]]
 
         inj_scan_dict = {}
-        
+         
         if scan_injection:
+            print "____________scan inj_____________"
             for inx, vol in enumerate(inj_scan_range):
                 
-                self.dut['TH'].set_voltage(threshold_range[0], unit='V')  
-                pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
-                #Enabled before: (For GPAC injection)
-                #self.dut['INJ_HI'].set_voltage( float(INJ_LO), unit='V')
-                
+                self.dut['TH'].set_voltage(threshold_range[0], unit='V')
+                if pulser:
+                    pulser['Pulser'].set_voltage(INJ_LO, float(INJ_LO + vol), unit='V')
+                else:
+                    #Enabled before: (For GPAC injection)
+                    self.dut['INJ_LO'].set_voltage(INJ_LO, unit='V')
+                    self.dut['INJ_HI'].set_voltage(float(INJ_LO + vol), unit='V')
+                    
                 logging.info('Scan : TH=%f, InjV=%f ID=%d)',threshold_range[0], vol, inx)
                 time.sleep(2)
                 #time.sleep(0.2)
                 
                 with self.readout(scan_param_id = inx, fill_buffer=True, clear_buffer=True):
   
-                    self.dut['data_rx'].reset()
+                    #self.dut['data_rx'].reset()
                     self.dut['fifo'].reset()
                     self.dut['data_rx'].set_en(True)
 
-                    self.dut['inj'].start()
+                    self.dut['gate_tdc'].start()
                     while not self.dut['inj'].is_done():
                         pass
                     
-                    time.sleep(0.2)
+                    time.sleep(0.3)
                    
                     self.dut['data_rx'].set_en(False)
                     self.dut['TH'].set_voltage(1.5, unit='V')
@@ -218,9 +268,9 @@ class ScanSingle(ScanBase):
                 inj_scan_dict[float(vol)] = tot_hist.tolist()
                 
             
-            print inj_scan_dict
-            with open('calib.yml', 'w') as outfile:
-                yaml.dump(inj_scan_dict, outfile, default_flow_style=False)
+#        print inj_scan_dict
+#            with open('calib.yml', 'w') as outfile:
+#                yaml.dump(inj_scan_dict, outfile, default_flow_style=False)
                 
         else:
             for inx, TH in enumerate(th_scan_range):
@@ -232,7 +282,7 @@ class ScanSingle(ScanBase):
                     time.sleep(0.2)
                     
                     logging.info('Threshold: %f', TH)
-                    self.dut['data_rx'].reset()
+                    #self.dut['data_rx'].reset()
                     self.dut['fifo'].reset()
                     self.dut['data_rx'].set_en(True)
                     
@@ -244,14 +294,43 @@ class ScanSingle(ScanBase):
                     self.dut['TH'].set_voltage(1.5, unit='V')
                     
                 tot_hist = print_hist(all_hits = True)
-                with open('source_noise.yml', 'w') as outfile:
-                    yaml.dump(tot_hist.tolist(), outfile, default_flow_style=False)
+#                with open('source_noise.yml', 'w') as outfile:
+#                    yaml.dump(tot_hist.tolist(), outfile, default_flow_style=False)
                 
 
         
     def analyze(self, h5_filename  = ''):
-        pass
+       
+        #pass
     
+        #Added analyze from source_scan to check if it saves le and te
+        
+        if h5_filename == '':
+            h5_filename = self.output_filename +'.h5'
+        
+        logging.info('Analyzing: %s', h5_filename)
+        np.set_printoptions(linewidth=240)
+         
+        with tb.open_file(h5_filename, 'r+') as in_file_h5:
+            raw_data = in_file_h5.root.raw_data[:]
+            meta_data = in_file_h5.root.meta_data[:]
+            
+            #print raw_data
+            hit_data = interpret_rx_data_scan(raw_data, meta_data)
+            lista = list(hit_data.dtype.descr)
+            new_dtype = np.dtype(lista + [('InjV', 'float'), ('tot', 'uint8')])
+            new_hit_data = np.zeros(shape=hit_data.shape, dtype=new_dtype)
+            for field in hit_data.dtype.names:
+                new_hit_data[field] = hit_data[field]
+            new_hit_data['InjV'] = local_configuration['scan_injection'][0] + hit_data['scan_param_id']*local_configuration['scan_injection'][2]
+            
+            tot = hit_data['te'] - hit_data['le'] 
+            neg = hit_data['te']<hit_data['le']
+            tot[neg] = hit_data['te'][neg] + (255 - hit_data['le'][neg])
+            new_hit_data['tot'] = tot
+            
+            in_file_h5.create_table(in_file_h5.root, 'hit_data', new_hit_data, filters=self.filter_tables)
+
 if __name__ == "__main__":
 
     scan = ScanSingle()

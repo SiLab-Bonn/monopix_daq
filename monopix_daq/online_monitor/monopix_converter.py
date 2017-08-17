@@ -3,23 +3,14 @@ from zmq.utils import jsonapi
 import numpy as np
 
 from online_monitor.utils import utils
-
-def _interpreter(raw_data):
-    size = len(raw_data)
-    ret = np.recarray((size), dtype=[('col','u2'),('row','u2'),('tot','u1')]) 
-    if size:
-         ret['row'][:] = (raw_data >> 6) & 0xff
-         ret['col'][:] = raw_data & 0b111111
-         te =  (raw_data >> 14 ) & 0xff
-         le = (raw_data >> 22) & 0xff
-         ret['tot'][:] = (te - le) & 0xff
-    return ret
+from monopix_daq.analysis.interpreter import InterRaw
 
 class MonopixConverter(Transceiver):
 
     def setup_interpretation(self):
         self.n_hits = 0
         self.n_events = 0
+        self.inter=InterRaw()
 
     def deserialze_data(self, data):
         try:
@@ -43,7 +34,13 @@ class MonopixConverter(Transceiver):
             # Add info to meta data
             data[0][1]['meta_data'].update({'n_hits': self.n_hits, 'n_events': self.n_events})
             return [data[0][1]]
-        hits = _interpreter(data[0][1])
+        
+        tmp=self.inter.run(data[0][1])
+        tmp=tmp[tmp["col"]<36]  ## TODO maybe we don't need this
+        hits = np.recarray(len(tmp), dtype=[('col','u2'),('row','u2'),('tot','u1')]) 
+        hits['tot'][:] = (tmp["te"] - tmp["le"]) & 0xff
+        hits['col'][:] = tmp["col"]
+        hits['row'][:] = tmp["row"]
         
         interpreted_data = {
             'hits': hits

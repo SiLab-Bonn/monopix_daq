@@ -7,6 +7,7 @@ import yaml
 from progressbar import ProgressBar
 from basil.dut import Dut
 from monopix_daq.scan_base import ScanBase
+from monopix_daq.analsis.interprete_scan import interpret_rx_data,interpret_rx_data_scan
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -16,8 +17,8 @@ local_configuration = {
     "scan_range": [0.01, 0.25, 0.005],          #Range of injection
     "mask" : 16,                                #Spacing between enabled pixels in the mask
     "TH": 0.775,                                #Initial global Threshold value
-    "columns": range(8, 12),                    #Range of columns to be considered
-    "threshold_overdrive" : 0.006               #
+    "columns": range(24, 28),                    #Range of columns to be considered
+    "threshold_overdrive" : 0.007               #
 }
 
 class ThresholdScan(ScanBase):
@@ -191,7 +192,7 @@ class ThresholdScan(ScanBase):
                         while not self.dut['inj'].is_done():
                             pass
                         
-                        time.sleep(0.1)
+                        time.sleep(0.2)
                         
                         self.dut['data_rx'].set_en(False)
                         self.dut['TH'].set_voltage(1.5, unit='V')
@@ -205,7 +206,7 @@ class ThresholdScan(ScanBase):
                     data_size = len(data) 
                     logging.info('Scan Pixel Finished: V=%f DATA_COUNT=%d', vol, data_size)
                     
-                    hit_data = self.dut.interpret_rx_data(data)
+                    hit_data = interpret_rx_data(data)
                     pixel_data = hit_data['col']*129+hit_data['row']
                     hit_pixels = np.unique(pixel_data)
                     hist =  np.bincount(pixel_data)
@@ -237,8 +238,8 @@ class ThresholdScan(ScanBase):
             meta_data = in_file_h5.root.meta_data[:]
             
             #print raw_data
-            hit_data = self.dut.interpret_rx_data(raw_data, meta_data)
-            #in_file_h5.create_table(in_file_h5.root, 'hit_data', hit_data, filters=self.filter_tables)
+            hit_data = interpret_rx_data_scan(raw_data, meta_data)
+            in_file_h5.create_table(in_file_h5.root, 'hit_data', hit_data, filters=self.filter_tables)
     
             import yaml
             import monopix_daq.analysis.analysis as analysis

@@ -4,6 +4,7 @@ import numpy as np
 import tables as tb
 
 from monopix_daq.scan_base import ScanBase
+from monopix_daq.analsis.interprete_scan import interpret_rx_data
 from progressbar import ProgressBar
 from basil.dut import Dut
 
@@ -167,7 +168,7 @@ class NoiseScan(ScanBase):
             except ValueError:
                 data = []
 
-            hit_data = self.dut.interpret_rx_data(data)
+            hit_data = interpret_rx_data(data)
 
             data_size = len(data) 
             
