@@ -13,8 +13,8 @@ OUTPUT_DIR="./output_data"
 ## TODO separated file
 def format_power(status):
     s="power status:"
-        for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
-            s=s+" %s=%fV(%fmA)"%(pwr,status[pwr+'[V]'] ,status[pwr+'[mA]']) 
+    for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
+	s=s+" %s=%fV(%fmA)"%(pwr,status[pwr+'[V]'] ,status[pwr+'[mA]']) 
     return s
 def format_dac(dat):
     s="DAC:"
@@ -28,7 +28,12 @@ class MonopixExtensions():
         ## set logger
         self.logger = logging.getLogger()
         logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] (%(threadName)-10s) %(message)s")
-        fname=os.path.join(os.path.join(OUTPUT_DIR,"log"),time.strftime("monopix_util_%Y%m%d_%H%M%S.log"))
+        logdir=os.path.join(OUTPUT_DIR,"log")
+        try:
+            os.system("mkdir -p %s"%logdir)
+        except:
+            pass
+        fname=os.path.join(logdir,time.strftime("monopix_%Y%m%d_%H%M%S.log"))
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
@@ -45,7 +50,7 @@ class MonopixExtensions():
 
         self.dut.power_up()
         status=self.dut.power_status()
-        format_power(status)
+        s=format_power(status)
         self.logger.info(s)
         self.dut.write_global_conf()
         self.set_preamp_en([18,25])
