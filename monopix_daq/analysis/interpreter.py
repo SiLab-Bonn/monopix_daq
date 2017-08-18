@@ -192,6 +192,18 @@ def interpret_h5(fin,fout,debug=3, n=100000000):
                start=start+r_i+1
                if debug &0x4 ==0x4:
                    break
+                   
+def mk_img(dat):
+    return np.histogram2d(dat["col"],dat["row"],bins=[np.arange(0,37,1),np.arange(0,130,1)])[0]
+
+def mk_cnt(dat):
+    uni,cnt=np.unique(dat[["col","row"]],return_counts=True)
+    ret=np.empty(len(uni),dtype=[("col","<u1"),("row","<u1"),("cnt","<i8")])
+    print ret.dtype.names
+    ret["col"]=uni["col"]
+    ret["row"]=uni["row"]
+    ret["cnt"]=cnt
+    return ret
 
 class InterRaw():
     def __init__(self,chunk=100000000,debug=0):
@@ -230,10 +242,31 @@ class InterRaw():
               self.debug
             )
             if err!=0:
-               raise(ValueError)
+               #print "monopix data broken",err,start,r_i,hex(raw[start+r_i]),"flg=",self.rx_flg,self.timestamp 
+               self.reset()
             ret=np.append(ret,hit_dat)
             start=start+r_i+1
         return ret
+
+    def get_img(self,raw):
+        dat=self.run(raw)
+        return mk_img(dat)
+    
+    def get_cnt(self,raw):
+        dat=self.run(raw)
+        return mk_cnt(dat)
+        
+def raw2list(raw):
+    inter=InterRaw()
+    return inter.run(raw)
+
+def raw2img(raw):
+    inter=InterRaw()
+    return mk_img(inter.run(raw))
+
+def raw2cnt(raw):
+    inter=InterRaw()
+    return mk_cnt(inter.run(raw))
 
 if __name__ == "__main__":
     import sys
