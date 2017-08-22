@@ -3,7 +3,7 @@ import numpy as np
 from monopix_daq.analysis.interpreter import InterRaw 
 
 def interpret_rx_data_scan(raw_data, meta_data):
-        data_type = {'names':['col','row','le','te','scan_param_id'], 'formats':['uint16','uint16','uint8','uint8','uint8','uint16']}
+        data_type = {'names':['col','row','le','te','scan_param_id'], 'formats':['uint16','uint16','uint8','uint8','uint16']}
         ret = np.recarray((0), dtype=data_type)
         inter=InterRaw()        
         if len(meta_data):
