@@ -25,14 +25,14 @@ def _build_with_tlu(hit,buf,token_timestamp,token_timestamp0,cnt0,noise,
             tlu=h["cnt"]
             tlu_flg=1
         else:   
-            if h["cnt"]==0 and h["timestamp"]!=token_timestamp:  ### Begging of new event
+            if h["cnt"]==0 and h["timestamp"]!=token_timestamp:  ### h["cnt"]==bit30, Begging of new event
                 if tlu_flg==1:
                     tlu_flg=2
                     if token_timestamp0 + np.uint64(cnt0*rx_stop) < tlu_timestamp:
                         noise=0
                     else:
                         noise=2
-                    if debug & 0x1 == 0x1 :
+                    if debug & 0x1 == 0x1 or noise==2:
                         buf[buf_i]["col"]=0xEF
                         buf[buf_i]["row"]=0xFF
                         buf[buf_i]["le"]=cnt0
@@ -48,7 +48,7 @@ def _build_with_tlu(hit,buf,token_timestamp,token_timestamp0,cnt0,noise,
                 token_timestamp0=h["timestamp"]
             else:
                 cnt0=cnt0+1
-            if tlu_flg==2:
+            if tlu_flg==2 and (debug & 0x1 == 0x1 or noise==0):
                 buf[buf_i]["col"]=h["col"]
                 buf[buf_i]["row"]=h["row"]
                 buf[buf_i]["le"]=h["le"]
@@ -118,7 +118,8 @@ def convert(hit,pre_event_number,offset,row_offset,row_factor,col_offset,col_fac
         buf_out["row"]=np.array(row_factor*np.array(hit["row"],dtype="int")+row_offset,dtype="<u2")
     
     buf_out["charge"]= (hit["te"]-hit["le"]) & 0xFF
-    buf_out["frame"]=hit["te"]-hit["token_timestamp"]-offset+0x10
+    te_timestamp = hit["token_timestamp"] - (hit["te"]-hit["token_timestamp"])&0xFF - offset + 0x10)
+    buf_out["frame"]= (hit["le"]- hit["tlu_timestamp"]) & 0xFF
     
     buf_out["event_number"]=np.int64(hit["tlu"])+ (pre_event_number&0xFFFFFFFFFFFF8000)
     arg=np.argwhere((buf_out["event_number"][:]-np.append(pre_event_number,buf_out["event_number"][:-1])) & 0x7FFF > 0x3FFF)
@@ -144,7 +145,7 @@ def convert_h5(ftlu,fout,n=1000000,row_offset=1,row_factor=1,col_offset=1,col_fa
 
                 if start==0:
                     offset=get_te_offset(hit,debug=fout[:-2]+"png")
-                    
+ 
                 err,buf_out,pre_event_number=convert(
                   hit,pre_event_number,offset,row_offset=1,row_factor=1,col_offset=1,col_factor=1,tr=True,debug=0)
                   
@@ -159,12 +160,12 @@ def convert_h5(ftlu,fout,n=1000000,row_offset=1,row_factor=1,col_offset=1,col_fa
                 start=tmpend
       
 def get_te_offset(dat,debug=None):
-     hist=np.histogram((dat["te"]-dat["token_timestamp"]) & 0xFF, bins=np.arange(0,0x100))
+     hist=np.histogram((dat["te"]-dat["token_timestamp"]) & 0xFF, bins=np.arange(0,0x101))
      if debug!=None:
          plt.step(hist[1][:-1],hist[0])
          plt.xlabel("TE-TOKEN")
          plt.savefig(debug)
-     offset=np.argmax(hist[0])
+     offset=hist[1][np.argmax(hist[0])]
      return offset
     
 class BuildWithTlu():

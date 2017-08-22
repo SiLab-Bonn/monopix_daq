@@ -7,7 +7,7 @@
 `timescale 1ps/1ps
 `default_nettype none
  
-`include "mono_data_rx/mono_data_rx_core.v"
+//`include "mono_data_rx/mono_data_rx_core.v"
  
 module mono_data_rx
 #(

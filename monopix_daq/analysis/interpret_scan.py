@@ -14,7 +14,7 @@ def interpret_rx_data_scan(raw_data, meta_data):
             stops = meta_data['index_stop'][index]
             split = np.split(raw_data, stops)
             for i in range(len(split[:-1])):
-                tmp=inter.run(split[i])
+                tmp=inter.mk_list(split[i])
                 tmp=tmp[tmp["col"]<36]
                 int_pix_data = np.recarray(len(tmp), dtype=data_type)
                 int_pix_data['col']=tmp['col'] 
@@ -30,6 +30,6 @@ def interpret_rx_data_scan(raw_data, meta_data):
         
 def interpret_rx_data(raw_data):
     inter=InterRaw()
-    ret=inter.run(raw_data)
+    ret=inter.mk_list(raw_data)
     return ret[['col','row','le','te']][ret["col"]<36]
     

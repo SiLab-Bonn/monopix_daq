@@ -170,7 +170,7 @@ always@(posedge RX_CLK)
 	     TOKEN_FF <= {TOKEN_FF[2:0],RX_TOKEN};
 wire TOKEN_SYNC;
 assign TOKEN_SYNC = ~TOKEN_FF[1] & TOKEN_FF[0];
-
+reg TOKEN_NEXT;
 
 always@(posedge RX_CLK)
     if (RST_SYNC)
@@ -178,7 +178,7 @@ always@(posedge RX_CLK)
 	 else if ( TOKEN_SYNC )
 	     token_timestamp <= TIMESTAMP[51:0];
 
-parameter NOP  = 5'd0, NOP_NEXT=5'd2, WAIT_NEXT = 5'd3, WAIT_ONE = 5'd1;
+parameter NOP=5'd0, WAIT_ONE = 5'd1, NOP_NEXT=5'd2, WAIT_NEXT = 5'd3, WAIT_TWO = 5'd4, WAIT_TWO_NEXT = 5'd5;
 reg [4:0] state, next_state;
 
 always@(posedge CLK_BX)
@@ -195,34 +195,51 @@ always@(*) begin : set_next_state
         NOP:
             if(TOKEN_FF[0] & CONF_EN)
                 next_state = WAIT_ONE;   
-        WAIT_ONE: 
-            if(DelayCnt == CONF_STOP) begin
+        WAIT_ONE:
+		      if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0])
+				        next_state = WAIT_TWO;
+            else if (DelayCnt == CONF_STOP) begin
                 if(!RX_FREEZE & TOKEN_FF[0])
                     next_state = NOP_NEXT;
                 else 
                     next_state = NOP;
             end
+		  WAIT_TWO:
+		      next_state =WAIT_ONE;
         NOP_NEXT:
             if(TOKEN_FF[0] & CONF_EN)
                 next_state = WAIT_NEXT;        
         WAIT_NEXT:
-            if(DelayCnt == CONF_STOP) begin
+            if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0])
+				        next_state = WAIT_TWO_NEXT;
+            else if(DelayCnt == CONF_STOP) begin
                 if(TOKEN_FF[0])
                     next_state = NOP_NEXT;
                 else
                     next_state = NOP;
             end
+		  WAIT_TWO_NEXT:
+		      next_state =WAIT_NEXT;
     endcase
 end
      
 always@(posedge CLK_BX)
 if(RST_SYNC || state == NOP || state == NOP_NEXT)
     DelayCnt <= 0;
+else if (state == WAIT_TWO || state == WAIT_TWO_NEXT )
+    DelayCnt <= CONF_START_READ - 2;
 else if(DelayCnt != 8'hff)
     DelayCnt <= DelayCnt + 1;
+	 
 
 always@(posedge CLK_BX)
-    RX_READ <= (DelayCnt >= CONF_START_READ && DelayCnt <= CONF_STOP_READ); 
+    if(RST_SYNC)
+        TOKEN_NEXT <= 1'b0;
+	 else if(DelayCnt == CONF_STOP_READ + 4) //should be +1
+        TOKEN_NEXT <= TOKEN_FF[0];
+
+always@(posedge CLK_BX)
+    RX_READ <= (DelayCnt >= CONF_START_READ && DelayCnt < CONF_STOP_READ); 
 
 always@(posedge CLK_BX)
     if(RST_SYNC)

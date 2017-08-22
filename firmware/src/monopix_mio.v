@@ -45,6 +45,7 @@
 `include "utils/flag_domain_crossing.v"
 
 `include "mono_data_rx/mono_data_rx.v"
+`include "mono_data_rx/mono_data_rx_core.v"
 `include "utils/cdc_reset_sync.v"
 
 `ifdef COCOTB_SIM //for simulation
