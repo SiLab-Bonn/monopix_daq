@@ -13,7 +13,7 @@ import yaml
 import time
 
 from basil.dut import Dut
-sys.path.append("/home/user/workspace/monopix/monopix_daq_20160609_localcopyofgraysrt/monopix_daq")
+sys.path.append("../monopix_daq")
 
 cnfg_yaml = """
 transfer_layer:
@@ -78,20 +78,22 @@ class TestSimTimestamp(unittest.TestCase):
         self.debug=1
 
     def test_io(self):
+        clk_width=2
+        freeze_width=35
         self.chip['mono_data_rx'].reset()
-        self.chip['mono_data_rx'].CONF_START_FREEZE = 88
-        self.chip['mono_data_rx'].CONF_START_READ = 92
-        self.chip['mono_data_rx'].CONF_STOP_FREEZE = 127
-        self.chip['mono_data_rx'].CONF_STOP_READ = 94
-        self.chip['mono_data_rx'].CONF_STOP = 128
+        self.chip['mono_data_rx'].CONF_START_FREEZE = 50 
+        self.chip['mono_data_rx'].CONF_START_READ = 58
+        self.chip['mono_data_rx'].CONF_STOP_READ = 58+clk_width
+        self.chip['mono_data_rx'].CONF_STOP_FREEZE = 58+freeze_width
+        self.chip['mono_data_rx'].CONF_STOP = 58+freeze_width+10
         self.chip['mono_data_rx'].set_en(True)
         ret = self.chip["mono_data_rx"].get_configuration()
         
-        self.assertEqual(ret['CONF_START_FREEZE'],88)
-        self.assertEqual(ret['CONF_STOP_FREEZE'],127)
-        self.assertEqual(ret['CONF_START_READ'],92)
-        self.assertEqual(ret['CONF_STOP_READ'],94)
-        self.assertEqual(ret['CONF_STOP'],128)
+        self.assertEqual(ret['CONF_START_FREEZE'],50)
+        self.assertEqual(ret['CONF_START_READ'],58)
+        self.assertEqual(ret['CONF_STOP_READ'],58+clk_width)
+        self.assertEqual(ret['CONF_STOP_FREEZE'],58+freeze_width)
+        self.assertEqual(ret['CONF_STOP'],58+freeze_width+10)
 
         self.chip['gpio'].reset()
 
@@ -100,8 +102,8 @@ class TestSimTimestamp(unittest.TestCase):
         self.assertEqual(ret, 0)
 
         # trigger mono_data_rx
-        self.chip['PULSE_GEN'].set_delay(50)
-        self.chip['PULSE_GEN'].set_width(94)
+        self.chip['PULSE_GEN'].set_delay(60)
+        self.chip['PULSE_GEN'].set_width(110)
         self.chip['PULSE_GEN'].set_repeat(10)
         #self.chip['PULSE_GEN']["EN"]=True
         

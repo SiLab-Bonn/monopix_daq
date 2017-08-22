@@ -16,9 +16,9 @@
    
 `include "bram_fifo/bram_fifo_core.v"
 `include "bram_fifo/bram_fifo.v"
-
-`include "/home/user/workspace/monopix/monopix_daq_20160609_localcopyofgraysrt/firmware/src/mono_data_rx/mono_data_rx.v"
-`include "/home/user/workspace/monopix/monopix_daq_20160609_localcopyofgraysrt/firmware/src/mono_data_rx/mono_data_rx_core.v"
+//TODO fix me!
+`include "/home/user/workspace/monopix/monopix_daq/firmware/src/mono_data_rx/mono_data_rx.v"
+`include "/home/user/workspace/monopix/monopix_daq/firmware/src/mono_data_rx/mono_data_rx_core.v"
 
 `include "utils/cdc_syncfifo.v"
 `include "utils/generic_fifo.v"
