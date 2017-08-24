@@ -230,7 +230,7 @@ class MonopixExtensions():
         self.dut['fifo'].reset()
         self.dut['data_rx'].set_en(True)
         time.sleep(0.3)
-        logger.info('set_monoread: start_freeze=%d start_read=%d stop_read=%d stop_freeze=%d stop=%d reset fifo=%d'%(
+        self.logger.info('set_monoread: start_freeze=%d start_read=%d stop_read=%d stop_freeze=%d stop=%d reset fifo=%d'%(
                      start_freeze,start_read,stop_read,stop_freeze,stop, self.dut['fifo'].get_FIFO_SIZE()))
         self.dut['fifo'].reset()
     
@@ -238,9 +238,8 @@ class MonopixExtensions():
         self.dut['data_rx'].set_en(False)
         lost_cnt=self.dut["data_rx"]["LOST_COUNT"]
         if lost_cnt!=0:
-            self.logger.warn("stop_monoread: error cnt=%d"%lost_cnt)
-        exp=self.dut["data_rx"]["EXPOSURE_TIME"]
-        self.logger.info("stop_monoread:%d"%exp)
+            self.logger.warn("stop_monoread: lost_cnt=%d"%lost_cnt)
+        self.logger.info("stop_monoread:")
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF']['EN_DATA_CMOS'] = 0
@@ -252,10 +251,8 @@ class MonopixExtensions():
         return lost_cnt
         
     def set_inj_all(self,inj_high=1.0,inj_low=0.2,inj_n=100,inj_width=5000,delay=700,ext=False):
-        self.dut["INJ_HI"].set_voltage(inj_high,unit="V")
-        self.inj_high=inj_high
-        self.dut["INJ_LO"].set_voltage(inj_low,unit="V")
-        self.inj_low=inj_low
+        self.set_inj_high(inj_high)
+        self.set_inj_low(inj_low)
 
         self.dut["inj"].reset()
         self.dut["inj"]["REPEAT"]=inj_n
@@ -270,6 +267,22 @@ class MonopixExtensions():
         self.dut["gate_tdc"]["EN"]=ext
         self.logger.info("inj:%.4f,%.4f inj_width:%d inj_n:%d delay:%d ext:%d"%(
             inj_high,inj_low,inj_width,inj_n,delay,int(ext)))
+
+    def set_inj_high(self,inj_high):
+        if isinstance(self.inj_device,str) and self.inj_device=="gpac":
+            self.dut["INJ_HI"].set_voltage(inj_high,unit="V")
+        else:
+            self.inj_device.set_voltage(inj_high,high=True)
+            time.sleep(0.1)
+        self.inj_high=inj_high
+            
+    def set_inj_low(self,inj_low):
+        if isinstance(self.inj_device,str) and self.inj_device=="gpac":
+            self.dut["INJ_LO"].set_voltage(inj_low,unit="V")
+        else:
+            self.inj_device.set_voltage(inj_low,high=False)
+            time.sleep(0.1)
+        self.inj_low=inj_low
             
     def start_inj(self,inj_high=None):
         if inj_high!=None:
