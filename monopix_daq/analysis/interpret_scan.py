@@ -28,8 +28,9 @@ def interpret_rx_data_scan(raw_data, meta_data):
                     ret = int_pix_data
         return ret
         
-def interpret_rx_data(raw_data):
+def interpret_rx_data(raw_data,delete_noise=True):
     inter=InterRaw()
-    ret=inter.mk_list(raw_data)
+    ret=inter.mk_list(raw_data,delete_noise)
+    print 'noise_data',len(ret[ret['cnt'] > 0])
     return ret[['col','row','le','te']][ret["col"]<36]
     

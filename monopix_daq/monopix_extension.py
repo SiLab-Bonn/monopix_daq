@@ -5,6 +5,7 @@ import logging
 import warnings
 import yaml
 import monopix
+import tables
 
 COL_SIZE = 36 ##TODO change hard coded values
 ROW_SIZE = 129
@@ -317,7 +318,7 @@ class MonopixExtensions():
             
             
     def load_config(self,fname):
-        if fname[-4:] ==".h5":
+        if fname[-3:] ==".h5":
             with tables.open_file(fname) as f:
                 ret=yaml.load(f.root.meta_data.attrs.dac_status)
                 ret.update(yaml.load(f.root.meta_data.attrs.power_status))

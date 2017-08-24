@@ -82,7 +82,7 @@ class MonopixHistogrammer(Transceiver):
             return
         fill_occupancy_hist(self.occupancy, self.tot, hits, self.pix)
 
-        if self.mask_noisy_pixel:
+        if self.mask_noisy_pixel:   #Improve
             self.occupancy[self.occupancy > np.percentile(self.occupancy, 100 - self.config['noisy_threshold'])] = 0
 
         histogrammed_data = {

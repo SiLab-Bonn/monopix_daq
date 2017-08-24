@@ -14,7 +14,7 @@ author = 'Tomasz Hemperek'
 author_email = 'hemperek@physik.uni-bonn.de'
 
 # requirements for core functionality
-install_requires = ['basil-daq==2.4.4', 'bitarray>=0.8.1', 'matplotlib', 'numpy', 'pyyaml', 'scipy']
+install_requires = ['basil-daq==2.5.dev0', 'bitarray>=0.8.1', 'matplotlib', 'numpy', 'pyyaml', 'scipy']
 
 setup(
     name='monopix_daq',
