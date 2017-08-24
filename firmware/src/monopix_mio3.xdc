@@ -5,23 +5,23 @@ set_property PACKAGE_PIN AA3 [get_ports FCLK_IN]
 set_property IOSTANDARD LVCMOS15 [get_ports FCLK_IN]
 create_clock -period 10.000 -name FCLK_IN -add [get_ports FCLK_IN]
 
-set_false_path -from [get_clocks CLK40] -to [get_clocks BUS_CLK]
-set_false_path -from [get_clocks BUS_CLK] -to [get_clocks CLK40]
+set_false_path -from [get_clocks CLK40_PLL] -to [get_clocks BUS_CLK_PLL]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK40_PLL]
 
-set_false_path -from [get_clocks CLK160] -to [get_clocks BUS_CLK]
-set_false_path -from [get_clocks BUS_CLK] -to [get_clocks CLK160]
+set_false_path -from [get_clocks CLK160_PLL] -to [get_clocks BUS_CLK_PLL]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK160_PLL]
 
-#set_false_path -from [get_clocks CLK16] -to [get_clocks BUS_CLK]
-#set_false_path -from [get_clocks BUS_CLK] -to [get_clocks CLK16]
+#set_false_path -from [get_clocks CLK16_PLL] -to [get_clocks BUS_CLK_PLL]
+#set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK16_PLL]
 
-set_false_path -from [get_clocks CLK8] -to [get_clocks BUS_CLK]
-set_false_path -from [get_clocks BUS_CLK] -to [get_clocks CLK8]
+set_false_path -from [get_clocks CLK8_PLL] -to [get_clocks BUS_CLK_PLL]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK8_PLL]
 
 create_clock -period 8.000 -name rgmii_rxc -add [get_ports rgmii_rxc]
-set_false_path -from [get_clocks CLK125TX] -to [get_clocks BUS_CLK]
-set_false_path -from [get_clocks BUS_CLK] -to [get_clocks CLK125TX]
-set_false_path -from [get_clocks BUS_CLK] -to [get_clocks rgmii_rxc]
-set_false_path -from [get_clocks rgmii_rxc] -to [get_clocks BUS_CLK]
+set_false_path -from [get_clocks CLK125PLLTX] -to [get_clocks BUS_CLK_PLL]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK125PLLTX]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks rgmii_rxc]
+set_false_path -from [get_clocks rgmii_rxc] -to [get_clocks BUS_CLK_PLL]
 
 # ------ LED
 set_property PACKAGE_PIN M17 [get_ports {LED[0]}]

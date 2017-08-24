@@ -24,17 +24,19 @@ def format_pix(dat):
     s="Pixels:"
     return s
     
+def mk_fname(prefix,ext="npy",dirname=None):
+    if dirname==None:
+        dirname=os.path.join(OUTPUT_DIR,prefix)
+    if not os.path.exists(dirname):
+        os.system("mkdir -p %s"%dirname)
+    return os.path.join(dirname,prefix+time.strftime("_%Y%m%d_%H%M%S.")+ext)
+    
 class MonopixExtensions():
     def __init__(self,dut=None):
         ## set logger
         self.logger = logging.getLogger()
         logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] (%(threadName)-10s) %(message)s")
-        logdir=os.path.join(OUTPUT_DIR,"log")
-        try:
-            os.system("mkdir -p %s"%logdir)
-        except:
-            pass
-        fname=os.path.join(logdir,time.strftime("monopix_%Y%m%d_%H%M%S.log"))
+        fname=mk_fname("log",ext="log")
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
@@ -42,16 +44,21 @@ class MonopixExtensions():
         
         self.debug=0
         self.plot=1
+        self.inj_device="gpac"
+
         
         if isinstance(dut,monopix.monopix):
-            self.dut=dut
+            self.dut=dut        
         else:
-            self.dut=monopix.monopix()
+            self.dut=monopix.monopix(dut)
             self.dut.init()
 
         self.dut.power_up()
-        status=self.dut.power_status()
-        s=format_power(status)
+        self.th_set=self.get_th()  ## TODO get from ini file
+        staus=self.dut.power_status()
+        s="power status:"
+        for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
+            s=s+" %s=%fV(%fmA)"%(pwr,staus[pwr+'[V]'] ,staus[pwr+'[mA]']) 
         self.logger.info(s)
         self.dut.write_global_conf()
         self.set_preamp_en([18,25])
@@ -186,13 +193,15 @@ class MonopixExtensions():
         self.dut['CONF']['RESET_GRAY'] = 0
         self.dut['CONF'].write()
         
-    def set_monoread(self,start_freese=88,start_read=92,stop_read=94,stop_freese=127,stop=128,
+    def set_monoread(self,start_freeze=88,start_read=92,stop_read=94,stop_freeze=127,stop=128,
                     gray_reset_by_tdc=0):
+        th=self.th_set
+        self.set_th(1.5)
         ## reaset readout module of FPGA
         self.dut['data_rx'].reset()  
-        self.dut['data_rx'].CONF_START_FREEZE = start_freese
+        self.dut['data_rx'].CONF_START_FREEZE = start_freeze
         self.dut['data_rx'].CONF_START_READ = start_read
-        self.dut['data_rx'].CONF_STOP_FREEZE = stop_freese
+        self.dut['data_rx'].CONF_STOP_FREEZE = stop_freeze
         self.dut['data_rx'].CONF_STOP_READ = stop_read
         self.dut['data_rx'].CONF_STOP = stop
         
@@ -216,14 +225,19 @@ class MonopixExtensions():
         time.sleep(0.001)
         self.dut['CONF']['RESET_GRAY'] = 0
         self.dut['CONF'].write()
-        
+        # set th low, reset fifo, set rx on,wait for th, reset fifo to delete trash data
+        self.set_th(th)
         self.dut['fifo'].reset()
         self.dut['data_rx'].set_en(True)
+        time.sleep(0.3)
+        logger.info('set_monoread: start_freeze=%d start_read=%d stop_read=%d stop_freeze=%d stop=%d reset fifo=%d'%(
+                     start_freeze,start_read,stop_read,stop_freeze,stop, self.dut['fifo'].get_FIFO_SIZE()))
+        self.dut['fifo'].reset()
     
     def stop_monoread(self):
         self.dut['data_rx'].set_en(False)
         lost_cnt=self.dut["data_rx"]["LOST_COUNT"]
-        if self.dut["data_rx"]["LOST_COUNT"]!=0:
+        if lost_cnt!=0:
             self.logger.warn("stop_monoread: error cnt=%d"%lost_cnt)
         exp=self.dut["data_rx"]["EXPOSURE_TIME"]
         self.logger.info("stop_monoread:%d"%exp)
@@ -259,33 +273,35 @@ class MonopixExtensions():
             
     def start_inj(self,inj_high=None):
         if inj_high!=None:
-            self.dut["INJ_HI"].set_voltage(inj_high,unit="V")
-            self.inj_high=inj_high
+            self.set_inj_high(inj_high)
         self.dut["inj"].start()
         self.logger.info("start_inj:%.4f,%.4f"%(self.inj_high,self.inj_low))
             
     def set_th(self,th):
         self.dut['TH'].set_voltage(th, unit='V')
+        self.th_set=th
         th_meas=self.dut['TH'].get_voltage(unit='V')
         self.logger.info("set_th: TH=%f th_meas=%f"%(th,th_meas)) 
         
     def get_th(self):
         th_meas=self.dut['TH'].get_voltage(unit='V')
         self.logger.info("set_th: th_meas=%f"%th_meas)
+        return th_meas
         
     def get_data_now(self):
         return self.dut['fifo'].get_data()
 
-    def get_data(self):
+    def get_data(self,wait=0.2):
         self.dut["inj"].start()
         i=0
         raw=np.empty(0,dtype='uint32')
         while self.dut["inj"].is_done()!=1:
-            raw=np.append(raw,self.dut['fifo'].get_data())
             time.sleep(0.001)
+            raw=np.append(raw,self.dut['fifo'].get_data())
             i=i+1
             if i>10000:
                 break
+        time.sleep(wait)
         raw=np.append(raw,self.dut['fifo'].get_data())
         if i>10000:
             self.logger.info("get_data: error timeout len=%d"%len(raw))
@@ -305,7 +321,7 @@ class MonopixExtensions():
             
     def save_config(self,fname=None):
         if fname==None:
-            fname=time.strftime("config_%y%m%d-%H%M%S.yaml")
+            fname=mk_fname("config",ext="yaml")
         conf=self.dut.power_status()
         conf.update(self.dut.dac_status())
         for k in self.dut.PIXEL_CONF.keys():
@@ -315,8 +331,7 @@ class MonopixExtensions():
         with open(fname,"w") as f:
             yaml.dump(conf,f)
         self.logger.info("save_config: %s"%fname)
-            
-            
+          
     def load_config(self,fname):
         if fname[-3:] ==".h5":
             with tables.open_file(fname) as f:
@@ -346,6 +361,8 @@ class MonopixExtensions():
     def set_power(self,**kwarg):
         for k in kwarg.keys():
             self.dut[k].set_voltage(kwarg[k])
+            if k=='TH':
+               self.th_set=kwarg[k]
         s="set_power:"
         for k in kwarg.keys():
             s=s+"%s=%d "%(k,kwarg[k])
