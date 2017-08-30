@@ -39,7 +39,7 @@ class MonopixConverter(Transceiver):
         hits = np.recarray(len(tmp), dtype=[('col','u2'),('row','u2'),('tot','u1')]) 
         hits['tot'][:] = (tmp["te"] - tmp["le"]) & 0xff
         hits['col'][:] = tmp["col"]
-        hits['row'][:] = tmp["row"]
+        hits['row'][:] = tmp["row"] 
         
         interpreted_data = {
             'hits': hits

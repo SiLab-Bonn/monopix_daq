@@ -27,7 +27,7 @@ class MonopixHistogrammer(Transceiver):
     def setup_interpretation(self):
         self.occupancy = np.zeros(shape=(36,129), dtype=np.int32)
         self.tot = np.zeros(256, dtype=np.int32)
-        self.pix= [25,64] #[25,64] #[0xFFFF,0xFFFF] ########[col,row] for single pixel [0xFFFF,0xFFFF] for all pixel
+        self.pix= [0xFFFF,0xFFFF] #[25,64] #[0xFFFF,0xFFFF] ########[col,row] for single pixel [0xFFFF,0xFFFF] for all pixel
         # Variables
         self.n_readouts = 0
         self.readout = 0
@@ -65,6 +65,7 @@ class MonopixHistogrammer(Transceiver):
             self.fps = self.fps * 0.7 + recent_fps * 0.3
             self.hps = self.hps + (recent_hps - self.hps) * 0.3 / self.fps
             self.eps = self.eps + (recent_eps - self.eps) * 0.3 / self.fps
+
             meta_data.update({'fps': self.fps, 'hps': self.hps, 'total_hits': self.total_hits, 'eps': self.eps, 'total_events': self.total_events})
             return [data[0][1]]
 
@@ -113,9 +114,22 @@ class MonopixHistogrammer(Transceiver):
                 self.mask_noisy_pixel = False
             else:
                 self.mask_noisy_pixel = True
-        elif 'PIX' in command[0]: ### TODO get pixel from command
-            self.pix[0]=int(command[1])
-            self.pix[1]=int(command[2])
+        elif 'PIX_X' in command[0]: ### TODO get pixel from command
+            self.tot = np.zeros(256, dtype=np.int32)  # Reset occ hists
+            value=command[0].split()[1]
+            if '-1' in value:
+                self.pix[0]=0xFFFF
+                self.pix[1]=0xFFFF
+            else:
+                self.pix[0]=int(value)
+        elif 'PIX_Y' in command[0]: ### TODO get pixel from command
+            self.tot = np.zeros(256, dtype=np.int32)  # Reset occ hists
+            value=command[0].split()[1]
+            if '-1' in value:
+                self.pix[0]=0xFFFF
+                self.pix[1]=0xFFFF
+            else:
+                self.pix[1]=int(value)
         else:
             self.n_readouts = int(command[0])
             self.occupancy = np.zeros(shape=(36,129), dtype=np.int32)  # Reset occ hists

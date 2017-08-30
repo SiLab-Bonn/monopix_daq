@@ -378,7 +378,7 @@ class MonopixExtensions():
                self.th_set=kwarg[k]
         s="set_power:"
         for k in kwarg.keys():
-            s=s+"%s=%d "%(k,kwarg[k])
+            s=s+"%s = %s "%(k,kwarg[k])
         self.logger.info(s)
     
     def get_tdac_memory(self):
