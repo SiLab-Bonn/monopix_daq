@@ -69,8 +69,8 @@ class SimpleScan(ScanBase):
             stop_read = kwargs.pop('stop_read', start_read+2)
             stop_freeze = kwargs.pop('stop_freeze', start_freeze+36)
             stop = kwargs.pop('stop', stop_freeze+10)
-            self.dut_extensions.set_monoread(start_freese=start_freeze,start_read=start_read,
-                                             stop_read=stop_read,stop_freese=stop_freeze,stop=stop)
+            self.dut_extensions.set_monoread(start_freeze=start_freeze,start_read=start_read,
+                                             stop_read=stop_read,stop_freeze=stop_freeze,stop=stop)
             ####################                    
             ## start
             self.logger.info("*****%s is running **** don't forget to start tlu ****"%self.__class__.__name__)
