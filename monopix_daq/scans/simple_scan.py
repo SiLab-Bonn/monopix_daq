@@ -11,7 +11,7 @@ from monopix_daq.analysis.interpreter import interpret_h5
 
 local_configuration={"with_tlu": True,
                      "with_timestamp": True,
-                     "scan_time": 10, ## in second
+                     "scan_time": 30, ## in second
                      "tlu_delay": 8,
 }
 
@@ -110,12 +110,12 @@ class SimpleScan(ScanBase):
         #monopix_interpreter.mk_plot(h5_fout,np_fout)
     
 if __name__ == "__main__":
-    from monopix_daq import monopix_extensions
-    m=monopix_extensions.MonopixExtentions()
-    
-    #fname=time.strftime("%Y%m%d_%H%M%S_simples_can")
+    from monopix_daq import monopix_extension
+    m=monopix_extension.MonopixExtensions()
+
+    #fname=time.strftime("%Y%m%d_%H%M%S_simple_scan")
     #fname=(os.path.join(monopix_extra_functions.OUPUT_DIR,"simple_scan"),fname)
     
-    scan = SimpleScan(m,fname=fname,sender_addr="tcp://127.0.0.1:6500")
+    scan = SimpleScan(m,fname=fname,sender_addr="tcp://127.0.0.1:5500")
     scan.start(**local_configuration)
     scan.analyze()
