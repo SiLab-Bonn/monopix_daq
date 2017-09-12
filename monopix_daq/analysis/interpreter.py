@@ -197,13 +197,13 @@ def interpret_h5(fin,fout,debug=12, n=100000000):
                 if debug &0x4 ==0x4:
                    break
                    
-def list2img(dat,delete_noise=True):
-    if delete_noise==True:
+def list2img(dat,noise=False):
+    if noise==False:
         dat=without_noise(dat)
     return np.histogram2d(dat["col"],dat["row"],bins=[np.arange(0,37,1),np.arange(0,130,1)])[0]
 
-def list2cnt(dat,delete_noise=True):
-    if delete_noise==True:
+def list2cnt(dat,noise=False):
+    if noise==False:
         dat=without_noise(dat)
     uni,cnt=np.unique(dat[["col","row"]],return_counts=True)
     ret=np.empty(len(uni),dtype=[("col","<u1"),("row","<u1"),("cnt","<i8")])
@@ -214,7 +214,7 @@ def list2cnt(dat,delete_noise=True):
     return ret
     
 def without_noise(dat):
-    return dat[dat["cnt"]==0]
+    return dat[np.bitwise_or(dat["cnt"]==0,dat["col"]>=36)]
     
 
 class InterRaw():
@@ -260,34 +260,34 @@ class InterRaw():
             start=start+r_i+1
         return ret
         
-    def mk_list(self,raw,delete_noise=True):
+    def mk_list(self,raw,noise=False):
         dat=self.run(raw)
-        if delete_noise==True:
+        if noise==False:
             dat=without_noise(dat)
         return dat
 
-    def mk_img(self,raw,delete_noise=True):
+    def mk_img(self,raw,noise=False):
         dat=self.run(raw)
-        return list2img(dat,delete_noise=True)
+        return list2img(dat,noise=False)
     
-    def mk_cnt(self,raw,delete_noise=True):
+    def mk_cnt(self,raw,noise=False):
         dat=self.run(raw)
-        return list2cnt(dat,delete_noise=True)
+        return list2cnt(dat,noise=False)
         
-def raw2list(raw,delete_noise=True):
+def raw2list(raw,noise=False):
     inter=InterRaw()
     dat=inter.run(raw)
-    if delete_noise==True:
+    if noise==False:
         dat=without_noise(dat)
     return dat
 
-def raw2img(raw,delete_noise=True):
+def raw2img(raw,noise=False):
     inter=InterRaw()
-    return list2img(inter.run(raw),delete_noise=delete_noise)
+    return list2img(inter.run(raw),noise=noise)
 
-def raw2cnt(raw,delete_noise=True):
+def raw2cnt(raw,noise=False):
     inter=InterRaw()
-    return list2cnt(inter.run(raw),delete_noise=delete_noise)
+    return list2cnt(inter.run(raw),noise=noise)
 
 if __name__ == "__main__":
     import sys
