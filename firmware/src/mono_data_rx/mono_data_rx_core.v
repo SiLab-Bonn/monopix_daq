@@ -102,6 +102,7 @@ end
 
 reg [7:0] LOST_DATA_CNT;
 reg[51:0] token_timestamp;
+reg[27:0] token_cnt;
 always @(posedge BUS_CLK) begin
     if(BUS_RD) begin
         if(BUS_ADD == 0)
@@ -173,10 +174,14 @@ assign TOKEN_SYNC = ~TOKEN_FF[1] & TOKEN_FF[0];
 reg TOKEN_NEXT;
 
 always@(posedge RX_CLK)
-    if (RST_SYNC)
+    if (RST_SYNC) begin
 	     token_timestamp <= 52'b0;
-	 else if ( TOKEN_SYNC )
+	     token_cnt <= 28'b0;
+	 end
+	 else if ( TOKEN_SYNC ) begin
 	     token_timestamp <= TIMESTAMP[51:0];
+	     token_cnt <= token_cnt+1;
+	 end
 
 parameter NOP=5'd0, WAIT_ONE = 5'd1, NOP_NEXT=5'd2, WAIT_NEXT = 5'd3, WAIT_TWO = 5'd4, WAIT_TWO_NEXT = 5'd5;
 reg [4:0] state, next_state;
@@ -280,7 +285,7 @@ wire store_data;
 assign store_data = (cnt == 29);
 
 reg [29:0] data_out;
-wire [82:0] data_to_cdc;
+wire [110:0] data_to_cdc;   // [82:0] data_to_cdc;
 
 always@(posedge RX_CLK)
     if(RST_SYNC)
@@ -318,12 +323,13 @@ assign {le_gray, te_gray, row, col} = data_out;
 bin_to_gray7 bin_to_gray_te(.gray_input(te_gray), .bin_out(te) );
 bin_to_gray7 bin_to_gray_le(.gray_input(le_gray), .bin_out(le) );
 
-assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? {token_timestamp,posssible_noise, data_out} : {token_timestamp,posssible_noise, le, te, row, col};
+assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? {token_cnt,token_timestamp,posssible_noise, data_out} : {token_cnt,token_timestamp,posssible_noise, le, te, row, col};
 
-wire [82:0] cdc_data_out;
+wire [110:0] cdc_data_out; //[82:0] cdc_data_out;
 wire cdc_fifo_empty, fifo_full, fifo_write;
 wire cdc_fifo_read;
-cdc_syncfifo #(.DSIZE(83), .ASIZE(8)) cdc_syncfifo_i
+//cdc_syncfifo #(.DSIZE(83), .ASIZE(8)) cdc_syncfifo_i
+cdc_syncfifo #(.DSIZE(111), .ASIZE(8)) cdc_syncfifo_i
 (
     .rdata(cdc_data_out),
     .wfull(wfull),
@@ -333,7 +339,7 @@ cdc_syncfifo #(.DSIZE(83), .ASIZE(8)) cdc_syncfifo_i
     .rinc(cdc_fifo_read), .rclk(BUS_CLK), .rrst(RST)
 );
 
-reg [1:0] byte2_cnt, byte2_cnt_prev;
+reg [2:0] byte2_cnt, byte2_cnt_prev;
 always@(posedge BUS_CLK)
     byte2_cnt_prev <= byte2_cnt;
 assign cdc_fifo_read = (byte2_cnt_prev==0 & byte2_cnt!=0);
@@ -343,20 +349,23 @@ always@(posedge BUS_CLK)
     if(RST)
         byte2_cnt <= 0;
     else if(!cdc_fifo_empty && !fifo_full && byte2_cnt == 0 ) 
-        byte2_cnt <= 3;
+        //byte2_cnt <= 3;
+        byte2_cnt <= 4;
     else if (!fifo_full & byte2_cnt != 0)
         byte2_cnt <= byte2_cnt - 1;
 
-reg [82:0] data_buf;
+//reg [82:0] data_buf;
+reg [110:0] data_buf;
 always@(posedge BUS_CLK)
     if(cdc_fifo_read)
         data_buf <= cdc_data_out;
 
-wire [29:0] fifo_write_data_byte [3:0];
-assign fifo_write_data_byte[3]=29'b0;
-assign fifo_write_data_byte[2]={2'b01,data_buf[42:31],data_buf[13:6],1'b0,data_buf[30],data_buf[5:0]};
-assign fifo_write_data_byte[1]={2'b10,data_buf[54:43],data_buf[29:22],data_buf[21:14]};
-assign fifo_write_data_byte[0]={2'b11,data_buf[82:55]};
+wire [29:0] fifo_write_data_byte [4:0];
+assign fifo_write_data_byte[4]=29'b0; 
+assign fifo_write_data_byte[3]={2'b01,data_buf[42:31],data_buf[13:6],1'b0,data_buf[30],data_buf[5:0]};
+assign fifo_write_data_byte[2]={2'b10,data_buf[54:43],data_buf[29:22],data_buf[21:14]};
+assign fifo_write_data_byte[1]={2'b11,data_buf[82:55]};
+assign fifo_write_data_byte[0]={2'b00,data_buf[110:83]}; //last data is dummy
 
 wire [31:0] fifo_data_in;
 assign fifo_data_in = fifo_write_data_byte[byte2_cnt];

@@ -6,11 +6,17 @@ import tables
 import pixel_clusterizer.clusterizer
 
 hit_dtype=np.dtype([("event_number","<i8"),("column","<u2"),("row","<u2"),("charge","<u1"),("frame","<u1")])
-cluster_dtype=np.dtype([('event_number', '<i8'), ('ID', '<u2'), ('n_hits', '<u2'), ('charge', '<f4'), 
-                        ('seed_column', '<u2'), ('seed_row', '<u2'),('mean_column', '<f4'), ('mean_row', '<f4')])
-hit_clustered_dtype=np.dtype([('event_number', '<i8'),('frame', '<u1'),('column', '<u2'),('row', '<u2'),
-                        ('charge', '<u2'),('cluster_ID', '<i2'),('is_seed', '<u1'),('cluster_size', '<u2'),
-                        ('n_cluster', '<u2')])
+cluster_dtype=np.dtype([('event_number', '<i8'),
+                               ('ID', '<u2'),
+                               ('n_hits', '<u2'),
+                               ('charge', '<f4'),
+                               ('seed_column', '<u2'),
+                               ('seed_row', '<u2'),
+                               ('mean_column', '<f4'),('mean_row', '<f4')])
+hit_clustered_dtype=np.dtype([('event_number', '<i8'), ('column', '<u2'), 
+                              ('row', '<u2'), ('charge', 'u1'), ('frame', 'u1'), 
+                              ('cluster_ID', '<i2'), ('is_seed', 'u1'), 
+                              ('cluster_size', '<u2'), ('n_cluster', '<u2')])
 
 def clusterize_h5(fin,fout,n=1000000,debug=0):
     cl = pixel_clusterizer.clusterizer.HitClusterizer()

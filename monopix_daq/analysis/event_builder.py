@@ -176,7 +176,7 @@ def convert_h5(ftlu,fout,n=1000000,row_offset=1,row_factor=1,col_offset=1,col_fa
                 hit=f.root.Hits[start:tmpend]
                 if start==0:
                     offset=get_te_offset(hit,debug=fout[:-2]+"png")
-
+                hit=apply_timewindow_tlu(hit)
                 err,buf_out,pre_event_number=convert(
                   hit,pre_event_number,offset,row_offset=1,row_factor=1,col_offset=1,col_factor=1,tr=True,debug=0)
                   

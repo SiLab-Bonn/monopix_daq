@@ -333,7 +333,7 @@ module monopix_mio3(
         .RST(RST)                    ,    // in    : System reset
         // Configuration parameters
         .FORCE_DEFAULTn(1'b0)        ,    // in    : Load default parameters
-        .EXT_IP_ADDR(32'hc0a80a10)            ,    // in    : IP address[31:0] //192.168.10.16
+        .EXT_IP_ADDR(32'hc0a80b10)            ,    // in    : IP address[31:0] //192.168.10.16
         .EXT_TCP_PORT(16'd24)        ,    // in    : TCP port #[15:0]
         .EXT_RBCP_PORT(16'd4660)        ,    // in    : RBCP port #[15:0]
         .PHY_ADDR(5'd3)            ,    // in    : PHY-device MIF address[4:0]
@@ -490,7 +490,7 @@ module monopix_mio3(
 
 // -------  USER CORE ------- //
 
-wire LEMO_RX2,LEMO_TX2;
+wire LEMO_RX2;
 assign LEMO_RX2 = 1'b0;
 
 monopix_mio_core i_monopix_mio_core(
@@ -521,7 +521,7 @@ monopix_mio_core i_monopix_mio_core(
     .LED(LED[4:0]),
     
     .LEMO_RX({LEMO_RX2,LEMO_RX}),
-    .LEMO_TX({LEMO_TX2,LEMO_TX}), // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+    .LEMO_TX({INJECTION_TRIG,LEMO_TX}), // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     .RJ45_RESET(RJ45_RESET),
     .RJ45_TRIGGER(RJ45_TRIGGER),
 
@@ -548,7 +548,7 @@ monopix_mio_core i_monopix_mio_core(
     .DATA(DATA),       //DIN0
     .DATA_LVDS(DATA_LVDS),              //DIN8_LVDS0
  
-    .INJECTION_TRIG(INJECTION_TRIG)     //DOUT0
+    .DEBUG()     //nc
 );
 
 endmodule
