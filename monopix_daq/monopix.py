@@ -113,9 +113,9 @@ class monopix(Dut):
         self.SET_VALUE['PBias']=0.5
         
         self['INJ_HI'].set_voltage(0.2, unit='V')
-        self.SET_VALUE['INJ_HI']=1.0
+        self.SET_VALUE['INJ_HI']=0.2
         self['INJ_LO'].set_voltage(1.0, unit='V')
-        self.SET_VALUE['INJ_LO']=0.2
+        self.SET_VALUE['INJ_LO']=1.0
         
         #POWER
         self['VDDD'].set_current_limit(200, unit='mA')
