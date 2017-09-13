@@ -30,6 +30,7 @@ class monopix(Dut):
                            'MONITOR_EN'   : np.full([36,129], False, dtype = np.bool),
                            'TRIM_EN'  : np.full([36,129], 7, dtype = np.uint8),
                            }
+        self.SET_VALUE={}
         
     def init(self):
         super(monopix, self).init()
@@ -100,23 +101,39 @@ class monopix(Dut):
     
         #DACS
         self['BL'].set_voltage(0.75, unit='V')
+        self.SET_VALUE['BL']=0.75
         self['TH'].set_voltage(1.5, unit='V')
+        self.SET_VALUE['TH']=1.5
         self['VCascC'].set_voltage(0.8, unit='V')
+        self.SET_VALUE['VCascC']=0.8
         self['VCascN'].set_voltage(0.4, unit='V')
+        self.SET_VALUE['VCascN']=0.4
+        
+        self['PBias'].set_current(0.5, unit='uA')
+        self.SET_VALUE['PBias']=0.5
+        
+        self['INJ_HI'].set_voltage(0.2, unit='V')
+        self.SET_VALUE['INJ_HI']=1.0
+        self['INJ_LO'].set_voltage(1.0, unit='V')
+        self.SET_VALUE['INJ_LO']=0.2
         
         #POWER
+        self['VDDD'].set_current_limit(200, unit='mA')
         self['VDDD'].set_voltage(1.8, unit='V')
         self['VDDD'].set_enable(True)
+        self.SET_VALUE['VDDD']=1.8
 
-        self['VDDA'].set_current_limit(200, unit='mA')
         self['VDDA'].set_voltage(1.8, unit='V')
         self['VDDA'].set_enable(True)
+        self.SET_VALUE['VDDA']=1.8
         
         self['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         self['VDD_BCID_BUFF'].set_enable(True)
+        self.SET_VALUE['VDD_BCID_BUFF']=1.7
         
         self['VPC'].set_voltage(1.5, unit='V')
         self['VPC'].set_enable(True)
+        self.SET_VALUE['VPC']=1.5
 
     def power_down(self):
 
@@ -129,6 +146,7 @@ class monopix(Dut):
         for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
             staus[pwr+'[V]'] =  self[pwr].get_voltage(unit='V')
             staus[pwr+'[mA]'] = self[pwr].get_current(unit='mA')
+            staus[pwr+"set"] = self.SET_VALUE[pwr]
         
         return staus
     
@@ -139,9 +157,9 @@ class monopix(Dut):
         for dac in  dac_names:
             staus[dac] = int(str(self['CONF_SR'][dac]), 2)
             
-        for dac in ['BL', 'TH', 'VCascC', 'VCascN']:
+        for dac in ['BL', 'TH', 'VCascC', 'VCascN', 'INJ_LO', 'INJ_HI']:
             staus[dac] =  self[dac].get_voltage(unit='V')
-        
+            staus[dac+"set"] = self.SET_VALUE[dac]
         return staus
         
     def interpret_tdc_data(self, raw_data, meta_data = []):
@@ -168,7 +186,6 @@ class monopix(Dut):
         return ret
     
     def interpret_rx_data(self, raw_data, meta_data = []):
-        ###TODO!
         raise(NotImplementedError)
         
         

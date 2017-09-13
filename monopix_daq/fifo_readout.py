@@ -126,12 +126,12 @@ class FifoReadout(object):
         try:
             self.readout_thread.join(timeout=timeout)
             if self.readout_thread.is_alive():
+                self.force_stop.set()
                 if timeout:
                     raise StopTimeout('FIFO stop timeout after %0.1f second(s)' % timeout)
                 else:
                     logging.warning('FIFO stop timeout')
         except StopTimeout as e:
-            self.force_stop.set()
             if self.errback:
                 self.errback(sys.exc_info())
             else:
@@ -263,6 +263,7 @@ class FifoReadout(object):
     def update_timestamp(self):
         curr_time = self.get_float_time()
         last_time = self.timestamp
+        self.timestamp = curr_time
         return last_time, curr_time
 
     def read_status(self):

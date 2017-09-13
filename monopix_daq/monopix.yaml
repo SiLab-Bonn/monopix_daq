@@ -8,7 +8,7 @@ transfer_layer:
       type  : SiUsb
       init : 
         timeout  : 600
-        bit_file : ../firmware/ise/monopix_mio.bit
+        bit_file : ../firmware/bit/monopix_mio_tlu.bit
         avoid_download : True
 
 hw_drivers:
@@ -18,7 +18,13 @@ hw_drivers:
     base_addr : 0x00000
     init :
         no_calibration : True
-  
+        
+  - name      : fifo
+    type      : sram_fifo
+    interface : intf
+    base_addr : 0x18000
+    base_data_addr: 0x1000000000000  
+    
   - name      : gpio
     type      : gpio
     interface : intf
@@ -57,16 +63,17 @@ hw_drivers:
     interface : intf
     base_addr : 0x10400
     
-  - name      : fifo
-    type      : sram_fifo
-    interface : intf
-    base_addr : 0x18000
-    base_data_addr: 0x1000000000000
-    
   - name      : data_rx
     type      : mono_data_rx
     interface : intf
     base_addr : 0x10500
+    
+  - name        : NTC
+    type        : NTCRegister
+    NTC_type    : TDK_NTCG16H
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC0'}
     
 registers:
   - name        : CONF
@@ -74,6 +81,12 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
+      - name    : EN_DEBUG_TIMESTAMP
+        size    : 1
+        offset  : 12
+      - name    : EN_GATE_TIMESTAMP
+        size    : 1
+        offset  : 11
       - name    : EN_GRAY_RESET_WITH_TDC_PULSE
         size    : 1
         offset  : 10

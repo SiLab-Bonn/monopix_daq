@@ -3,14 +3,6 @@
 name    : monopix_daq
 version : 0.0.1
 
-# MIO
-#transfer_layer:
-#    - name  : intf
-#      type  : SiUsb
-#      init :
-#        timeout  : 600
-#        bit_file : ../firmware/ise/monopix_mio.bit
-
 # MIO3
 transfer_layer:
   - name  : intf
@@ -22,16 +14,6 @@ transfer_layer:
         tcp_connection : True
 
 hw_drivers:
-
-#	MIO start
-#  - name      : GPAC
-#    type      : GPAC
-#    interface : intf
-#    base_addr : 0x00000
-#    init :
-#        no_calibration : True
-#	MIO end
-
 #	MIO3 start
   - name      : i2c
     type      : i2c
@@ -44,7 +26,7 @@ hw_drivers:
     base_addr : 0x00000
     init:
         no_calibration : True
-#	MIO3 end
+        #no_power_reset : True
 
   - name      : fifo
     type      : sram_fifo
@@ -98,6 +80,13 @@ hw_drivers:
     type      : mono_data_rx
     interface : intf
     base_addr : 0x10500
+
+  - name        : NTC
+    type        : NTCRegister
+    NTC_type    : TDK_NTCG16H
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC0'}
     
 registers:
   - name        : CONF
@@ -105,6 +94,12 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
+      - name    : EN_DEBUG_TIMESTAMP
+        size    : 1
+        offset  : 12
+      - name    : EN_GATE_TIMESTAMP
+        size    : 1
+        offset  : 11
       - name    : EN_GRAY_RESET_WITH_TDC_PULSE
         size    : 1
         offset  : 10
@@ -188,18 +183,25 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'VSRC3'}
-    
+
+  - name        : PBias
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC10'}
+
   - name        : INJ_LO
     type        : FunctionalRegister
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ1'}
-    
+
   - name        : INJ_HI
     type        : FunctionalRegister
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
+
 
   - name        : CONF_SR
     type        : StdRegister

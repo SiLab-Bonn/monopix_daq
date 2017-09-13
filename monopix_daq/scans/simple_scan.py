@@ -6,16 +6,18 @@ import tables as tb
 import logging
 import yaml
 
-from monopix_daq.scan_base import ScanBase
-from monopix_daq.analysis.interpreter import interpret_h5
+import monopix_daq.scan_base as scan_base
+import monopix_daq.analysis.interpreter as interpreter
+import monopix_daq.analysis.event_builder as event_builder
+import monopix_daq.analysis.clusterizer as clusterizer
 
 local_configuration={"with_tlu": True,
                      "with_timestamp": True,
-                     "scan_time": 30, ## in second
+                     "scan_time": 10, ## in second
                      "tlu_delay": 8,
 }
 
-class SimpleScan(ScanBase):
+class SimpleScan(scan_base.ScanBase):
     scan_id = "simple_scan"
     
     def __init__(self, dut_extentions, fname=None, sender_addr=""):
@@ -53,28 +55,33 @@ class SimpleScan(ScanBase):
         with_tlu = kwargs.pop('with_tlu', True)
         with_timestamp = kwargs.pop('with_timestamp', True)
         scan_time = kwargs.pop('scan_time', 10)
-        
-        with self.readout(scan_param_id = 0, fill_buffer=False, clear_buffer=True,timeout=scan_time,readout_interval = 0.003):
+        ## start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+36,stop=52+36+10,
+        start_freeze = kwargs.pop('start_freeze', 50)
+        start_read = kwargs.pop('start_read', start_freeze+2)
+        stop_read = kwargs.pop('stop_read', start_read+2)
+        stop_freeze = kwargs.pop('stop_freeze', start_freeze+36)
+        stop_rx = kwargs.pop('stop', stop_freeze+10)
+        cnt=0
+        scanned=0
+
+        ####################
+        ## start readout
+        self.dut_extensions.set_monoread(start_freeze=start_freeze,start_read=start_read,
+                                         stop_read=stop_read,stop_freeze=stop_freeze,stop=stop_rx)
+        if with_tlu:
+            tlu_delay = kwargs.pop('tlu_delay', 8)
+            self.dut_extensions.set_tlu(tlu_delay)
+        if with_timestamp:
+            self.dut_extensions.set_timestamp()
+
+        ####################
+        ## start read fifo        
+        with self.readout(scan_param_id=0,fill_buffer=False,clear_buffer=True,readout_interval=0.2,timeout=0):
             t0=time.time()
-            ####################
-            ## start readout
-            if with_tlu:
-                tlu_delay = kwargs.pop('tlu_delay', 8)
-                self.dut_extensions.set_tlu(tlu_delay)
-            if with_timestamp:
-                self.dut_extensions.set_timestamp()
-            ## start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+36,stop=52+36+10,
-            start_freeze = kwargs.pop('start_freeze', 50)
-            start_read = kwargs.pop('start_read', start_freeze+2)
-            stop_read = kwargs.pop('stop_read', start_read+2)
-            stop_freeze = kwargs.pop('stop_freeze', start_freeze+36)
-            stop = kwargs.pop('stop', stop_freeze+10)
-            self.dut_extensions.set_monoread(start_freeze=start_freeze,start_read=start_read,
-                                             stop_read=stop_read,stop_freeze=stop_freeze,stop=stop)
-            ####################                    
-            ## start
+
             self.logger.info("*****%s is running **** don't forget to start tlu ****"%self.__class__.__name__)
             while True:
+                pre_cnt=cnt
                 cnt=self.fifo_readout.get_record_count()
                 #dqdata = self.fifo_readout.data
                 #try:
@@ -82,40 +89,56 @@ class SimpleScan(ScanBase):
                 #except ValueError:
                 #    data = []
                 #cnt=len(data)
+                pre_scanned=scanned
                 scanned=time.time()-t0
-                self.logger.info('time=%.0fs dat=%d rate=%.3fk/s'%(scanned,cnt,cnt/scanned/1024))
-                if scanned > scan_time and scan_time>0:
+                self.logger.info('time=%.0fs dat=%d rate=%.3fk/s'%(scanned,cnt,(cnt-pre_cnt)/(scanned-pre_scanned)/1024))
+                if scanned+10 > scan_time and scan_time>0:
                     break
+                elif scanned < 30:
+                    time.sleep(1)
                 else:
-                    time.sleep(5)
-                    
-        ####################
-        ## stop readout
-        self.dut_extensions.stop_monoread()
-        if with_timestamp:
-            self.dut_extensions.stop_timestamp()
-            self.meta_data_table.attrs.timestamp_status = yaml.dump(self.dut["timestamp"].get_configuration())
-        if with_tlu:
-            self.dut_extensions.stop_tlu()
-            self.meta_data_table.attrs.tlu_status = yaml.dump(self.dut["tlu"].get_configuration())
+                    time.sleep(10)
+            time.sleep(max(0,scan_time-scanned))             
+            ####################
+            ## stop readout
+            if with_timestamp:
+                self.dut_extensions.stop_timestamp()
+                self.meta_data_table.attrs.timestamp_status = yaml.dump(self.dut["timestamp"].get_configuration())
+            if with_tlu:
+                self.dut_extensions.stop_tlu()
+                self.meta_data_table.attrs.tlu_status = yaml.dump(self.dut["tlu"].get_configuration())
+            self.dut_extensions.stop_monoread()
 
-    def analyze(self, h5_fin  = ''):
+
+    def analyze(self, h5_fin='',event="tlu",debug=3):
         if h5_fin == '':
            h5_fin = self.output_filename +'.h5'
-        h5_fout=h5_fin[:-7]+'hit.h5'
-        interpret_h5(h5_fin,h5_fout,debug=8+3)
-        self.logger.info('interpreted file %s'%(h5_fout))
+
+        hit_fout=h5_fin[:-7]+'hit.h5'
+        interpreter.interpret_h5(h5_fin,hit_fout,debug=3)
+        self.logger.info('interpreted file %s'%(hit_fout))
+
+        tlu_fout=h5_fin[:-7]+'tlu.h5'
+        event_builder.build_h5(h5_fin,hit_fout,tlu_fout,event=event)
+        self.logger.info('event_built file %s'%(tlu_fout))
+
+        ev_fout=h5_fin[:-7]+'ev.h5'
+        event_builder.convert_h5(tlu_fout,ev_fout)
+        self.logger.info('converted file %s'%(ev_fout))
+
+        cl_fout=h5_fin[:-7]+'cl.h5'
+        clusterizer.clusterize_h5(ev_fout,cl_fout)
         
         #np_fout=h5_fin[:-7]+'hit.npy'
         #monopix_interpreter.mk_plot(h5_fout,np_fout)
     
 if __name__ == "__main__":
-    from monopix_daq import monopix_extension
-    m=monopix_extension.MonopixExtensions()
-
-    #fname=time.strftime("%Y%m%d_%H%M%S_simple_scan")
+    from monopix_daq import monopix_extensions
+    m=monopix_extensions.MonopixExtentions()
+    
+    #fname=time.strftime("%Y%m%d_%H%M%S_simples_can")
     #fname=(os.path.join(monopix_extra_functions.OUPUT_DIR,"simple_scan"),fname)
     
-    scan = SimpleScan(m,fname=fname,sender_addr="tcp://127.0.0.1:5500")
+    scan = SimpleScan(m,fname=fname,sender_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)
     scan.analyze()
