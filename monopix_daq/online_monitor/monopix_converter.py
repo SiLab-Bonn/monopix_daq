@@ -35,17 +35,12 @@ class MonopixConverter(Transceiver):
             data[0][1]['meta_data'].update({'n_hits': self.n_hits, 'n_events': self.n_events})
             return [data[0][1]]
         
-        tmp=self.inter.mk_list(data[0][1])
-        hits = np.recarray(len(tmp), dtype=[('col','u2'),('row','u2'),('tot','u1')]) 
-        hits['tot'][:] = (tmp["te"] - tmp["le"]) & 0xff
-        hits['col'][:] = tmp["col"]
-        hits['row'][:] = tmp["row"] 
+        hits=self.inter.run(data[0][1],data_format=3)
+        self.n_hits = hits.shape[0]
         
         interpreted_data = {
             'hits': hits
         }
-
-        self.n_hits = hits.shape[0]
 
         return [interpreted_data]
 

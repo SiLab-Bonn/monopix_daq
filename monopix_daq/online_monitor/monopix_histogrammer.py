@@ -37,8 +37,9 @@ class MonopixHistogrammer(Transceiver):
         self.plot_delay = 0
         self.total_hits = 0
         self.total_events = 0
-        self.updateTime = 0
+        self.updateTime = 1 ##### It was 0 before adding timestamp_start_fornext
         self.mask_noisy_pixel = False
+        self.timestamp_start_fornext=0 #####
         # Histogrammes from interpretation stored for summing
 #         self.error_counters = None
 #         self.trigger_error_counters = None
@@ -48,17 +49,32 @@ class MonopixHistogrammer(Transceiver):
         datar, meta = utils.simple_dec(data)
         if 'hits' in meta:
             meta['hits'] = datar
+#            print "datar"
+#            print len(datar)
+#            print "-----"
         return meta
 
+
     def interpret_data(self, data):
+        
+#        print "data[0][1]"
+#        print data
+#        print "////////"
         if 'meta_data' in data[0][1]:  # Meta data is directly forwarded to the receiver, only hit data, event counters are histogramed; 0 from frontend index, 1 for data dict
             meta_data = data[0][1]['meta_data']
             now = float(meta_data['timestamp_stop'])
             recent_total_hits = meta_data['n_hits']
+#            print "recent"
+#            print recent_total_hits
             recent_total_events = meta_data['n_events']
-            recent_fps = 1.0 / (now - self.updateTime)  # calculate FPS
-            recent_hps = (recent_total_hits - self.total_hits) / (now - self.updateTime)
-            recent_eps = (recent_total_events - self.total_events) / (now - self.updateTime)
+#            recent_fps = 1.0 / (now - self.updateTime)  # calculate FPS
+            recent_fps = 1.0 / (self.updateTime - self.timestamp_start_fornext)  # calculate FPS
+#            recent_hps = (recent_total_hits - self.total_hits) / (now - self.updateTime)
+#            recent_eps = (recent_total_events - self.total_events) / (now - self.updateTime)
+
+            recent_hps = (meta_data['n_hits']) / (self.updateTime - self.timestamp_start_fornext)
+            recent_eps = (recent_total_events - self.total_events) / (self.updateTime - self.timestamp_start_fornext)
+            self.timestamp_start_fornext= float(meta_data['timestamp_start'])
             self.updateTime = now
             self.total_hits += recent_total_hits
             self.total_events += recent_total_events
@@ -75,13 +91,21 @@ class MonopixHistogrammer(Transceiver):
             if self.readout % self.n_readouts == 0:
                 self.occupancy = np.zeros(shape=(36,129), dtype=np.int32)  # Reset occ hists
                 self.tot = np.zeros(256, dtype=np.int32)  # Reset occ hists
-                self.readouts = 0
+                self.readout = 0
 
-        hits = data[0][1]['hits']
+        tmp = data[0][1]['hits']
+        tmp = tmp[tmp["cnt"]==0] ## remove noise
+        tmp = tmp[tmp["col"]<36] ## remove TLU and timestamp
+        hits = np.recarray(len(tmp), dtype=[('col','u2'),('row','u2'),('tot','u1')]) 
+        hits['tot'][:] = (tmp["te"] - tmp["le"]) & 0xff
+        hits['col'][:] = tmp["col"]
+        hits['row'][:] = tmp["row"] 
 
         if hits.shape[0] == 0:  # Empty array
             return
         fill_occupancy_hist(self.occupancy, self.tot, hits, self.pix)
+        #print "occupancy", np.sum(self.occupancy)
+        
 
         if self.mask_noisy_pixel:   #Improve
             self.occupancy[self.occupancy > np.percentile(self.occupancy, 100 - self.config['noisy_threshold'])] = 0
