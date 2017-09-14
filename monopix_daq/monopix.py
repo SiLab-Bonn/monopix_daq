@@ -157,8 +157,10 @@ class monopix(Dut):
         for dac in  dac_names:
             staus[dac] = int(str(self['CONF_SR'][dac]), 2)
             
-        for dac in ['BL', 'TH', 'VCascC', 'VCascN', 'INJ_LO', 'INJ_HI']:
+        for dac in ['BL', 'TH', 'VCascC', 'VCascN']:
             staus[dac] =  self[dac].get_voltage(unit='V')
+            staus[dac+"set"] = self.SET_VALUE[dac]
+        for dac in ['INJ_LO', 'INJ_HI']:
             staus[dac+"set"] = self.SET_VALUE[dac]
         return staus
         
