@@ -167,10 +167,10 @@ localparam GPIO_HIGHADDR = 16'h0100-1;
 
 localparam PULSE_INJ_BASEADDR = 16'h0100;
 localparam PULSE_INJ_HIGHADDR = 16'h0200-1;
-    
+
 localparam TDC_BASEADDR = 16'h0300;
 localparam TDC_HIGHADDR = 16'h0400-1;
-    
+
 localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
 localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
 
@@ -336,11 +336,7 @@ pulse_gen
     .PULSE(GATE_TDC) 
 );    
 
-wire ARB_READY_OUT, ARB_WRITE_OUT;
-wire [31:0] ARB_DATA_OUT;
-
-wire FE_FIFO_READ;
-wire FE_FIFO_EMPTY;
+wire FE_FIFO_READ, FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
     
 wire TDC_FIFO_READ, TDC_FIFO_EMPTY;
@@ -608,6 +604,6 @@ assign LED[4] = 0;
 
 assign LEMO_TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign LEMO_TX[1] = TLU_BUSY;  // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has 
-assign LEMO_TX[2] = INJECTION; // Do not use this port (no TX2 in MIO3)
+assign LEMO_TX[2] = INJECTION; // TODO select TDC_TDC_OUT or INJECTION if needed
 assign DEBUG = GATE_TDC;
 endmodule
