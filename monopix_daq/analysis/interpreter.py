@@ -79,7 +79,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,ts_timestamp,ts_pre,
         ### TIMESTMP
         ########################
         elif r & 0xFF000000 == 0x50000000: 
-            pass ## get count
+            pass ## TODO get count
         elif r & 0xFF000000 == 0x51000000: ## timestamp
             ts_timestamp = (ts_timestamp & TS_MASK1) | np.uint64(r & TS_MASK_DAT)
             ts_cnt=ts_cnt+1
@@ -124,7 +124,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,ts_timestamp,ts_pre,
         ### TIMESTMP2
         ########################
         elif r & 0xFF000000 == 0x60000000: 
-            pass ## get count
+            pass ## TODO get count
         elif r & 0xFF000000 == 0x61000000: ## timestamp
             ts2_timestamp = (ts2_timestamp & TS_MASK1) | np.uint64(r & TS_MASK_DAT)
             ts2_cnt=ts2_cnt+1
@@ -278,6 +278,7 @@ def without_noise(dat):
 
 class InterRaw():
     def __init__(self,chunk=100000000,debug=0):
+        print "WARN!! this InterRaw has not tested!!!!"
         self.reset()
         self.buf=np.empty(chunk,dtype=hit_dtype)
         self.n=chunk
