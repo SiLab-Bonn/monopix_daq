@@ -276,7 +276,8 @@ tdc_s3 #(
     .DV_CLK(CLK40),
     .TDC_IN(MONITOR),
     .TDC_OUT(TDC_TDC_OUT),
-    .TRIG_IN(1'b0),
+    //.TRIG_IN(1'b0),
+    .TRIG_IN(LEMO_RX[0]),
     .TRIG_OUT(TDC_TRIG_OUT),
 
     .FIFO_READ(TDC_FIFO_READ),
@@ -366,7 +367,8 @@ timestamp
 );
 
 wire DI2;
-assign DI2 = EN_NEG_TIMESTAMP2? ~LEMO_RX[0]:LEMO_RX[0];
+//assign DI2 = EN_NEG_TIMESTAMP2? ~LEMO_RX[0]:LEMO_RX[0];
+assign DI2 = EN_NEG_TIMESTAMP2? ~TDC_TRIG_OUT:TDC_TRIG_OUT;
 
 timestamp
 #(
@@ -442,7 +444,7 @@ assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 assign RESET = 0;
 
 // LED assignments
-assign LED[0] = 0;
+assign LED[0] = 1;
 assign LED[1] = 0;
 assign LED[2] = 0;
 assign LED[3] = 0;

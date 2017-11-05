@@ -492,9 +492,9 @@ module monopix_mio3(
 
 wire LEMO_RX2;
 assign LEMO_RX2 = 1'b0;
-assign LED[7]=  1'b1;
+assign LED[7]= 1'b0;
 assign LED[6]= 1'b1;
-assign LED[5]= 1'b1;
+assign LED[5]= 1'b0;
 
 monopix_mio_core i_monopix_mio_core(
 

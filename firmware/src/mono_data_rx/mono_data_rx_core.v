@@ -209,7 +209,7 @@ always@(*) begin : set_next_state
                 else 
                     next_state = NOP;
             end
-		  WAIT_TWO:
+        WAIT_TWO:
 		      next_state =WAIT_ONE;
         NOP_NEXT:
             if(TOKEN_FF[0] & CONF_EN)
@@ -223,8 +223,8 @@ always@(*) begin : set_next_state
                 else
                     next_state = NOP;
             end
-		  WAIT_TWO_NEXT:
-		      next_state =WAIT_NEXT;
+        WAIT_TWO_NEXT:
+              next_state =WAIT_NEXT;
     endcase
 end
      
@@ -313,7 +313,7 @@ always@(posedge RX_CLK) begin
 end
 
 wire posssible_noise;
-assign posssible_noise = (state == WAIT_NEXT);
+assign posssible_noise = (state == WAIT_NEXT || state == WAIT_TWO_NEXT);
 
 
 wire [5:0] col;
