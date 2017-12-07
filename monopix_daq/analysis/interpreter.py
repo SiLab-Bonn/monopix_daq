@@ -70,9 +70,6 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,ts_timestamp,ts_pre,
                buf_i=buf_i+1
                rx_flg=0
            else:
-               #if debug & 0x4 ==0x4:
-                   #print "error3",r_i,hex(r),rx_flg
-
                return 3,buf[:buf_i],r_i,col,row,le,te,noise,timestamp,rx_flg,ts_timestamp,ts_pre,ts_flg,ts_cnt,ts2_timestamp,ts2_pre,ts2_flg,ts2_cnt,tlu,tlu_timestamp
               
         ########################
@@ -170,9 +167,15 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,ts_timestamp,ts_pre,
         elif (r & 0x80000000 == 0x80000000):
             tlu = r & 0xFFFF
             tlu_org =(r>>16) & 0x7FFF
-            tlu_timestamp= ts_timestamp & TLU_NOT_MASK | np.uint64(tlu_org)
-            if tlu_timestamp < ts_pre:
-                tlu_timestamp = tlu_timestamp + np.uint64(0x8000)
+            if debug & 0x20 ==0x00:
+                tlu_timestamp= ts_pre & TLU_NOT_MASK | np.uint64(tlu_org)
+                if tlu_org < (np.int32(ts_pre) & 0x7FFF):
+                #if np.uint64(tlu_timestamp - ts_pre) & np.uint64(0x8000) == np.uint64(0x8000):
+                    tlu_timestamp = tlu_timestamp + np.uint64(0x8000)
+            else:
+                tlu_timestamp= ts2_pre & TLU_NOT_MASK | np.uint64(tlu_org)
+                if tlu_org < (np.int32(ts2_pre) & 0x7FFF):
+                    tlu_timestamp = tlu_timestamp + np.uint64(0x8000)
             #if debug & 0x4 ==0x4:
                 #print r_i,hex(r),"ts=",hex(tlu_timestamp),"tlu",tlu,hex(tlu_tmp),tlu_tmp < trig_tmp
 
@@ -362,5 +365,8 @@ if __name__ == "__main__":
     fin=sys.argv[1]
     fout=fin[:-3]+"_hit.h5"
     interpret_h5(fin,fout,debug=3)
+    # debug 
+    # 
+    # 0x20 correct tlu_timestamp based on timestamp2 0x00 based on timestamp
     print fout
                
