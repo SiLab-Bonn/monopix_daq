@@ -18,9 +18,13 @@
     <file xil_pn:name="../src/monopix_mio.ucf" xil_pn:type="FILE_UCF">
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
     </file>
-    <file xil_pn:name="../src/monopix_tmp.v" xil_pn:type="FILE_VERILOG">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="87"/>
-      <association xil_pn:name="Implementation" xil_pn:seqID="87"/>
+    <file xil_pn:name="../src/monopix_mio.v" xil_pn:type="FILE_VERILOG">
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="3"/>
+      <association xil_pn:name="Implementation" xil_pn:seqID="34"/>
+    </file>
+    <file xil_pn:name="../src/monopix_core.v" xil_pn:type="FILE_VERILOG">
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="4"/>
+      <association xil_pn:name="Implementation" xil_pn:seqID="29"/>
     </file>
   </files>
 
@@ -128,7 +132,7 @@
     <property xil_pn:name="Ignore User Timing Constraints Par" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="Ignore Version Check" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="Implementation Top" xil_pn:value="Module|monopix_mio" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="Implementation Top File" xil_pn:value="../src/monopix_tmp.v" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="Implementation Top File" xil_pn:value="../src/monopix_mio.v" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Implementation Top Instance Path" xil_pn:value="/monopix_mio" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Include 'uselib Directive in Verilog File" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="Include SIMPRIM Models in Verilog File" xil_pn:value="false" xil_pn:valueState="default"/>
@@ -331,39 +335,39 @@
     <!-- Do not hand-edit this section, as it will be overwritten when the    -->
     <!-- project is analyzed based on files automatically identified as       -->
     <!-- include files.                                                       -->
-    <file xil_pn:name="../src/clk_gen.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/bus_to_ip.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/cdc_syncfifo.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/generic_fifo.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/includes/log2func.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/cdc_pulse_sync.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/reset_gen.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/CG_MOD_pos.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/spi/spi_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/spi/spi.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/spi/blk_mem_gen_8_to_1_2k.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/gpio/gpio.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tlu/tlu_controller.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tlu/tlu_controller_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tlu/tlu_controller_fsm.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/timestamp/timestamp.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/timestamp/timestamp_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/fx2_to_bus.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/pulse_gen/pulse_gen.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/pulse_gen/pulse_gen_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tdc_s3/tdc_s3.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tdc_s3/tdc_s3_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/sram_fifo/sram_fifo_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/sram_fifo/sram_fifo.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/3_stage_synchronizer.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/rrp_arbiter/rrp_arbiter.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/ddr_des.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/flag_domain_crossing.v" xil_pn:type=""/>
-    <file xil_pn:name="../src/mono_data_rx/mono_data_rx.v" xil_pn:type=""/>
-    <file xil_pn:name="../src/mono_data_rx/mono_data_rx_core.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/cdc_reset_sync.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/IDDR_s3.v" xil_pn:type=""/>
-    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/ODDR_s3.v" xil_pn:type=""/>
+    <file xil_pn:name="../src/clk_gen.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/bus_to_ip.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/cdc_syncfifo.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/generic_fifo.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/includes/log2func.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/cdc_pulse_sync.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/reset_gen.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/CG_MOD_pos.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/spi/spi_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/spi/spi.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/spi/blk_mem_gen_8_to_1_2k.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/gpio/gpio.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tlu/tlu_controller.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tlu/tlu_controller_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tlu/tlu_controller_fsm.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/timestamp/timestamp.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/timestamp/timestamp_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/fx2_to_bus.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/pulse_gen/pulse_gen.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/pulse_gen/pulse_gen_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tdc_s3/tdc_s3.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/tdc_s3/tdc_s3_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/sram_fifo/sram_fifo_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/sram_fifo/sram_fifo.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/3_stage_synchronizer.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/rrp_arbiter/rrp_arbiter.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/ddr_des.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/flag_domain_crossing.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../src/mono_data_rx/mono_data_rx.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../src/mono_data_rx/mono_data_rx_core.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/cdc_reset_sync.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/IDDR_s3.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../../../basil/basil_monopix/firmware/modules/utils/ODDR_s3.v" xil_pn:type="FILE_VERILOG"/>
   </autoManagedFiles>
 
 </project>

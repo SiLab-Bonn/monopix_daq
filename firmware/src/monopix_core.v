@@ -62,7 +62,9 @@ module monopix_mio_core (
 );
 
 // -------  MODULE ADREESSES  ------- //
-localparam GPIO_BASEADDR = 16'h0000;
+localparam VERSION = 8'h04;
+
+localparam GPIO_BASEADDR = 16'h0010;
 localparam GPIO_HIGHADDR = 16'h0100-1;
 
 localparam PULSE_INJ_BASEADDR = 16'h0100;
@@ -90,11 +92,23 @@ localparam SPI_BASEADDR = 16'h1000;
 localparam SPI_HIGHADDR = 16'h2000-1;
 
 localparam FIFO_BASEADDR = 16'h8000;
-localparam FIFO_HIGHADDR = 16'h9000-1;
+localparam FIFO_HIGHADDR = 16'h9000-2;
 
 
 
 // -------  USER MODULES  ------- //
+
+reg RD_VERSION;
+always@(posedge BUS_CLK)
+    if(BUS_ADD == 16'h0000 && BUS_RD)
+        RD_VERSION <= 1;
+    else
+        RD_VERSION <= 0;
+
+assign BUS_DATA = (RD_VERSION) ? VERSION : 8'bz;
+
+
+
 wire [15:0] GPIO_OUT;
 gpio 
 #( 
@@ -223,11 +237,13 @@ pulse_gen
 wire FE_FIFO_READ, FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
     
-wire TDC_FIFO_READ, TDC_FIFO_EMPTY;
+wire TDC_FIFO_READ;
+wire TDC_FIFO_EMPTY;
 wire [31:0] TDC_FIFO_DATA;
 
 
-wire SPI_FIFO_READ, SPI_FIFO_EMPTY;
+wire SPI_FIFO_READ;
+wire SPI_FIFO_EMPTY;
 wire [31:0] SPI_FIFO_DATA;
 assign SPI_FIFO_EMPTY = 1;
 
@@ -250,7 +266,7 @@ rrp_arbiter
     .CLK(BUS_CLK),
 
     .WRITE_REQ({~TS2_FIFO_EMPTY,~TS_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
-    .HOLD_REQ({4'b0,TLU_FIFO_PEEMPT_REQ}),
+    .HOLD_REQ({5'b0}),
     .DATA_IN({TS2_FIFO_DATA, TS_FIFO_DATA, FE_FIFO_DATA, TDC_FIFO_DATA, TLU_FIFO_DATA}),
     .READ_GRANT({TS2_FIFO_READ, TS_FIFO_READ, FE_FIFO_READ, TDC_FIFO_READ, TLU_FIFO_READ}),
 
@@ -322,7 +338,7 @@ tlu_controller #(
     .FIFO_EMPTY(TLU_FIFO_EMPTY),
     .FIFO_DATA(TLU_FIFO_DATA),
     
-    .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
+    .FIFO_PREEMPT_REQ(),   //.FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
     
     .TRIGGER({7'b0,TDC_TRIG_OUT}),
     .TRIGGER_VETO({7'b0,FIFO_FULL}),

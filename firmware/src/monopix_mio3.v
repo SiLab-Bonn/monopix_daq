@@ -26,7 +26,9 @@
 
 ////SiTCP
 `include "WRAP_SiTCP_GMII_XC7K_32K.V"
-`include "SiTCP_XC7K_32K_BBT_V80.v"
+//`include "SiTCP_XC7K_32K_BBT_V80.v"
+`include "SiTCP_XC7K_32K_BBT_V110.V"
+
 `include "TIMER.v"
 
 ////User core and its modules
@@ -327,13 +329,12 @@ module monopix_mio3(
     wire TCP_TX_WR;
     wire [7:0] TCP_TX_DATA;
     
-    
     WRAP_SiTCP_GMII_XC7K_32K sitcp(
         .CLK(BUS_CLK)                    ,    // in    : System Clock >129MHz
         .RST(RST)                    ,    // in    : System reset
         // Configuration parameters
-        .FORCE_DEFAULTn(1'b0)        ,    // in    : Load default parameters
-        .EXT_IP_ADDR(32'hc0a80a10)            ,    // in    : IP address[31:0] //192.168.11.16
+        .FORCE_DEFAULTn(1'b0)        ,    // in   
+        .EXT_IP_ADDR(32'hc0a80a12)            ,    // in    : IP address[31:0] //192.168.10.17
         .EXT_TCP_PORT(16'd24)        ,    // in    : TCP port #[15:0]
         .EXT_RBCP_PORT(16'd4660)        ,    // in    : RBCP port #[15:0]
         .PHY_ADDR(5'd3)            ,    // in    : PHY-device MIF address[4:0]
