@@ -8,7 +8,7 @@ transfer_layer:
       type  : SiUsb
       init : 
         timeout  : 600
-        bit_file : ../firmware/bit/monopix_mio_tlu.bit
+        bit_file : ../firmware/bit/monopix_mio.bit
         avoid_download : True
 
 hw_drivers:
@@ -28,7 +28,7 @@ hw_drivers:
   - name      : gpio
     type      : gpio
     interface : intf
-    base_addr : 0x10000
+    base_addr : 0x10010
     size      : 16
     
   - name      : tlu
