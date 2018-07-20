@@ -98,7 +98,8 @@ class monopix(Dut):
             self['CONF_SR']['TRIM_EN'][bit] = 0
             
     def power_up(self):
-    
+
+        logging.info("Powering up MONOPIX")
         #DACS
         self['BL'].set_voltage(0.75, unit='V')
         self.SET_VALUE['BL']=0.75
@@ -137,6 +138,7 @@ class monopix(Dut):
 
     def power_down(self):
 
+        logging.info("Powering down MONOPIX")
         for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
             self[pwr].set_enable(False)
 

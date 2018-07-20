@@ -407,7 +407,7 @@ class MonopixExtensions():
             self.set_tdac(ret["tdac"])
             self.set_global(LSBdacL=ret["LSBdacL"])
         else:
-            if fname[-4:] ==".h5":
+            if fname[-3:] ==".h5":
                 with tables.open_file(fname) as f:
                     ret=yaml.load(f.root.meta_data.attrs.dac_status)
                     ret.update(yaml.load(f.root.meta_data.attrs.power_status))

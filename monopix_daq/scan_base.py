@@ -28,7 +28,7 @@ class ScanBase(object):
     Base class for scan- / tune- / analyse-class.
     '''
 
-    def __init__(self, dut=None, send_addr="tcp://127.1.0.0:5500"):
+    def __init__(self, dut=None, send_addr="tcp://127.1.0.0:4500"):
         
         #### files
         self.working_dir = os.path.join(os.getcwd(),"output_data")
@@ -80,9 +80,9 @@ class ScanBase(object):
             self.socket=None
         else:
             try:
-                self.socket=online_monitor.sender.init(addr)
+                self.socket=online_monitor.sender.init(self.socket)
             except:
-                self.logger.warn('ScanBase.start:data_send.data_send_init failed addr=%s'%addr)
+                self.logger.warn('ScanBase.start:data_send.data_send_init failed addr=%s'%self.socket)
                 self.socket=None
                 
         ### execute scan
@@ -97,7 +97,9 @@ class ScanBase(object):
         self.meta_data_table.attrs.dac_status = yaml.dump(self.dut.dac_status())
         tmp={}
         for k in self.dut.PIXEL_CONF.keys():
-            tmp[k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+            tmp["pix_"+k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+        for k in ["ColRO_En","MON_EN","INJ_EN","BUFFER_EN","REGULATOR_EN"]:
+            tmp[k]=self.dut["CONF_SR"][k].to01()
         self.meta_data_table.attrs.pixel_conf=yaml.dump(tmp)
         
         self.meta_data_table.attrs.rx_status = yaml.dump(self.dut["data_rx"].get_configuration())

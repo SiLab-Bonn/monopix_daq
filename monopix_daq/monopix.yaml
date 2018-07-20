@@ -10,6 +10,7 @@ transfer_layer:
         timeout  : 600
         bit_file : ../firmware/bit/monopix_mio.bit
         avoid_download : True
+        #no_power_reset : True
 
 hw_drivers:
   - name      : GPAC
@@ -170,6 +171,12 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'VSRC3'}
+
+  - name        : PBias
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC10'}
     
   - name        : INJ_LO
     type        : FunctionalRegister
