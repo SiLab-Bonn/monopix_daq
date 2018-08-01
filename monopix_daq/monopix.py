@@ -143,28 +143,33 @@ class monopix(Dut):
             self[pwr].set_enable(False)
 
     def power_status(self):
-        staus = {}
+        status = {}
        
         for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
-            staus[pwr+'[V]'] =  self[pwr].get_voltage(unit='V')
-            staus[pwr+'[mA]'] = self[pwr].get_current(unit='mA')
-            staus[pwr+"set"] = self.SET_VALUE[pwr]
+            status[pwr+'[V]'] =  self[pwr].get_voltage(unit='V')
+            status[pwr+'[mA]'] = self[pwr].get_current(unit='mA')
+            status[pwr+"set"] = self.SET_VALUE[pwr]
         
-        return staus
+        return status
     
     def dac_status(self):
-        staus = {}
+        status = {}
         
         dac_names = ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']
         for dac in  dac_names:
-            staus[dac] = int(str(self['CONF_SR'][dac]), 2)
+            status[dac] = int(str(self['CONF_SR'][dac]), 2)
             
         for dac in ['BL', 'TH', 'VCascC', 'VCascN']:
-            staus[dac] =  self[dac].get_voltage(unit='V')
-            staus[dac+"set"] = self.SET_VALUE[dac]
+            status[dac] =  self[dac].get_voltage(unit='V')
+            status[dac+"set"] = self.SET_VALUE[dac]
+            
+        status['PBias'] =  self['PBias'].get_current(unit='uA')
+        status['PBias'+"set"] = self.SET_VALUE['PBias']
+            
         for dac in ['INJ_LO', 'INJ_HI']:
-            staus[dac+"set"] = self.SET_VALUE[dac]
-        return staus
+            status[dac+"set"] = self.SET_VALUE[dac]
+        
+        return status
         
     def interpret_tdc_data(self, raw_data, meta_data = []):
         data_type = {'names':['tdc','scan_param_id'], 'formats':['uint16','uint16']}

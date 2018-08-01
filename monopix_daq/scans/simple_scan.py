@@ -114,31 +114,30 @@ class SimpleScan(scan_base.ScanBase):
         if h5_fin == '':
            h5_fin = self.output_filename +'.h5'
 
-        hit_fout=h5_fin[:-7]+'hit.h5'
+        hit_fout=h5_fin[:-7]+'_hit.h5'
         interpreter.interpret_h5(h5_fin,hit_fout,debug=3)
         self.logger.info('interpreted file %s'%(hit_fout))
 
-        tlu_fout=h5_fin[:-7]+'tlu.h5'
+        tlu_fout=h5_fin[:-7]+'_tlu.h5'
         event_builder.build_h5(h5_fin,hit_fout,tlu_fout,event=event)
         self.logger.info('event_built file %s'%(tlu_fout))
 
-        ev_fout=h5_fin[:-7]+'ev.h5'
+        ev_fout=h5_fin[:-7]+'_ev.h5'
         event_builder.convert_h5(tlu_fout,ev_fout)
         self.logger.info('converted file %s'%(ev_fout))
 
-        cl_fout=h5_fin[:-7]+'cl.h5'
+        cl_fout=h5_fin[:-7]+'_cl.h5'
         clusterizer.clusterize_h5(ev_fout,cl_fout)
         
         #np_fout=h5_fin[:-7]+'hit.npy'
         #monopix_interpreter.mk_plot(h5_fout,np_fout)
     
 if __name__ == "__main__":
-    from monopix_daq import monopix_extensions
-    m=monopix_extensions.MonopixExtentions()
-    
+    from monopix_daq.monopix_extension import MonopixExtensions
+  
     #fname=time.strftime("%Y%m%d_%H%M%S_simples_can")
     #fname=(os.path.join(monopix_extra_functions.OUPUT_DIR,"simple_scan"),fname)
-    
-    scan = SimpleScan(m,fname=fname,sender_addr="tcp://127.0.0.1:6500")
+    m_ex = MonopixExtensions("../monopix_mio3.yaml")
+    scan = SimpleScan(dut_extentions=m_ex, sender_addr="tcp://127.0.0.1:5500")
     scan.start(**local_configuration)
     scan.analyze()

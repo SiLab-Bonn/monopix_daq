@@ -57,7 +57,7 @@ python setup.py develop
     4. Check that the correct path to the bit file is set in the "/path-to-monopix_daq/monopix_daq/monopix.yaml" file.
 
 - For MIO3 board:
-    NOTE: There is not a compiled version of firmware for MIO3. In order to do generate, an additional working SiTCP library is also needed -It can be acquired [here](https://github.com/SiLab-Bonn/online_monitor)-.
+    NOTE: There is not a compiled version of firmware for MIO3. In order to do generate, an additional working SiTCP library is also needed -It can be acquired [here](https://sitcp.bbtech.co.jp/?ml_lang=en)-.
     1. Use Vivado to open the "/path-to-monopix_daq/firmware/vivado/monopix_mio3.xpr" project.
     2. Add the SiTCP folder with libraries to "/path-to-monopix_daq/firmware/src/"
     3. In Vivado, select "Project Settings" and then clic on "Verilog Options". In the "Verilog Include Files Search Paths", add the following basil paths:

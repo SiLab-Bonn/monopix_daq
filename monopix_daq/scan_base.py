@@ -9,7 +9,7 @@ import numpy as np
 from monopix import monopix
 from fifo_readout import FifoReadout
 from contextlib import contextmanager
-
+from basil.dut import Dut
 import online_monitor.sender
 
 class MetaTable(tb.IsDescription):
@@ -28,22 +28,22 @@ class ScanBase(object):
     Base class for scan- / tune- / analyse-class.
     '''
 
-    def __init__(self, dut=None, send_addr="tcp://127.1.0.0:4500"):
+    def __init__(self, dut=None, send_addr="tcp://127.1.0.0:5500"):
         
         #### files
-        self.working_dir = os.path.join(os.getcwd(),"output_data")
+        self.working_dir = os.path.join(os.getcwd(),"scans/output_data")
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
-    
+            
+        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
+        self.output_filename = os.path.join(self.working_dir, self.run_name)    
+        
         self.fh = logging.FileHandler(self.output_filename + '.log')
         self.fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
         self.fh.setLevel(logging.DEBUG)
         self.logger = logging.getLogger()
         self.logger.addHandler(self.fh)
         logging.info('Initializing %s', self.__class__.__name__)
-
-        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
-        self.output_filename = os.path.join(self.working_dir, self.run_name)
         
         #### monitor
         self.socket=send_addr
@@ -71,8 +71,7 @@ class ScanBase(object):
         filename = self.output_filename +'.h5'
         self.h5_file = tb.open_file(filename, mode='w', title=self.scan_id)
         self.raw_data_earray = self.h5_file.create_earray (self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
-        self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)
-        
+        self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)        
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
         
         ### open socket for monitor
@@ -123,6 +122,80 @@ class ScanBase(object):
 
     def scan(self, **kwargs):
         raise NotImplementedError('ScanBase.scan() not implemented')
+
+    def configure(self, repeat=100, scan_range=[0.05, 0.35, 0.025], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), 
+        threshold_overdrive=0.001, LSB_value=32, VPFB_value=32, **kwargs):
+        
+        self.INJ_LO = 0.2
+        
+        try:
+            pulser_path = os.path.join(os.getcwd(),"agilent33250a_pyserial.yaml")
+            #self.pulser = Dut('../agilent33250a_pyserial.yaml')  # should be absolute path
+            self.pulser = Dut(pulser_path)
+            self.pulser.init()
+            logging.info('Connected to ' + str(self.pulser['Pulser'].get_info()))
+        except (RuntimeError, OSError, IOError):
+            self.pulser = None
+            logging.info('External injector not connected. Switch to internal one')
+
+        self.dut['INJ_LO'].set_voltage(self.INJ_LO, unit='V')
+
+        self.dut['TH'].set_voltage(1.5, unit='V')
+        self.dut['VDDD'].set_voltage(1.8, unit='V')
+        self.dut['VDDA'].set_voltage(1.8, unit='V')
+        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
+        self.dut['VPC'].set_voltage(1.5, unit='V')
+
+        self.dut['inj'].set_delay(5 * 256)
+        self.dut['inj'].set_width(5 * 256)
+        self.dut['inj'].set_repeat(repeat)
+        self.dut['inj'].set_en(True)
+        
+        self.dut['gate_tdc'].set_delay(10)
+        self.dut['gate_tdc'].set_width(2)
+        self.dut['gate_tdc'].set_repeat(1)
+        self.dut['gate_tdc'].set_en(False)
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
+
+        self.dut["CONF_SR"]["PREAMP_EN"] = 1
+        self.dut["CONF_SR"]["INJECT_EN"] = 1
+        self.dut["CONF_SR"]["MONITOR_EN"] = 1
+        self.dut["CONF_SR"]["REGULATOR_EN"] = 1
+        self.dut["CONF_SR"]["BUFFER_EN"] = 1
+        
+        self.dut["CONF_SR"]["LSBdacL"] = LSB_value
+        self.dut["CONF_SR"]["VPFB"] = VPFB_value
+
+        self.dut.write_global_conf()
+        
+        self.dut['CONF']['EN_OUT_CLK'] = 1
+        self.dut['CONF']['EN_BX_CLK'] = 1
+        self.dut['CONF']['EN_DRIVER'] = 1
+        self.dut['CONF']['EN_DATA_CMOS'] = 0
+        self.dut['CONF']['RESET_GRAY'] = 1
+        self.dut['CONF']['EN_TEST_PATTERN'] = 0
+       
+        self.dut['CONF']['RESET'] = 1
+        self.dut['CONF'].write()
+        time.sleep(0.001)
+        self.dut['CONF']['RESET'] = 0
+        self.dut['CONF'].write()
+        time.sleep(0.001)
+ 
+        self.dut['CONF']['RESET_GRAY'] = 0
+        self.dut['CONF'].write()
+ 
+        self.dut['CONF_SR']['MON_EN'].setall(False)
+        self.dut['CONF_SR']['INJ_EN'].setall(False)
+        self.dut['CONF_SR']['ColRO_En'].setall(False)
+ 
+        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
+        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
+        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
+        
+        self.dut.write_pixel_conf()
+        self.dut.write_global_conf()
 
     @contextmanager
     def readout(self, *args, **kwargs):
