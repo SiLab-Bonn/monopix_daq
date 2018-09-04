@@ -41,7 +41,7 @@ class ScanBase(object):
         self.fh = logging.FileHandler(self.output_filename + '.log')
         self.fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
         self.fh.setLevel(logging.DEBUG)
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.addHandler(self.fh)
         logging.info('Initializing %s', self.__class__.__name__)
         
@@ -124,7 +124,7 @@ class ScanBase(object):
         raise NotImplementedError('ScanBase.scan() not implemented')
 
     def configure(self, repeat=100, scan_range=[0.05, 0.35, 0.025], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), 
-        threshold_overdrive=0.001, LSB_value=32, VPFB_value=32, **kwargs):
+        threshold_overdrive=0.001, LSB_value=45, VPFB_value=32, inj_delay= 5*256, inj_width=5*256,**kwargs):
         
         self.INJ_LO = 0.2
         
@@ -146,16 +146,17 @@ class ScanBase(object):
         self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
         self.dut['VPC'].set_voltage(1.5, unit='V')
 
-        self.dut['inj'].set_delay(5 * 256)
-        self.dut['inj'].set_width(5 * 256)
+        self.dut['inj'].set_delay(inj_delay+15)
+        self.dut['inj'].set_width(inj_width-15)
         self.dut['inj'].set_repeat(repeat)
         self.dut['inj'].set_en(True)
-        
+                        
         self.dut['gate_tdc'].set_delay(10)
         self.dut['gate_tdc'].set_width(2)
         self.dut['gate_tdc'].set_repeat(1)
         self.dut['gate_tdc'].set_en(False)
-        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
+                
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 0
 
         self.dut["CONF_SR"]["PREAMP_EN"] = 1
         self.dut["CONF_SR"]["INJECT_EN"] = 1
@@ -261,6 +262,16 @@ class ScanBase(object):
             self.logger.error('%s%s Aborting run...', msg, msg[-1] )
         else:
             self.logger.error('Aborting run...')
+            
+    def logTemperature(self, debug=False):
+        try:
+            temp=self.dut.get_temperature()
+            self.logger.info('Temperature = %.2fC' % (temp))
+        except:
+            if debug==True:
+                self.logger.info('Not able to readout temperature')
+            pass
+
             
     def close(self):
         ## TODO close all streams once again

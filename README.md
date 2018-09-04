@@ -6,7 +6,7 @@ DAQ for MONOPIX prototype based on [Basil](https://github.com/SiLab-Bonn/basil) 
 
 ## Required packages
 
-- Install [conda](http://conda.pydata.org) for python and needed packages :
+- Install [conda](http://conda.pydata.org) for python and needed packages:
 ```bash
 curl https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -o miniconda.sh
 bash miniconda.sh -b -p $HOME/miniconda
@@ -15,7 +15,7 @@ conda update --yes conda
 conda install --yes numpy bitarray pytest pyyaml numba mock matplotlib scipy pytables progressbar
 ```
 
-- Install [pySiLibUSB](https://github.com/SiLab-Bonn/pySiLibUSB) for USB support
+- Install [pySiLibUSB](https://github.com/SiLab-Bonn/pySiLibUSB) for USB support.
 
 - Download and install [Basil](https://github.com/SiLab-Bonn/basil) for data acquisition and generic firmware modules (tested with v2.4.4):
 ```bash
@@ -25,7 +25,14 @@ python setup.py develop
 cd ..
 ```
 
-- Clone monopix_daq
+- Download and setup [pixel_clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) 
+```bash
+git clone https://github.com/SiLab-Bonn/pixel_clusterizer
+cd pixel_clusterizer
+python setup.py develop
+```
+
+- Download and setup [monopix_daq](https://github.com/SiLab-Bonn/monopix_daq.git) 
 ```bash
 git clone https://github.com/SiLab-Bonn/monopix_daq.git
 cd monopix_daq

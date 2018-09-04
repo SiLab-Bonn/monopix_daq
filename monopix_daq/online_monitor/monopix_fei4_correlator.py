@@ -180,7 +180,7 @@ class HitCorrelator(Transceiver):
         
             if 'te' in actual_dut_data[1]['hits'].dtype.names:  # MONOPIX data has keyword 'te'
                 tmp = actual_dut_data[1]['hits']
-                monopix_hits=self.mono_builder.run(tmp,rx_shift=3,rx_stop=96,
+                monopix_hits=self.mono_builder.run(tmp,rx_shift=3,rx_stop=138,
                              row_offset=1,row_factor=1,col_offset=1,col_factor=1,tr=self.transpose,debug=0)
                 
                 #print "MONO DATA====",len(tmp[tmp["col"]==0xFF]), len(monopix_hits)

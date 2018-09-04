@@ -1,6 +1,8 @@
-
 import numpy as np
+import logging
 from monopix_daq.analysis.interpreter import InterRaw 
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 def interpret_rx_data_scan(raw_data, meta_data):
         data_type = {'names':['col','row','le','te','scan_param_id'], 'formats':['uint16','uint16','uint8','uint8','uint16']}
@@ -31,6 +33,6 @@ def interpret_rx_data_scan(raw_data, meta_data):
 def interpret_rx_data(raw_data,delete_noise=True):
     inter=InterRaw()
     ret=inter.mk_list(raw_data,delete_noise)
-    print 'noise_data',len(ret[ret['cnt'] > 0])
+    logging.info('Noise Data: %i',len(ret[ret['cnt'] > 0]))
     return ret[['col','row','le','te']][ret["col"]<36]
     

@@ -197,6 +197,29 @@ class monopix(Dut):
     def interpret_rx_data(self, raw_data, meta_data = []):
         raise(NotImplementedError)
         
+    def get_temperature(self,n=10, debug_temp=False):
+        vol=self["NTC"].get_voltage()
+        #print "Voltage on NTC ", vol
+        #if not (np.abs(vol)>0.5 and np.abs(vol)<1.5):
+        if not (vol>0.5 and vol<1.5):
+          for i in np.arange(-200,200,2):
+            self["NTC"].set_current(i,unit="uA")
+            time.sleep(0.1)
+            vol=self["NTC"].get_voltage()
+            if debug_temp == True:
+                print "Temperature() set_curr=",i,"vol=",vol
+            if vol>0.7 and vol<1.3:
+                break
+            else:
+                pass
+          #logging.warn("Temperature() current is set to %f"%i)
+          if i>190:
+            logging.warn("Temperature() NTC error")
+        temp=np.empty(n)
+        for i in range(len(temp)):
+          temp[i]=self["NTC"].get_temperature("C")
+          #print temp[i]
+        return np.average(temp[temp!=float("nan")]) 
         
 if __name__=="__main__":
     
