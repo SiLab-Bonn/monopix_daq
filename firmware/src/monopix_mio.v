@@ -26,13 +26,13 @@
 `include "timestamp/timestamp.v"
 `include "timestamp/timestamp_core.v"
 
+`include "timestamp640/timestamp640.v"
+`include "timestamp640/timestamp640_core.v"
+
 `include "utils/fx2_to_bus.v"
 
 `include "pulse_gen/pulse_gen.v"
 `include "pulse_gen/pulse_gen_core.v"
-
-`include "tdc_s3/tdc_s3.v"
-`include "tdc_s3/tdc_s3_core.v"
 
 `include "sram_fifo/sram_fifo_core.v"
 `include "sram_fifo/sram_fifo.v"

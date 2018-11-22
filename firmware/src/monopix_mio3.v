@@ -1,28 +1,29 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-`include "utils/bus_to_ip.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/bus_to_ip.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/clock_divider.v"
 
-`include "utils/cdc_syncfifo.v"
-`include "utils/generic_fifo.v"
-`include "utils/cdc_pulse_sync.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/cdc_syncfifo.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/generic_fifo.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/cdc_pulse_sync.v"
 
-`include "utils/CG_MOD_pos.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/CG_MOD_pos.v"
 
-`include "utils/3_stage_synchronizer.v"
-`include "rrp_arbiter/rrp_arbiter.v"
-`include "utils/ddr_des.v"
-`include "utils/flag_domain_crossing.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/3_stage_synchronizer.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/rrp_arbiter/rrp_arbiter.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/ddr_des.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/flag_domain_crossing.v"
 
-`include "utils/cdc_reset_sync.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/cdc_reset_sync.v"
 
-`include "utils/fifo_32_to_8.v"
-`include "utils/clock_divider.v"
-`include "i2c/i2c.v"
-`include "i2c/i2c_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/fifo_32_to_8.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/clock_divider.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/i2c/i2c.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/i2c/i2c_core.v"
 
-`include "utils/rgmii_io.v"
-`include "utils/rbcp_to_bus.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/rgmii_io.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/rbcp_to_bus.v"
 
 ////SiTCP
 `include "WRAP_SiTCP_GMII_XC7K_32K.V"
@@ -34,24 +35,24 @@
 ////User core and its modules
 `include "monopix_core.v"
 
-`include "spi/spi_core.v"
-`include "spi/spi.v"
-`include "spi/blk_mem_gen_8_to_1_2k.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/spi/spi_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/spi/spi.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/spi/blk_mem_gen_8_to_1_2k.v"
 
-`include "gpio/gpio.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/gpio/gpio.v"
 
-`include "tlu/tlu_controller.v"
-`include "tlu/tlu_controller_core.v"
-`include "tlu/tlu_controller_fsm.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller_fsm.v"
 
-`include "timestamp/timestamp.v"
-`include "timestamp/timestamp_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp640/timestamp640.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp640/timestamp640_core.v"
 
-`include "pulse_gen/pulse_gen.v"
-`include "pulse_gen/pulse_gen_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp/timestamp.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp/timestamp_core.v"
 
-`include "tdc_s3/tdc_s3.v"
-`include "tdc_s3/tdc_s3_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/pulse_gen/pulse_gen.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/pulse_gen/pulse_gen_core.v"
 
 `include "mono_data_rx/mono_data_rx.v"
 `include "mono_data_rx/mono_data_rx_core.v"
@@ -68,7 +69,7 @@ module monopix_mio3(
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
     
-    input wire SR_OUT,    //DIN4
+    input wire  SR_OUT,    //DIN4
     output wire SR_IN,    //DOUT11
     output wire LDPIX,    //DOUT15
     output wire CKCONF,   //DOUT10
@@ -76,7 +77,7 @@ module monopix_mio3(
     output wire SR_EN,    //DOUT13
     output wire RESET,    //DOUT14
     output wire INJECTION,
-    input wire MONITOR,   //DIN1
+    input wire  MONITOR,   //DIN1
     
     output wire CLK_BX,   //DOUT1
     output wire READ,     //DOUT2
@@ -87,11 +88,13 @@ module monopix_mio3(
     output wire EN_DRIVER,        //DOUT7
     output wire EN_DATA_CMOS,     //DOUT8
     output wire CLK_OUT,          //DOUT9
-    input wire TOKEN,             //DIN2
-    input wire DATA,              //DIN0
-    input wire DATA_LVDS,         //DIN8_LVDS0
+    input wire  TOKEN,             //DIN2
+    input wire  DATA,              //DIN0
+    input wire  DATA_LVDS,         //DIN8_LVDS0
  
-    output wire INJECTION_TRIG, //DOUT0
+    input  wire INJECTION_TS_IN, //flatcable 6
+    output wire INJECTION_OUT,    //flatcable 5
+    output wire DEBUG,
     
     // I2C
     inout wire SDA,
@@ -334,7 +337,7 @@ module monopix_mio3(
         .RST(RST)                    ,    // in    : System reset
         // Configuration parameters
         .FORCE_DEFAULTn(1'b0)        ,    // in   
-        .EXT_IP_ADDR(32'hc0a80a10)            ,    // in    : IP address[31:0] //192.168.10.16
+        .EXT_IP_ADDR(32'hc0a80a13)            ,    // in    : IP address[31:0] 192.168.10.19  16=telescope, 17,18=oldFPGA, 19=newFPGA
         .EXT_TCP_PORT(16'd24)        ,    // in    : TCP port #[15:0]
         .EXT_RBCP_PORT(16'd4660)        ,    // in    : RBCP port #[15:0]
         .PHY_ADDR(5'd3)            ,    // in    : PHY-device MIF address[4:0]
@@ -525,7 +528,7 @@ monopix_mio_core i_monopix_mio_core(
     .LED(LED[4:0]),
     
     .LEMO_RX({LEMO_RX2,LEMO_RX}),
-    .LEMO_TX({INJECTION_TRIG,LEMO_TX}), // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+    .LEMO_TX({INJECTION_OUT,LEMO_TX}), // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     .RJ45_RESET(RJ45_RESET),
     .RJ45_TRIGGER(RJ45_TRIGGER),
 
@@ -551,8 +554,10 @@ monopix_mio_core i_monopix_mio_core(
     .TOKEN(TOKEN),     //DIN2
     .DATA(DATA),       //DIN0
     .DATA_LVDS(DATA_LVDS),              //DIN8_LVDS0
- 
-    .DEBUG()     //nc
+    
+    .INJECTION_TS_IN(INJECTION_TS_IN),
+    .DEBUG(DEBUG)
+
 );
 
 

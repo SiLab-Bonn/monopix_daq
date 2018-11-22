@@ -57,21 +57,16 @@ module monopix_mio_core (
     input wire DATA,              //DIN0
     input wire DATA_LVDS,         //DIN8_LVDS0
  
+    input  wire INJECTION_TS_IN,
     output wire DEBUG //DOUT0
-
 );
 
 // -------  MODULE ADREESSES  ------- //
-localparam VERSION = 8'h04;
-
 localparam GPIO_BASEADDR = 16'h0010;
 localparam GPIO_HIGHADDR = 16'h0100-1;
 
 localparam PULSE_INJ_BASEADDR = 16'h0100;
 localparam PULSE_INJ_HIGHADDR = 16'h0200-1;
-
-localparam TDC_BASEADDR = 16'h0300;
-localparam TDC_HIGHADDR = 16'h0400-1;
 
 localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
 localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
@@ -85,8 +80,14 @@ localparam TLU_HIGHADDR = 16'h0700-1;
 localparam TS_BASEADDR = 16'h0700;
 localparam TS_HIGHADDR = 16'h0800-1;
 
-localparam TS2_BASEADDR = 16'h0800;
-localparam TS2_HIGHADDR = 16'h0900-1;
+localparam TS_TLU_BASEADDR = 16'h0800;
+localparam TS_TLU_HIGHADDR = 16'h0900-1;
+
+localparam TS_INJ_BASEADDR = 16'h0900;
+localparam TS_INJ_HIGHADDR = 16'h0a00-1;
+
+localparam TS_MON_BASEADDR = 16'h0300;
+localparam TS_MON_HIGHADDR = 16'h0400-1;
 
 localparam SPI_BASEADDR = 16'h1000;
 localparam SPI_HIGHADDR = 16'h2000-1;
@@ -97,6 +98,7 @@ localparam FIFO_HIGHADDR = 16'h9000-2;
 
 
 // -------  USER MODULES  ------- //
+localparam VERSION = 8'h100;
 
 reg RD_VERSION;
 always@(posedge BUS_CLK)
@@ -104,10 +106,7 @@ always@(posedge BUS_CLK)
         RD_VERSION <= 1;
     else
         RD_VERSION <= 0;
-
 assign BUS_DATA = (RD_VERSION) ? VERSION : 8'bz;
-
-
 
 wire [15:0] GPIO_OUT;
 gpio 
@@ -129,8 +128,7 @@ gpio
 
 wire RESET_CONF, LDDAC_CONF, LDPIX_CONF, SREN_CONF, EN_BX_CLK_CONF, EN_OUT_CLK_CONF, RESET_GRAY_CONF;
 wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF, EN_GRAY_RESET_WITH_TDC_PULSE;
-wire EN_GATE_TIMESTAMP,EN_DEBUG_TIMESTAMP;
-wire EN_NEG_TIMESTAMP2;
+wire [1:0] TIMESTAMP_SOURCE;
 
 assign RESET_CONF = GPIO_OUT[0];
 assign LDDAC_CONF = GPIO_OUT[1];
@@ -145,14 +143,20 @@ assign EN_TEST_PATTERN_CONF = GPIO_OUT[7];
 assign EN_DRIVER_CONF = GPIO_OUT[8];
 assign EN_DATA_CMOS_CONF = GPIO_OUT[9];
 assign EN_GRAY_RESET_WITH_TDC_PULSE = GPIO_OUT[10];
-assign EN_GATE_TIMESTAMP = GPIO_OUT[11];
-assign EN_DEBUG_TIMESTAMP= GPIO_OUT[12];
-assign EN_NEG_TIMESTAMP2 = GPIO_OUT[13];
+assign TIMESTAMP_SOURCE = GPIO_OUT[12:11];
 
 
 wire CONF_CLK;
 assign CONF_CLK = CLK8;
-    
+//clock_divider #(
+//    .DIVISOR(400)
+//) i_clock_divisor_40MHz_to_100kHz (
+//    .CLK(CLK40),
+//    .RESET(1'b0),
+//    .CE(),
+//    .CLOCK(CONF_CLK)
+//);
+
 wire SCLK, SDI, SDO, SEN, SLD;
 spi 
 #( 
@@ -241,7 +245,6 @@ wire TDC_FIFO_READ;
 wire TDC_FIFO_EMPTY;
 wire [31:0] TDC_FIFO_DATA;
 
-
 wire SPI_FIFO_READ;
 wire SPI_FIFO_EMPTY;
 wire [31:0] SPI_FIFO_DATA;
@@ -253,71 +256,45 @@ wire [31:0] TLU_FIFO_DATA;
 wire TS_FIFO_READ,TS_FIFO_EMPTY;
 wire [31:0] TS_FIFO_DATA;
 
-wire TS2_FIFO_READ,TS2_FIFO_EMPTY;
-wire [31:0] TS2_FIFO_DATA;
+wire TS_TLU_FIFO_READ,TS_TLU_FIFO_EMPTY;
+wire [31:0] TS_TLU_FIFO_DATA;
 
+wire TS_MON_FIFO_READ,TS_MON_FIFO_EMPTY;
+wire [31:0] TS_MON_FIFO_DATA;
+wire TS_MON_FIFO_READ_TRAILING,TS_MON_FIFO_EMPTY_TRAILING;
+wire [31:0] TS_MON_FIFO_DATA_TRAILING;
+
+wire TS_INJ_FIFO_READ,TS_INJ_FIFO_EMPTY;
+wire [31:0] TS_INJ_FIFO_DATA;
 
 rrp_arbiter 
 #( 
-    .WIDTH(5)
+    .WIDTH(7)
 ) rrp_arbiter
 (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~TS2_FIFO_EMPTY,~TS_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
-    .HOLD_REQ({5'b0}),
-    .DATA_IN({TS2_FIFO_DATA, TS_FIFO_DATA, FE_FIFO_DATA, TDC_FIFO_DATA, TLU_FIFO_DATA}),
-    .READ_GRANT({TS2_FIFO_READ, TS_FIFO_READ, FE_FIFO_READ, TDC_FIFO_READ, TLU_FIFO_READ}),
-
+    .WRITE_REQ({ ~TS_INJ_FIFO_EMPTY,~TS_MON_FIFO_EMPTY,~TS_MON_FIFO_EMPTY_TRAILING, 
+                 ~TS_FIFO_EMPTY,~FE_FIFO_EMPTY, ~TS_TLU_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
+    .HOLD_REQ({7'b0}),
+    .DATA_IN({TS_INJ_FIFO_DATA, TS_MON_FIFO_DATA, TS_MON_FIFO_DATA_TRAILING,
+              TS_FIFO_DATA, FE_FIFO_DATA, TS_TLU_FIFO_DATA, TLU_FIFO_DATA}),
+    .READ_GRANT({TS_INJ_FIFO_READ,TS_MON_FIFO_READ,TS_MON_FIFO_READ_TRAILING, 
+                 TS_FIFO_READ, FE_FIFO_READ, TS_TLU_FIFO_READ, TLU_FIFO_READ}),
+                 
     .READY_OUT(ARB_READY_OUT),
     .WRITE_OUT(ARB_WRITE_OUT),
     .DATA_OUT(ARB_DATA_OUT)
     );
-    
 
-wire TDC_TRIG_OUT,TDC_TDC_OUT;
-wire [64:0] TIMESTAMP;
-
-tdc_s3 #(
-    .BASEADDR(TDC_BASEADDR),
-    .HIGHADDR(TDC_HIGHADDR),
-    .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0100), 
-    .FAST_TDC(1),
-    .FAST_TRIGGER(1)
-) tdc (
-    .CLK320(CLK320),
-    .CLK160(CLK160),
-    .DV_CLK(CLK40),
-    .TDC_IN(MONITOR),
-    .TDC_OUT(TDC_TDC_OUT),
-    //.TRIG_IN(1'b0),
-    .TRIG_IN(LEMO_RX[0]),
-    .TRIG_OUT(TDC_TRIG_OUT),
-
-    .FIFO_READ(TDC_FIFO_READ),
-    .FIFO_EMPTY(TDC_FIFO_EMPTY),
-    .FIFO_DATA(TDC_FIFO_DATA),
-
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-
-    .ARM_TDC(1'b0),
-    .EXT_EN(GATE_TDC),
-    
-    .TIMESTAMP(TIMESTAMP[15:0])
-);
 
 
 //// TLU
 wire TLU_BUSY,TLU_CLOCK;
 wire TRIGGER_ACKNOWLEDGE_FLAG,TRIGGER_ACCEPTED_FLAG;
 assign TRIGGER_ACKNOWLEDGE_FLAG = TRIGGER_ACCEPTED_FLAG;
+wire [64:0] TIMESTAMP;
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
@@ -340,7 +317,7 @@ tlu_controller #(
     
     .FIFO_PREEMPT_REQ(),   //.FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
     
-    .TRIGGER({7'b0,TDC_TRIG_OUT}),
+    .TRIGGER({8'b0}),
     .TRIGGER_VETO({7'b0,FIFO_FULL}),
 	 
     .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
@@ -348,6 +325,7 @@ tlu_controller #(
 	 //.EXT_TRIGGER_ENABLE(TLU_EXT_TRIGGER_ENABLE)
 	 
     .TLU_TRIGGER(RJ45_TRIGGER),
+    //.TLU_TRIGGER(1'b0),
     .TLU_RESET(RJ45_RESET),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
@@ -356,13 +334,13 @@ tlu_controller #(
 );
 
 wire DI;
-assign DI = EN_DEBUG_TIMESTAMP? (EN_GATE_TIMESTAMP? INJECTION:TOKEN) : (EN_GATE_TIMESTAMP? GATE_TDC:LEMO_RX[1]);
-
+assign DI = TIMESTAMP_SOURCE[0]? LEMO_RX[1]: GATE_TDC;
+//assign DI = TIMESTAMP_SOURCE[1]? (TIMESTAMP_SOURCE[0]? INJECTION:GATE_TDC) : (TIMESTAMP_SOURCE[0]? LEMO_RX[1]:LEMO_RX[0]);
 timestamp
 #(
     .BASEADDR(TS_BASEADDR),
     .HIGHADDR(TS_HIGHADDR),
-    .IDENTIFIER(4'b0101)
+    .IDENTIFIER(4'b0100)
 )i_timestamp(
     .BUS_CLK(BUS_CLK),
     .BUS_ADD(BUS_ADD),
@@ -370,28 +348,79 @@ timestamp
     .BUS_RST(BUS_RST),
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
-    
+      
     .CLK(CLK40),
-	 .DI(DI),
-	 .EXT_ENABLE(1'b0),
-	 .EXT_TIMESTAMP(TIMESTAMP),
+    .DI(DI),
+    .EXT_TIMESTAMP(TIMESTAMP),
+    .EXT_ENABLE(1'b1),
 
     .FIFO_READ(TS_FIFO_READ),
     .FIFO_EMPTY(TS_FIFO_EMPTY),
     .FIFO_DATA(TS_FIFO_DATA)
-    
 );
 
-wire DI2;
-//assign DI2 = EN_NEG_TIMESTAMP2? ~LEMO_RX[0]:LEMO_RX[0];
-assign DI2 = EN_NEG_TIMESTAMP2? ~TDC_TRIG_OUT:TDC_TRIG_OUT;
 
-timestamp
+
+timestamp640
 #(
-    .BASEADDR(TS2_BASEADDR),
-    .HIGHADDR(TS2_HIGHADDR),
+    .BASEADDR(TS_INJ_BASEADDR),
+    .HIGHADDR(TS_INJ_HIGHADDR),
+    .IDENTIFIER(4'b0101)
+)i_timestamp_inj(
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(BUS_WR),
+    .BUS_RD(BUS_RD),
+      
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .CLK40(CLK40),
+    .DI(INJECTION_TS_IN),
+    .EXT_TIMESTAMP(TIMESTAMP),
+    .EXT_ENABLE(GATE_TDC),
+
+    .FIFO_READ(TS_INJ_FIFO_READ),
+    .FIFO_EMPTY(TS_INJ_FIFO_EMPTY),
+    .FIFO_DATA(TS_INJ_FIFO_DATA)
+);
+
+timestamp640
+#(
+    .BASEADDR(TS_MON_BASEADDR),
+    .HIGHADDR(TS_MON_HIGHADDR),
     .IDENTIFIER(4'b0110)
-)i_timestamp2(
+)i_timestamp160_mon(
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(BUS_WR),
+    .BUS_RD(BUS_RD),
+      
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .CLK40(CLK40),
+    .DI(MONITOR),
+    .EXT_TIMESTAMP(TIMESTAMP),
+    .EXT_ENABLE(1'b1),
+
+    .FIFO_READ(TS_MON_FIFO_READ),
+    .FIFO_EMPTY(TS_MON_FIFO_EMPTY),
+    .FIFO_DATA(TS_MON_FIFO_DATA),
+    
+    .FIFO_READ_TRAILING(TS_MON_FIFO_READ_TRAILING),
+    .FIFO_EMPTY_TRAILING(TS_MON_FIFO_EMPTY_TRAILING),
+    .FIFO_DATA_TRAILING(TS_MON_FIFO_DATA_TRAILING)
+);
+
+timestamp640
+#(
+    .BASEADDR(TS_TLU_BASEADDR),
+    .HIGHADDR(TS_TLU_HIGHADDR),
+    .IDENTIFIER(4'b0111)
+)i_timestamp160_tlu(
     .BUS_CLK(BUS_CLK),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
@@ -399,14 +428,16 @@ timestamp
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
     
-    .CLK(CLK40),
-    .DI(DI2),
-    .EXT_ENABLE(1'b0),
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .CLK40(CLK40),
+    .DI(RJ45_TRIGGER),
     .EXT_TIMESTAMP(TIMESTAMP),
+    .EXT_ENABLE(TLU_BUSY),
 
-    .FIFO_READ(TS2_FIFO_READ),
-    .FIFO_EMPTY(TS2_FIFO_EMPTY),
-    .FIFO_DATA(TS2_FIFO_DATA)
+    .FIFO_READ(TS_TLU_FIFO_READ),
+    .FIFO_EMPTY(TS_TLU_FIFO_EMPTY),
+    .FIFO_DATA(TS_TLU_FIFO_DATA)
 );
 
 mono_data_rx #(
@@ -469,5 +500,5 @@ assign LED[4] = 0;
 assign LEMO_TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign LEMO_TX[1] = TLU_BUSY;  // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has 
 assign LEMO_TX[2] = INJECTION; // Do not use this port (no TX2 in MIO3)
-assign DEBUG = GATE_TDC;
+assign DEBUG = MONITOR;
 endmodule

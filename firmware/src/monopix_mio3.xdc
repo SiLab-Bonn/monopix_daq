@@ -216,11 +216,9 @@ set_property PACKAGE_PIN F15 [get_ports LDPIX]
 set_property IOSTANDARD LVCMOS33 [get_ports LDPIX]
 
 # DATA connected to DIN[0]
-set_property PACKAGE_PIN T24 [get_ports DATA]
 set_property IOSTANDARD LVCMOS33 [get_ports DATA]
 
 # MONITOR connected to DIN[1]
-set_property PACKAGE_PIN T25 [get_ports MONITOR]
 set_property IOSTANDARD LVCMOS33 [get_ports MONITOR]
 
 # TOKEN connected to DIN[2]
@@ -243,5 +241,19 @@ set_property PACKAGE_PIN V21 [get_ports RJ45_TRIGGER]
 set_property PACKAGE_PIN Y25 [get_ports RJ45_RESET]
 set_property IOSTANDARD LVCMOS33 [get_ports RJ45_RESET]
 set_property IOSTANDARD LVCMOS33 [get_ports RJ45_TRIGGER]
-set_property PACKAGE_PIN AD21 [get_ports INJECTION_TRIG]
-set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_TRIG]
+
+set_property PACKAGE_PIN G12 [get_ports INJECTION_OUT]
+set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_OUT]
+set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_TS_IN]
+set_property SLEW FAST [get_ports INJECTION_OUT]
+set_property DRIVE 16 [get_ports INJECTION_OUT]
+
+set_property PACKAGE_PIN T25 [get_ports MONITOR]
+set_property PACKAGE_PIN F12 [get_ports INJECTION_TS_IN]
+set_property PACKAGE_PIN T24 [get_ports DATA]
+
+
+set_property PACKAGE_PIN AD21 [get_ports DEBUG]
+set_property IOSTANDARD LVCMOS33 [get_ports DEBUG]
+set_property SLEW FAST [get_ports DEBUG]
+set_property DRIVE 16 [get_ports DEBUG]
