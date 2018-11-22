@@ -201,32 +201,7 @@ class MonopixExtensions():
         self.dut["tlu"]["TRIGGER_ENABLE"]=0
         self.logger.info("stop_tlu:") 
         
-    def set_timestamp(self,src="rx1"):
-        if src=="gate":
-            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 1
-            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 0
-        elif src=="inj":
-            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 1
-            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 1
-        elif src=="token":
-            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 0
-            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 1
-        else: #"rx1'
-            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 0
-            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 0
-        self.dut['CONF'].write()
-        self.dut["timestamp"].reset()
-        self.dut["timestamp"]["EXT_TIMESTAMP"]=True
-        self.dut["timestamp"]["ENABLE"]=1
-        self.logger.info("set_timestamp:src=%s"%src)
-        
-    def stop_timestamp(self):
-        self.dut["timestamp"]["ENABLE"]=0
-        lost_cnt=self.dut["timestamp"]["LOST_COUNT"]
-        if lost_cnt!=0:
-            self.logger.warn("stop_timestamp: lost_cnt=%d"%lost_cnt)
-        return lost_cnt
-        
+
     def reset_monoread(self,wait=0.001):
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['RESET'] = 1
@@ -298,6 +273,52 @@ class MonopixExtensions():
         self.dut['CONF']['EN_DRIVER'] = 0
         self.dut['CONF'].write()
         return lost_cnt
+        
+    def set_timestamp640(self,src="tlu"):
+       self.dut["timestamp_%s"%src].reset()
+       self.dut["timestamp_%s"%src]["EXT_TIMESTAMP"]=True
+       if src=="tlu":
+            self.dut["timestamp_tlu"]["INVERT"]=0
+            self.dut["timestamp_tlu"]["ENABLE_TRAILING"]=0
+            self.dut["timestamp_tlu"]["ENABLE"]=0
+            self.dut["timestamp_tlu"]["ENABLE_EXTERN"]=1
+       elif src=="inj":
+            self.dut["timestamp_inj"]["ENABLE_EXTERN"]=0 ##although this is connected to gate
+            self.dut["timestamp_inj"]["INVERT"]=0
+            self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
+            self.dut["timestamp_inj"]["ENABLE"]=1
+       else: #"mon"
+            self.dut["timestamp_mon"]["INVERT"]=1
+            self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
+            self.dut["timestamp_mon"]["ENABLE_EXTERN"]=0
+            self.dut["timestamp_mon"]["ENABLE"]=1
+       self.logger.info("set_timestamp640:src=%s"%src)
+        
+    def stop_timestamp640(self,src="tlu"):
+        self.dut["timestamp_%s"%src]["ENABLE_EXTERN"]=0
+        self.dut["timestamp_%s"%src]["ENABLE"]=0
+        self.dut["timestamp_%s"%src]["ENABLE_TRAILING"]=0
+        lost_cnt=self.dut["timestamp_%s"%src]["LOST_COUNT"]
+        self.logger.info("stop_timestamp640:src=%s lost_cnt=%d"%(src,lost_cnt))
+        
+    def set_timestamp(self,src="rx1"):
+        if src=="gate":
+            self.dut['CONF']['RX1_OR_GATE'] = 0
+        else: #"rx1"
+            self.dut['CONF']['RX1_OR_GATE'] = 1
+        self.dut['CONF'].write()
+        self.dut["timestamp"].reset()
+        self.dut["timestamp"]["EXT_TIMESTAMP"]=True
+        self.dut["timestamp"]["ENABLE"]=1
+        self.logger.info("set_timestamp:src=%s"%src)
+        
+    def stop_timestamp(self):
+        self.dut["timestamp"]["ENABLE"]=0
+        lost_cnt=self.dut["timestamp"]["LOST_COUNT"]
+        if lost_cnt!=0:
+            self.logger.warn("stop_timestamp: lost_cnt=%d"%lost_cnt)
+        return lost_cnt
+        
         
     def set_inj_all(self,inj_high=1.0,inj_low=0.2,inj_n=100,inj_width=5000,delay=700,ext=False):
         self.set_inj_high(inj_high)

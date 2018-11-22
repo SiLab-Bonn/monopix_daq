@@ -8,7 +8,8 @@ transfer_layer:
   - name  : intf
     type  : SiTcp
     init:
-        ip : "192.168.10.16"
+        ip : "192.168.10.19"
+        #ip : "192.168.12.16"
         udp_port : 4660
         tcp_port : 24
         tcp_connection : True
@@ -25,8 +26,8 @@ hw_drivers:
     hw_driver : i2c
     base_addr : 0x00000
     init:
-        no_calibration : True
-        #no_power_reset : True
+        no_calibration : False
+        no_power_reset : True
 
   - name      : fifo
     type      : sram_fifo
@@ -44,16 +45,33 @@ hw_drivers:
     base_addr : 0x10010
     size      : 16
     
-  - name      : tlu
+  - name      : tlu     # 8,8,a,b,c,d,e,f
     type      : tlu
     interface : intf
     base_addr : 0x10600
     size      : 8
     
-  - name      : timestamp
+  - name      : timestamp_inj #5
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10900
+    size      : 8
+    
+  - name      : timestamp  #4
     type      : timestamp
     interface : intf
     base_addr : 0x10700
+    size      : 8
+    
+  - name      : timestamp_mon  #6
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10300
+    
+  - name      : timestamp_tlu #7
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10800
     size      : 8
     
   - name      : spi
@@ -66,17 +84,12 @@ hw_drivers:
     interface : intf
     base_addr : 0x10100
     
-  - name      : tdc
-    type      : tdc_s3
-    interface : intf
-    base_addr : 0x10300
-     
   - name      : gate_tdc
     type      : pulse_gen
     interface : intf
     base_addr : 0x10400
     
-  - name      : data_rx
+  - name      : data_rx       # 1,2,3,4
     type      : mono_data_rx
     interface : intf
     base_addr : 0x10500
@@ -94,10 +107,10 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
-      - name    : EN_DEBUG_TIMESTAMP
+      - name    : INJ_OR_TLU
         size    : 1
         offset  : 12
-      - name    : EN_GATE_TIMESTAMP
+      - name    : RX1_OR_GATE
         size    : 1
         offset  : 11
       - name    : EN_GRAY_RESET_WITH_TDC_PULSE
@@ -201,6 +214,24 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
+
+  - name        : I_LSBdacL
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC7'}
+
+  - name        : I_VPFB
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC5'}
+
+  - name        : I_VPLoad
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC9'}
 
 
   - name        : CONF_SR
