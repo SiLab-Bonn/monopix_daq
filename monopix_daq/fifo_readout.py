@@ -302,7 +302,7 @@ class FifoReadout(object):
         #sleep(0.1)  # sleep here for a while
 
     def get_tdc_fifo_discard_count(self, channels=None):
-        return self.dut['tdc'].LOST_DATA_COUNTER
+        return self.dut['timestamp_mon'].LOST_COUNT
     
     def get_data_rx_fifo_discard_count(self, channels=None):
         return self.dut['data_rx'].LOST_COUNT

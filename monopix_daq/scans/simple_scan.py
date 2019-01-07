@@ -7,9 +7,7 @@ import logging
 import yaml
 
 import monopix_daq.scan_base as scan_base
-import monopix_daq.analysis.interpreter as interpreter
-import monopix_daq.analysis.event_builder as event_builder
-import monopix_daq.analysis.clusterizer as clusterizer
+
 
 local_configuration={"with_tlu": True,
                      "with_timestamp": True,
@@ -19,60 +17,30 @@ local_configuration={"with_tlu": True,
 
 class SimpleScan(scan_base.ScanBase):
     scan_id = "simple_scan"
-    
-    def __init__(self, dut_extentions, fname=None, sender_addr=""):
-        logging.info('Initializing %s', self.__class__.__name__)
-        
-        self.dut = dut_extentions.dut
-        self.dut_extensions=dut_extentions
-        self.socket=sender_addr
-        
-        if fname==None:
-            self.working_dir = os.path.join(os.getcwd(),"output_data")
-            self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
-        else:
-            self.working_dir = os.path.dirname(os.path.realpath(fname))
-            self.run_name = os.path.basename(os.path.realpath(fname))
-        if not os.path.exists(self.working_dir):
-                os.makedirs(self.working_dir)
-        self.output_filename = os.path.join(self.working_dir, self.run_name)
-        
-        self.logger = logging.getLogger()
-        flg=0
-        for l in self.logger.handlers:
-            if isinstance(l, logging.FileHandler):
-               flg=1
-        if flg==0:
-            fh = logging.FileHandler(self.output_filename + '.log')
-            fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
-            fh.setLevel(logging.WARNING)
-            self.logger.addHandler(fh)
-            
-        self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             
     def scan(self,**kwargs): 
         with_tlu = kwargs.pop('with_tlu', True)
         with_timestamp = kwargs.pop('with_timestamp', True)
         scan_time = kwargs.pop('scan_time', 10)
-        ## start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+36,stop=52+36+10,
-        start_freeze = kwargs.pop('start_freeze', 50)
+        ## start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+37,stop=52+37+10,
+        ## start_freeze=90
+        start_freeze = kwargs.pop('start_freeze', 90)
         start_read = kwargs.pop('start_read', start_freeze+2)
         stop_read = kwargs.pop('stop_read', start_read+2)
-        stop_freeze = kwargs.pop('stop_freeze', start_freeze+36)
+        stop_freeze = kwargs.pop('stop_freeze', start_freeze+37)
         stop_rx = kwargs.pop('stop', stop_freeze+10)
         cnt=0
         scanned=0
 
         ####################
         ## start readout
-        self.dut_extensions.set_monoread(start_freeze=start_freeze,start_read=start_read,
+        self.monopix.set_monoread(start_freeze=start_freeze,start_read=start_read,
                                          stop_read=stop_read,stop_freeze=stop_freeze,stop=stop_rx)
         if with_tlu:
             tlu_delay = kwargs.pop('tlu_delay', 8)
-            self.dut_extensions.set_tlu(tlu_delay)
+            self.monopix.set_tlu(tlu_delay)
         if with_timestamp:
-            self.dut_extensions.set_timestamp()
+            self.monopix.set_timestamp()
 
         ####################
         ## start read fifo        
@@ -83,12 +51,6 @@ class SimpleScan(scan_base.ScanBase):
             while True:
                 pre_cnt=cnt
                 cnt=self.fifo_readout.get_record_count()
-                #dqdata = self.fifo_readout.data
-                #try:
-                #    data = np.concatenate([item[0] for item in dqdata])
-                #except ValueError:
-                #    data = []
-                #cnt=len(data)
                 pre_scanned=scanned
                 scanned=time.time()-t0
                 self.logger.info('time=%.0fs dat=%d rate=%.3fk/s'%(scanned,cnt,(cnt-pre_cnt)/(scanned-pre_scanned)/1024))
@@ -98,46 +60,80 @@ class SimpleScan(scan_base.ScanBase):
                     time.sleep(1)
                 else:
                     time.sleep(10)
-            time.sleep(max(0,scan_time-scanned))             
+            time.sleep(max(0,scan_time-scanned))
+                  
             ####################
             ## stop readout
             if with_timestamp:
-                self.dut_extensions.stop_timestamp()
+                self.monopix.stop_timestamp()
                 self.meta_data_table.attrs.timestamp_status = yaml.dump(self.dut["timestamp"].get_configuration())
             if with_tlu:
-                self.dut_extensions.stop_tlu()
+                self.monopix.stop_tlu()
                 self.meta_data_table.attrs.tlu_status = yaml.dump(self.dut["tlu"].get_configuration())
-            self.dut_extensions.stop_monoread()
+            self.monopix.stop_monoread()
 
-
-    def analyze(self, h5_fin='',event="tlu",debug=3):
-        if h5_fin == '':
-           h5_fin = self.output_filename +'.h5'
-
-        hit_fout=h5_fin[:-7]+'_hit.h5'
-        interpreter.interpret_h5(h5_fin,hit_fout,debug=3)
-        self.logger.info('interpreted file %s'%(hit_fout))
-
-        tlu_fout=h5_fin[:-7]+'_tlu.h5'
-        event_builder.build_h5(h5_fin,hit_fout,tlu_fout,event=event)
-        self.logger.info('event_built file %s'%(tlu_fout))
-
-        ev_fout=h5_fin[:-7]+'_ev.h5'
-        event_builder.convert_h5(tlu_fout,ev_fout)
-        self.logger.info('converted file %s'%(ev_fout))
-
-        cl_fout=h5_fin[:-7]+'_cl.h5'
-        clusterizer.clusterize_h5(ev_fout,cl_fout)
+    def analyze(self, fraw='',event="tlu",debug=3):
+        if fraw == '':
+           fraw = self.output_filename +'.h5'
+           
+        import monopix_daq.analysis.interpreter as interpreter
+        fhit=fraw[:-7]+'hit.h5'
+        interpreter.interpret_h5(fraw,fhit,debug=3)
+        self.logger.info('interpreted file %s'%(fhit))
         
-        #np_fout=h5_fin[:-7]+'hit.npy'
-        #monopix_interpreter.mk_plot(h5_fout,np_fout)
+        import monopix_daq.analysis.analysis_base as analysis_base
+        analysis_base.AnalysisBase(fhit)
+
+        #tlu_fout=h5_fin[:-7]+'tlu.h5'
+        #event_builder.build_h5(h5_fin,hit_fout,tlu_fout,event=event)
+        #self.logger.info('event_built file %s'%(tlu_fout))
+
+        #ev_fout=h5_fin[:-7]+'ev.h5'
+        #event_builder.convert_h5(tlu_fout,ev_fout)
+        #self.logger.info('converted file %s'%(ev_fout))
+
+        #cl_fout=h5_fin[:-7]+'cl.h5'
+        #clusterizer.clusterize_h5(ev_fout,cl_fout)
+     
+    def plot(self,fhit="",fraw=""):
+        if fhit =="":
+            fhit=self.output_filename[:-4]+'hit.h5'
+        if fraw =="":
+            fraw = self.output_filename +'.h5'
+            
+        import monopix_daq.analysis.plotting_base as plotting_base
+        with plotting_base.PlottingBase(fhit,fraw,save_png=True) as plotting:
+            ### configuration 
+            with tb.open_file(fraw) as f:
+                dat=yaml.load(f.root.meta_data.attrs.dac_status)
+                dat.update(yaml.load(f.root.meta_data.attrs.power_status))
+                plotting.table_6col(dat)
+                print yaml.load(f.root.meta_data.attrs.kwargs)
+                dat=yaml.load(f.root.meta_data.attrs.pixel_conf)
+                print dat.keys()
+                plotting.plot_2d_pixel_4(
+                    [dat["PREAMP_EN"],dat["INJECT_EN"],dat["MONITOR_EN"],dat["TRIM_EN"]])
+                #dat={}
+                #for k in tmp.keys():
+                #   if k[-3:]=="set":
+                #       dat[k[:-3]]=[tmp[k],np.float("nan"),np.float("nan")]
+                #       if k[:-3]+"[V]" in tmp.keys():
+                #           dat[k[:-3]][1]=tmp[k[:-3]+"[V]"]
+                #       if k[:-3]+"[mA]" in tmp.keys():
+                #           dat[k[:-3]][2]=tmp[k[:-3]+"[mA]"]
+                #plotting.table_3col(dat,fig,title="Power status",save=True)
+            ### occupancy plot
+            with tb.open_file(fhit) as f:
+                dat=f.root.HistOcc[:]
+                plotting.plot_2d_pixel_hist(dat,title=f.root.HistOcc.title,z_axis_title="Hits")
     
 if __name__ == "__main__":
-    from monopix_daq.monopix_extension import MonopixExtensions
-  
-    #fname=time.strftime("%Y%m%d_%H%M%S_simples_can")
-    #fname=(os.path.join(monopix_extra_functions.OUPUT_DIR,"simple_scan"),fname)
-    m_ex = MonopixExtensions("../monopix_mio3.yaml")
-    scan = SimpleScan(dut_extentions=m_ex, sender_addr="tcp://127.0.0.1:5500")
+    from monopix_daq import monopix
+    m=monopix.Monopix()
+    m.set_th(0.805)
+    m.set_inj_all(inj_n=0)
+    m.start_inj()
+    scan = SimpleScan(m,fout=None,send_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)
     scan.analyze()
+    scan.plot()

@@ -9,7 +9,7 @@ import tables
 
 COL_SIZE = 36 ##TODO change hard coded values
 ROW_SIZE = 129
-OUTPUT_DIR=os.path.join(os.path.dirname(os.path.abspath(__file__)),"scans/output_data")
+OUTPUT_DIR=os.path.join(os.path.dirname(os.path.abspath(__file__)),"output_data")
 
 ## TODO separated file
 def format_power(dat):
@@ -19,8 +19,6 @@ def format_power(dat):
     return s
 def format_dac(dat):
     s="DAC:"
-    for dac in ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']:
-        s=s+" %s=%i"%(dac,dat[dac]) 
     return s
 def format_pix(dat):
     s="Pixels:"
@@ -34,9 +32,6 @@ def mk_fname(prefix,ext="npy",dirname=None):
     return os.path.join(dirname,prefix+time.strftime("_%Y%m%d_%H%M%S.")+ext)
     
 class MonopixExtensions():
-    
-    REQ_FW_VERSION = 4
-    
     def __init__(self,dut=None):
         ## set logger
         self.logger = logging.getLogger()
@@ -67,24 +62,11 @@ class MonopixExtensions():
         self.logger.info(s)
         self.dut.write_global_conf()
         self.set_preamp_en("all")
-        #self.set_inj_en([18,25])
-        #self.set_mon_en([18,25])
+        self.set_inj_en([18,25])
+        self.set_mon_en([18,25])
         self.set_tdac(0)
         
         self.set_inj_all()
-
-        self.fw_version = self.get_daq_version()
-        logging.info('Found board running firmware version %s' % str(self.fw_version))
-
-    def get_daq_version(self):
-        
-        fw_version = self.dut['intf'].read(0x00000, 1)[0]
-
-        if fw_version != self.REQ_FW_VERSION:
-            raise Exception("Firmware version does not satisfy version requirements (read: %s, require: %s)" % (fw_version, self.REQ_FW_VERSION))
-
-        #return fw_version, board_version
-        return fw_version
     
     def _cal_pix(self,pix_bit,pix):
         if isinstance(pix,str):
@@ -201,7 +183,32 @@ class MonopixExtensions():
         self.dut["tlu"]["TRIGGER_ENABLE"]=0
         self.logger.info("stop_tlu:") 
         
-
+    def set_timestamp(self,src="rx1"):
+        if src=="gate":
+            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 1
+            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 0
+        elif src=="inj":
+            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 1
+            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 1
+        elif src=="token":
+            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 0
+            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 1
+        else: #"rx1'
+            self.dut['CONF']['EN_GATE_TIMESTAMP'] = 0
+            self.dut['CONF']['EN_DEBUG_TIMESTAMP'] = 0
+        self.dut['CONF'].write()
+        self.dut["timestamp"].reset()
+        self.dut["timestamp"]["EXT_TIMESTAMP"]=True
+        self.dut["timestamp"]["ENABLE"]=1
+        self.logger.info("set_timestamp:src=%s"%src)
+        
+    def stop_timestamp(self):
+        self.dut["timestamp"]["ENABLE"]=0
+        lost_cnt=self.dut["timestamp"]["LOST_COUNT"]
+        if lost_cnt!=0:
+            self.logger.warn("stop_timestamp: lost_cnt=%d"%lost_cnt)
+        return lost_cnt
+        
     def reset_monoread(self,wait=0.001):
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['RESET'] = 1
@@ -215,7 +222,10 @@ class MonopixExtensions():
         
     def set_monoread(self,start_freeze=50,start_read=55,stop_read=55+2,stop_freeze=55+38,stop=55+38+10,
                     gray_reset_by_tdc=0):
-
+        # start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+36,stop=52+36+10
+        # start_freeze=50,start_read=60,stop_read=61,stop_freeze=120,stop=130
+        # start_freeze=88,start_read=92,stop_read=94,stop_freeze=127,stop=128,
+        # start_freeze=3,start_read=6,stop_read=7,stop_freeze=45,stop=46
         th=self.dut.SET_VALUE["TH"]
         self.dut["TH"].set_voltage(1.5,unit="V")
         self.dut.SET_VALUE["TH"]=1.5
@@ -274,52 +284,6 @@ class MonopixExtensions():
         self.dut['CONF'].write()
         return lost_cnt
         
-    def set_timestamp640(self,src="tlu"):
-       self.dut["timestamp_%s"%src].reset()
-       self.dut["timestamp_%s"%src]["EXT_TIMESTAMP"]=True
-       if src=="tlu":
-            self.dut["timestamp_tlu"]["INVERT"]=0
-            self.dut["timestamp_tlu"]["ENABLE_TRAILING"]=0
-            self.dut["timestamp_tlu"]["ENABLE"]=0
-            self.dut["timestamp_tlu"]["ENABLE_EXTERN"]=1
-       elif src=="inj":
-            self.dut["timestamp_inj"]["ENABLE_EXTERN"]=0 ##although this is connected to gate
-            self.dut["timestamp_inj"]["INVERT"]=0
-            self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
-            self.dut["timestamp_inj"]["ENABLE"]=1
-       else: #"mon"
-            self.dut["timestamp_mon"]["INVERT"]=1
-            self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
-            self.dut["timestamp_mon"]["ENABLE_EXTERN"]=0
-            self.dut["timestamp_mon"]["ENABLE"]=1
-       self.logger.info("set_timestamp640:src=%s"%src)
-        
-    def stop_timestamp640(self,src="tlu"):
-        self.dut["timestamp_%s"%src]["ENABLE_EXTERN"]=0
-        self.dut["timestamp_%s"%src]["ENABLE"]=0
-        self.dut["timestamp_%s"%src]["ENABLE_TRAILING"]=0
-        lost_cnt=self.dut["timestamp_%s"%src]["LOST_COUNT"]
-        self.logger.info("stop_timestamp640:src=%s lost_cnt=%d"%(src,lost_cnt))
-        
-    def set_timestamp(self,src="rx1"):
-        if src=="gate":
-            self.dut['CONF']['RX1_OR_GATE'] = 0
-        else: #"rx1"
-            self.dut['CONF']['RX1_OR_GATE'] = 1
-        self.dut['CONF'].write()
-        self.dut["timestamp"].reset()
-        self.dut["timestamp"]["EXT_TIMESTAMP"]=True
-        self.dut["timestamp"]["ENABLE"]=1
-        self.logger.info("set_timestamp:src=%s"%src)
-        
-    def stop_timestamp(self):
-        self.dut["timestamp"]["ENABLE"]=0
-        lost_cnt=self.dut["timestamp"]["LOST_COUNT"]
-        if lost_cnt!=0:
-            self.logger.warn("stop_timestamp: lost_cnt=%d"%lost_cnt)
-        return lost_cnt
-        
-        
     def set_inj_all(self,inj_high=1.0,inj_low=0.2,inj_n=100,inj_width=5000,delay=700,ext=False):
         self.set_inj_high(inj_high)
         self.set_inj_low(inj_low)
@@ -348,11 +312,11 @@ class MonopixExtensions():
         self.dut['TH'].set_voltage(th, unit='V')
         self.dut.SET_VALUE["TH"]=th
         th_meas=self.dut['TH'].get_voltage(unit='V')
-        self.logger.info("set_th: TH_set=%f th_meas=%f"%(th,th_meas)) 
+        self.logger.info("set_th: TH=%f th_meas=%f"%(th,th_meas)) 
         
     def get_th(self):
         th_meas=self.dut['TH'].get_voltage(unit='V')
-        self.logger.info("get_th: TH_set=%f th_meas=%f"%(self.dut.SET_VALUE["TH"],th_meas))
+        self.logger.info("get_th:th_set=%f th_meas=%f"%(self.dut.SET_VALUE["TH"],th_meas))
         return th_meas
         
     def get_data_now(self):
@@ -386,18 +350,18 @@ class MonopixExtensions():
             s=s+"%s=%d "%(k,kwarg[k])
         self.logger.info(s)
                     
-#    def save_config(self,fname=None):
-#        if fname==None:
-#            fname=mk_fname("config",ext="yaml")
-#        conf=self.dut.power_status()
-#        conf.update(self.dut.dac_status())
-#        for k in self.dut.PIXEL_CONF.keys():
-#            conf["pix_"+k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
-#        for k in ["ColRO_En","MON_EN","INJ_EN","BUFFER_EN","REGULATOR_EN"]:
-#            conf[k]=self.dut["CONF_SR"][k].to01()
-#        with open(fname,"w") as f:
-#            yaml.dump(conf,f)
-#        self.logger.info("save_config: %s"%fname)
+    def save_config(self,fname=None):
+        if fname==None:
+            fname=mk_fname("config",ext="yaml")
+        conf=self.dut.power_status()
+        conf.update(self.dut.dac_status())
+        for k in self.dut.PIXEL_CONF.keys():
+            conf["pix_"+k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+        for k in ["ColRO_En","MON_EN","INJ_EN","BUFFER_EN","REGULATOR_EN"]:
+            conf[k]=self.dut["CONF_SR"][k].to01()
+        with open(fname,"w") as f:
+            yaml.dump(conf,f)
+        self.logger.info("save_config: %s"%fname)
         
     def set_inj_high(self,inj_high):
         if isinstance(self.inj_device,str) and self.inj_device=="gpac":
@@ -431,7 +395,6 @@ class MonopixExtensions():
         
           
     def load_config(self,fname):
-        self.logger.info("Loading measurement configuration from file = %s"%(fname))
         if fname[-4:] ==".npy":
             with open(fname,"rb") as f:
                 while True:
@@ -444,7 +407,7 @@ class MonopixExtensions():
             self.set_tdac(ret["tdac"])
             self.set_global(LSBdacL=ret["LSBdacL"])
         else:
-            if fname[-3:] ==".h5":
+            if fname[-4:] ==".h5":
                 with tables.open_file(fname) as f:
                     ret=yaml.load(f.root.meta_data.attrs.dac_status)
                     ret.update(yaml.load(f.root.meta_data.attrs.power_status))
@@ -476,7 +439,7 @@ class MonopixExtensions():
             self.dut.SET_VALUE[k]=kwarg[k]
         s="set_power:"
         for k in kwarg.keys():
-            s=s+"%s=%f "%(k,kwarg[k])
+            s=s+"%s=%d "%(k,kwarg[k])
         self.logger.info(s)
         
     def get_temperature(self):
