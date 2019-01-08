@@ -6,11 +6,12 @@ import tables
 
 hit_idx_dtype=np.dtype([("col","<u1"),("row","<u1"),("le","<u1"),("te","<u1"),("cnt","<u4"),
                     ("timestamp","<u8"),("index","<u4")])
-
+                    
 @njit
-def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
+def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                ts_timestamp,ts_pre,ts_flg,ts_cnt,
-               ts2_timestamp,ts2_pre,ts2_flg,ts2_cnt,ts2t_timestamp,ts2t_flg,ts2t_cnt,
+               ts2_timestamp,ts2_pre,ts2_flg,ts2_cnt,
+               ts2t_timestamp,ts2t_flg,ts2t_cnt,
                ts3_timestamp,ts3_pre,ts3_flg,ts3_cnt,
                ts4_timestamp,ts4_pre,ts4_flg,ts4_cnt,debug):
     MASK1       =np.uint64(0x000000000000FFF0)
@@ -52,7 +53,7 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                buf[buf_i]["te"]=0
                buf[buf_i]["timestamp"]= 0
                buf[buf_i]["cnt"]=r
-               buf[buf_i]["index"]=r_i
+               buf[buf_i]["index"]=r_i+start
                buf_i=buf_i+1
                rx_flg=0
            
@@ -74,7 +75,7 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                buf[buf_i]["te"]=0
                buf[buf_i]["timestamp"]= 0
                buf[buf_i]["cnt"]=r
-               buf[buf_i]["index"]=r_i
+               buf[buf_i]["index"]=r_i+start
                buf_i=buf_i+1
                rx_flg=0
 
@@ -90,7 +91,7 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                buf[buf_i]["te"]=te
                buf[buf_i]["timestamp"]= timestamp
                buf[buf_i]["cnt"]=noise
-               buf[buf_i]["index"]=r_i
+               buf[buf_i]["index"]=r_i+start
                buf_i=buf_i+1
                rx_flg=0
            else:
@@ -101,7 +102,7 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                buf[buf_i]["te"]=0
                buf[buf_i]["timestamp"]= 0
                buf[buf_i]["cnt"]=r
-               buf[buf_i]["index"]=r_i
+               buf[buf_i]["index"]=r_i+start
                buf_i=buf_i+1
                rx_flg=0
               
@@ -181,7 +182,7 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                err=err+1
                
         ########################
-        ### TIMESTMP640 INJ
+        ### TIMESTMP160 INJ
         ########################
         elif r & 0xFF000000 == 0x50000000:
             pass  # TODO get count
@@ -276,6 +277,8 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                     buf[buf_i]["timestamp"] = ts2_timestamp
                     buf[buf_i]["cnt"] = ts2_cnt
                     buf[buf_i]["index"]=r_i
+                    #if debug & 0x80 == 0x80:
+                    #    buf[buf_i]['idx']=r_i
                     buf_i = buf_i+1
             else:
                 if debug & 0x1 == 0x1:
@@ -340,7 +343,7 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                 ts2t_flg = 0
                 if debug & 0x1 == 0x1:
                     buf[buf_i]["col"] = 0xFD
-                    buf[buf_i]["row"] = 1
+                    buf[buf_i]["row"] = 0
                     buf[buf_i]["le"] = 0
                     buf[buf_i]["te"] = 0
                     buf[buf_i]["timestamp"] = ts2t_timestamp
@@ -518,6 +521,25 @@ def _interpret_idx(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                       ts3_timestamp,ts3_pre,ts3_flg,ts3_cnt,\
                       ts4_timestamp,ts4_pre,ts4_flg,ts4_cnt
 
+                      
+@njit
+def _assign_scan_id(dat,meta):
+    m_i=0
+    d_i=0
+    while m_i<len(meta) and d_i< len(dat):
+        if meta[m_i]["index_start"] <= dat[d_i]["index"] \
+           and meta[m_i]["index_stop"] > dat[d_i]["index"]:
+                dat[d_i]["index"]=meta[m_i]["scan_param_id"]
+                d_i=d_i+1
+        elif meta[m_i]["index_stop"] <= dat[d_i]["index"]:
+            m_i=m_i+1
+        else: # meta[m_i]["index_start"] > data[d_i]["index"]
+            #print "error", m_i,d_i,meta[m_i]["index_start"],dat[d_i]["index"]
+            #break
+            return 1,dat,m_i,d_i
+    return 0,dat,m_i, d_i
+                      
+                      
 def interpret_idx_h5(fin,fout,debug=12, n=100000000):
     buf=np.empty(n,dtype=hit_idx_dtype)
     col=0xFF
@@ -555,6 +577,8 @@ def interpret_idx_h5(fin,fout,debug=12, n=100000000):
         description=np.zeros((1,),dtype=hit_idx_dtype).dtype
         hit_table=f_o.create_table(f_o.root,name="Hits",description=description,title='hit_data')
         with tables.open_file(fin) as f:
+            meta=f.root.meta_data[:]
+            param=f.root.scan_parameters[:]
             end=len(f.root.raw_data)
             start=0
             t0=time.time()
@@ -568,19 +592,23 @@ def interpret_idx_h5(fin,fout,debug=12, n=100000000):
                     ts3_timestamp,ts3_pre,ts3_flg,ts3_cnt,
                     ts4_timestamp,ts4_pre,ts4_flg,ts4_cnt
                     ) = _interpret_idx(
-                    raw,buf,col,row,le,te,noise,timestamp,rx_flg,
+                    raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                     ts_timestamp,ts_pre,ts_flg,ts_cnt,
                     ts2_timestamp,ts2_pre,ts2_flg,ts2_cnt,ts2t_timestamp,ts2t_flg,ts2t_cnt,
                     ts3_timestamp,ts3_pre,ts3_flg,ts3_cnt,
                     ts4_timestamp,ts4_pre,ts4_flg,ts4_cnt,debug)
+                n_hit=len(hit_dat)
+                hit_total=hit_total+n_hit
+                err,hit_dat,m_i,d_i = _assign_scan_id(hit_dat,meta)
+                meta=meta[m_i:]
+                if d_i+1!=n_hit:
+                    print "assing_scan has error data=%d, assigned=%d"%(n_hit,d_i+1)
                 hit_total=hit_total+len(hit_dat)
                 print "%d %d %.3f%% %.3fs %dhits %derrs"%(start,r_i,100.0*(start+r_i+1)/end,time.time(),len(hit_dat),err)
                 hit_table.append(hit_dat)
                 hit_table.flush()
                 start=start+r_i+1
-                #if debug &0x4 ==0x4:
-                #   break
-                   
+
 def list2img(dat,delete_noise=True):
     if delete_noise==True:
         dat=without_noise(dat)
@@ -653,7 +681,7 @@ class InterRawIdx():
               self.ts3_timestamp,self.ts3_pre,self.ts3_flg,self.ts3_cnt,
               self.ts4_timestamp,self.ts4_pre,self.ts4_flg,self.ts4_cnt
               ) = _interpret(
-              raw[start:tmpend],self.buf,
+              raw[start:tmpend],self.buf,start,
               self.col,self.row,self.le,self.te,self.noise,self.timestamp,self.rx_flg,
               self.ts_timestamp,self.ts_pre,self.ts_flg,self.ts_cnt,
               self.ts2_timestamp,self.ts2_pre,self.ts2_flg,self.ts2_cnt,self.ts2t_timestamp,self.ts2t_flg,self.ts2t_cnt,

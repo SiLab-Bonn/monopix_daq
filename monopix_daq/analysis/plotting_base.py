@@ -25,23 +25,20 @@ ROW_SIZE = 129
 TITLE_COLOR = '#07529a'
 OVERTEXT_COLOR = '#07529a'
 
-
 class PlottingBase(object):
-    def __init__(self, fhit, fraw, fpdf=None, save_png=False,save_single_pdf=False):
+    def __init__(self, fout, save_png=False,save_single_pdf=False):
         self.logger = logging.getLogger()
         #self.logger.setLevel(loglevel)
         
         self.plot_cnt = 0
         self.save_png = save_png
         self.save_single_pdf = save_single_pdf
-        if fpdf is None:
-            self.filename = fhit[:-7] + '.pdf'
-        else:
-            self.filename = fpdf
+        self.filename = fout
         self.out_file = PdfPages(self.filename)
+        
     def _save_plots(self, fig, suffix=None, tight=True):
         increase_count = False
-        bbox_inches = 'tight' if tight else ''
+        #bbox_inches = 'tight' if tight else ''
         fig.tight_layout()
         if suffix is None:
             suffix = str(self.plot_cnt)
@@ -66,54 +63,89 @@ class PlottingBase(object):
             self.out_file.close()
             shutil.copyfile(self.filename, os.path.join(os.path.split(self.filename)[0], 'last_scan.pdf'))
             
-    def table_6col(self,dat):
+    def _add_text(self,text,fig):
+        #fig.subplots_adjust(top=0.85)
+        #y_coord = 0.92
+        #fig.text(0.1, y_coord, text, fontsize=12, color=OVERTEXT_COLOR, transform=fig.transFigure)
+        fig.suptitle(text, fontsize=12)
+
+    def table_1value(self,dat,n_row=20,n_col=3,
+                     page_title="Chip configurations before scan"):
         keys=np.sort(np.array(dat.keys()))
-        cellText=[]
-        for i in range(20):
-            if i+20*2 < len(keys):
-                cellText.append([keys[i],dat[keys[i]],
-                             keys[i+20],dat[keys[i+20]],
-                             keys[i+20*2],dat[keys[i+20*2]]
-                             ])
-            else:
-                cellText.append([keys[i],dat[keys[i]],
-                             keys[i+20],dat[keys[i+20]],
-                             "",""])
+        ##fill table
+        cellText=[["" for i in range(n_col*2)] for j in range(n_row)]
+        for i,k in enumerate(keys):
+            cellText[i%20][i/20*2]=k
+            cellText[i%20][i/20*2+1]=dat[k]
+        colLabels=[]
+        colWidths=[]
+        for i in range(n_col):
+            colLabels.append("Param")
+            colWidths.append(0.15) ## width for param name
+            colLabels.append("Value")
+            colWidths.append(0.15) ## width for value
         fig = Figure()
         FigureCanvas(fig)
-
         ax = fig.add_subplot(111)
         fig.patch.set_visible(False)
         ax.set_adjustable('box')
         ax.axis('off')
         ax.axis('tight')
-        t=ax.table(cellText=cellText,
-                 #rowLabels=rows[:20],
-                 colLabels=["Param","Values","Param","Values","Param","Values"],
-                 colWidths = [0.15,0.15,0.15,0.15,0.15,0.15],
+
+        tab=ax.table(cellText=cellText,
+                 colLabels=colLabels,
+                 colWidths = colWidths,
                  loc='upper center')
-        t.set_fontsize(10)
+        tab.set_fontsize(10)
+        for key, cell in tab.get_celld().items():
+           cell.set_linewidth(0.1)
+        if page_title is not None and len(page_title)>0:
+            self._add_text(page_title,fig)
+        tab.scale(1,0.5)
+        
         self._save_plots(fig, suffix=None, tight=True)
                       
-    def plot_2d_pixel_4(self, dat, title=["Preamp","Inj","Mon","TDAC"], 
-                            x_axis_title="Column", y_axis_title="Row", z_axis_title=None, 
-                            z_min=[0,0,0,0], z_max=[1,1,1,15], 
-                            cmap=None):
+    def plot_2d_pixel_4(self, dat, page_title="Pixel configurations before scan",
+                        title=["Preamp","Inj","Mon","TDAC"], 
+                        x_axis_title="Column", y_axis_title="Row", z_axis_title="",
+                        z_min=[0,0,0,0], z_max=[1,1,1,15]):
         fig = Figure()
         FigureCanvas(fig)
         for i in range(4):
             ax = fig.add_subplot(221+i)
-            ax.imshow(np.transpose(dat[i]),origin='lower',aspect="auto"
-                     ,vmax=z_max[i],vmin=z_min[i])
+            
+            cmap = cm.get_cmap('plasma')
+            cmap.set_bad('w')
+            cmap.set_over('r')  # Make noisy pixels red
+#            if z_max[i]+2-z_min[i] < 20:
+#                bounds = np.linspace(start=z_min[i], stop=z_max[i] + 1,
+#                                 num=z_max[i]+2-z_min[i],
+#                                 endpoint=True)
+#                norm = colors.BoundaryNorm(bounds, cmap.N)
+#            else:
+#                norm = colors.BoundaryNorm()
+
+            im=ax.imshow(np.transpose(dat[i]),origin='lower',aspect="auto",
+                     vmax=z_max[i]+1,vmin=z_min[i], interpolation='none',
+                     cmap=cmap #, norm=norm
+                     )
             ax.set_title(title[i])
             ax.set_ylim((-0.5, ROW_SIZE-0.5))
             ax.set_xlim((-0.5, COL_SIZE-0.5))
+
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            cb = fig.colorbar(im, cax=cax)
+            cb.set_label(z_axis_title)
+        if page_title is not None and len(page_title)>0:
+            self._add_text(page_title, fig)
         self._save_plots(fig)
         
-    def plot_2d_pixel_hist(self, hist2d, title=None, 
-                            x_axis_title="Column", y_axis_title="Row", z_axis_title=None, 
-                            z_min=0, z_max=None, 
-                            cmap=None):
+    def plot_2d_pixel_hist(self, hist2d, page_title=None,
+                           title="Hit Occupancy",
+                           x_axis_title="Column", y_axis_title="Row", z_axis_title=None, 
+                           z_min=0, z_max=None, 
+                           cmap=None):
         if z_max == 'median':
             z_max = 2 * np.ma.median(hist2d)
         elif z_max == 'maximum':
@@ -124,6 +156,7 @@ class PlottingBase(object):
                 z_max = 1.1 * z_max
         if z_max < 1 or hist2d.all() is np.ma.masked:
             z_max = 1.0
+
         if z_min is None:
             z_min = np.ma.min(hist2d)
         if z_min == z_max or hist2d.all() is np.ma.masked:
@@ -138,10 +171,11 @@ class PlottingBase(object):
         cmap = cm.get_cmap('plasma')
         cmap.set_bad('w')
         cmap.set_over('r')  # Make noisy pixels red
-        norm = colors.BoundaryNorm(bounds, cmap.N)
+        #norm = colors.BoundaryNorm(bounds, cmap.N)
 
         im = ax.imshow(np.transpose(hist2d), interpolation='none', aspect='auto', 
-                       cmap=cmap, norm=norm,
+                       vmax=z_max+1,vmin=z_min,
+                       cmap=cmap, # norm=norm,
                        origin='lower')  # TODO: use pcolor or pcolormesh
         ax.set_ylim((-0.5, ROW_SIZE-0.5))
         ax.set_xlim((-0.5, COL_SIZE-0.5))
@@ -151,14 +185,10 @@ class PlottingBase(object):
 
         divider = make_axes_locatable(ax)
 
-        cax = divider.append_axes("right", size="5%", pad=0.5)
+        cax = divider.append_axes("right", size="5%", pad=0.2)
         cb = fig.colorbar(im, cax=cax) #, ticks=np.linspace(start=z_min, stop=z_max, num=10, endpoint=True), orientation='horizontal')
         #cax.set_xticklabels([int(round(float(x.get_text().replace(u'\u2212', '-').encode('utf8')))) for x in cax.xaxis.get_majorticklabels()])
         cb.set_label(z_axis_title)
-            
+        if page_title is not None and len(page_title)>0:
+            self._add_text(page_title,fig)
         self._save_plots(fig)
-        
-
-            
-            
-            

@@ -83,46 +83,34 @@ class SimpleScan(scan_base.ScanBase):
         
         import monopix_daq.analysis.analysis_base as analysis_base
         analysis_base.AnalysisBase(fhit)
-
-        #tlu_fout=h5_fin[:-7]+'tlu.h5'
-        #event_builder.build_h5(h5_fin,hit_fout,tlu_fout,event=event)
-        #self.logger.info('event_built file %s'%(tlu_fout))
-
-        #ev_fout=h5_fin[:-7]+'ev.h5'
-        #event_builder.convert_h5(tlu_fout,ev_fout)
-        #self.logger.info('converted file %s'%(ev_fout))
-
-        #cl_fout=h5_fin[:-7]+'cl.h5'
-        #clusterizer.clusterize_h5(ev_fout,cl_fout)
      
     def plot(self,fhit="",fraw=""):
         if fhit =="":
             fhit=self.output_filename[:-4]+'hit.h5'
         if fraw =="":
             fraw = self.output_filename +'.h5'
-            
+        fpdf=self.output_filename+'.pdf'
+        
         import monopix_daq.analysis.plotting_base as plotting_base
-        with plotting_base.PlottingBase(fhit,fraw,save_png=True) as plotting:
+        with plotting_base.PlottingBase(fpdf,save_png=True) as plotting:
             ### configuration 
             with tb.open_file(fraw) as f:
+                ###TODO!! format kwargs and firmware setting
+                dat=yaml.load(f.root.meta_data.attrs.kwargs)
+                dat=yaml.load(f.root.meta_data.attrs.firmware)
+
                 dat=yaml.load(f.root.meta_data.attrs.dac_status)
                 dat.update(yaml.load(f.root.meta_data.attrs.power_status))
-                plotting.table_6col(dat)
-                print yaml.load(f.root.meta_data.attrs.kwargs)
+                plotting.table_1value(dat,page_title="Chip configuration")
+
                 dat=yaml.load(f.root.meta_data.attrs.pixel_conf)
-                print dat.keys()
                 plotting.plot_2d_pixel_4(
-                    [dat["PREAMP_EN"],dat["INJECT_EN"],dat["MONITOR_EN"],dat["TRIM_EN"]])
-                #dat={}
-                #for k in tmp.keys():
-                #   if k[-3:]=="set":
-                #       dat[k[:-3]]=[tmp[k],np.float("nan"),np.float("nan")]
-                #       if k[:-3]+"[V]" in tmp.keys():
-                #           dat[k[:-3]][1]=tmp[k[:-3]+"[V]"]
-                #       if k[:-3]+"[mA]" in tmp.keys():
-                #           dat[k[:-3]][2]=tmp[k[:-3]+"[mA]"]
-                #plotting.table_3col(dat,fig,title="Power status",save=True)
-            ### occupancy plot
+                    [dat["PREAMP_EN"],dat["INJECT_EN"],dat["MONITOR_EN"],dat["TRIM_EN"]],
+                    page_title="Pixel configuration",
+                    title=["Preamp","Inj","Mon","TDAC"], 
+                    z_min=[0,0,0,0], z_max=[1,1,1,15])
+
+            ### plot data
             with tb.open_file(fhit) as f:
                 dat=f.root.HistOcc[:]
                 plotting.plot_2d_pixel_hist(dat,title=f.root.HistOcc.title,z_axis_title="Hits")
@@ -131,9 +119,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     m=monopix.Monopix()
     m.set_th(0.805)
-    m.set_inj_all(inj_n=0)
-    m.start_inj()
-    scan = SimpleScan(m,fout=None,send_addr="tcp://127.0.0.1:6500")
+    scan = SimpleScan(m,fout=None,online_monitor_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()
