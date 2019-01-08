@@ -41,11 +41,12 @@ class Monopix():
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
-        ##TODO different fmt for stdout and file, change time format
         
         self.debug=0
         self.plot=1
         self.inj_device="gpac"
+        self.COL_SIZE = 36  ##TODO this will be used in scans..
+        self.ROW_SIZE = 129
 
         if dut is None:
             dut = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
@@ -448,8 +449,8 @@ class Monopix():
         lost_cnt=self.dut["data_rx"]["LOST_COUNT"]
         if lost_cnt!=0:
             self.logger.warn("stop_monoread: error cnt=%d"%lost_cnt)
-        exp=self.dut["data_rx"]["EXPOSURE_TIME"]
-        self.logger.info("stop_monoread:%d"%exp)
+        #exp=self.dut["data_rx"]["EXPOSURE_TIME"]
+        self.logger.info("stop_monoread:lost_cnt=%d"%lost_cnt)
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF']['EN_DATA_CMOS'] = 0
@@ -483,17 +484,17 @@ class Monopix():
        self.dut["timestamp_%s"%src]["EXT_TIMESTAMP"]=True
        if src=="tlu":
             self.dut["timestamp_tlu"]["INVERT"]=0
-            self.dut["timestamp_tlu"]["ENABLE_TOT"]=0
+            #self.dut["timestamp_tlu"]["ENABLE_TRAILING"]=0
             self.dut["timestamp_tlu"]["ENABLE"]=0
             self.dut["timestamp_tlu"]["ENABLE_EXTERN"]=1
        elif src=="inj":
             self.dut["timestamp_inj"]["ENABLE_EXTERN"]=0 ##although this is connected to gate
             self.dut["timestamp_inj"]["INVERT"]=0
-            self.dut["timestamp_inj"]["ENABLE_TOT"]=0
+            #self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
             self.dut["timestamp_inj"]["ENABLE"]=1
        else: #"mon"
             self.dut["timestamp_mon"]["INVERT"]=1
-            self.dut["timestamp_mon"]["ENABLE_TOT"]=1
+            #self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
             self.dut["timestamp_mon"]["ENABLE_EXTERN"]=0
             self.dut["timestamp_mon"]["ENABLE"]=1
        self.logger.info("set_timestamp640:src=%s"%src)
