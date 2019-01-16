@@ -323,7 +323,6 @@ class FifoReadout(object):
         
     def get_float_time(self):
         '''returns time as double precision floats - Time64 in pytables - mapping to and from python datetime's
-
         '''
         t1 = time()
         t2 = datetime.datetime.fromtimestamp(t1)

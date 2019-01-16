@@ -20,15 +20,14 @@ class MetaTable(tb.IsDescription):
     timestamp_stop = tb.Float64Col(pos=4)
     scan_param_id = tb.UInt16Col(pos=5)
     error = tb.UInt32Col(pos=6)
-    
-    
+
 class ScanBase(object):
     '''Basic run meta class.
 
     Base class for scan- / tune- / analyse-class.
     '''
 
-    def __init__(self, monopix=None, fout=None, send_addr="tcp://127.1.0.0:5500"):
+    def __init__(self, monopix=None, fout=None, online_monitor_addr="tcp://127.0.0.1:6500"):
         if isinstance(monopix,str) or (monopix is None):
             self.monopix=monopix.Monopix(monopix)
         else:
@@ -60,7 +59,7 @@ class ScanBase(object):
         #self.monopix.logging.info('Initializing %s', self.__class__.__name__)
         
         ### set online monitor
-        self.socket=send_addr
+        self.socket=online_monitor_addr
             
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -78,7 +77,14 @@ class ScanBase(object):
         self.raw_data_earray = self.h5_file.create_earray (self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
         self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)
         
+        ### save args and chip configurations
         self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
+        self.meta_data_table.attrs.power_status_before = yaml.dump(self.monopix.power_status())
+        self.meta_data_table.attrs.dac_status_before = yaml.dump(self.monopix.dac_status())
+        tmp={}
+        for k in self.monopix.dut.PIXEL_CONF.keys():  
+            tmp[k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+        self.meta_data_table.attrs.pixel_conf_before=yaml.dump(tmp)
         
         ### open socket for monitor
         if (self.socket==""): 
@@ -87,9 +93,9 @@ class ScanBase(object):
             try:
                 self.socket=online_monitor.sender.init(self.socket)
             except:
-                self.logger.warn('ScanBase.start:data_send.data_send_init failed addr=%s'%self.socket)
+                self.logger.warn('ScanBase.start:sender.init failed addr=%s'%self.socket)
                 self.socket=None
-                
+        
         ### execute scan
         self.fifo_readout = FifoReadout(self.dut)
         self.logger.info('Power Status: %s', str(self.monopix.power_status()))
@@ -106,7 +112,6 @@ class ScanBase(object):
         self.meta_data_table.attrs.pixel_conf=yaml.dump(tmp)
         self.meta_data_table.attrs.firmware = yaml.dump(self.dut.get_configuration())
 
-        
         ### close file
         self.h5_file.close()
         self.logger.info('Data Output Filename: %s', self.output_filename + '.h5')
@@ -156,8 +161,6 @@ class ScanBase(object):
     def handle_data(self, data_tuple):
         '''Handling of the data.
         '''
-        #print data_tuple[0].shape[0] #, data_tuple
-        
         total_words = self.raw_data_earray.nrows
         
         self.raw_data_earray.append(data_tuple[0])
@@ -174,19 +177,18 @@ class ScanBase(object):
         self.meta_data_table.row['scan_param_id'] = self.scan_param_id
         self.meta_data_table.row.append()
         self.meta_data_table.flush()
-        #print len_raw_data
         
         if self.socket!=None:
             try:
-                online_monitor.sender.send_data(self.socket,data_tuple)
+                online_monitor.sender.send_data(self.socket,data_tuple,scan_parameters={'scan_param_id':self.scan_param_id})
             except:
-                self.logger.warn('ScanBase.hadle_data:sender.send_data failed')
+                self.logger.warn('ScanBase.handle_data:sender.send_data failed')
                 try:
                     online_monitor.sender.close(self.socket)
                 except:
                     pass
                 self.socket=None
-        
+
     def handle_err(self, exc):
         msg='%s' % exc[1]
         if msg:

@@ -17,6 +17,7 @@ from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import colors, cm
+from matplotlib import gridspec
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.ticker as ticker
 
@@ -38,11 +39,11 @@ class PlottingBase(object):
         
     def _save_plots(self, fig, suffix=None, tight=True):
         increase_count = False
-        #bbox_inches = 'tight' if tight else ''
+        bbox_inches = 'tight' if tight else ''
         fig.tight_layout()
         if suffix is None:
             suffix = str(self.plot_cnt)
-        self.out_file.savefig(fig) #, bbox_inches=bbox_inches)
+        self.out_file.savefig(fig, bbox_inches=bbox_inches)
         if self.save_png:
             fig.savefig(self.filename[:-4] + '_' +
                         suffix + '.png') #, bbox_inches=bbox_inches)
@@ -62,15 +63,15 @@ class PlottingBase(object):
             self.logger.info('Closing output PDF file: %s', str(self.out_file._file.fh.name))
             self.out_file.close()
             shutil.copyfile(self.filename, os.path.join(os.path.split(self.filename)[0], 'last_scan.pdf'))
-            
-    def _add_text(self,text,fig):
+
+    def _add_title(self,text,fig):
         #fig.subplots_adjust(top=0.85)
         #y_coord = 0.92
         #fig.text(0.1, y_coord, text, fontsize=12, color=OVERTEXT_COLOR, transform=fig.transFigure)
-        fig.suptitle(text, fontsize=12)
+        fig.suptitle(text, fontsize=12,color=OVERTEXT_COLOR)
 
     def table_1value(self,dat,n_row=20,n_col=3,
-                     page_title="Chip configurations before scan"):
+                     page_title="Chip configurations"):
         keys=np.sort(np.array(dat.keys()))
         ##fill table
         cellText=[["" for i in range(n_col*2)] for j in range(n_row)]
@@ -100,12 +101,17 @@ class PlottingBase(object):
         for key, cell in tab.get_celld().items():
            cell.set_linewidth(0.1)
         if page_title is not None and len(page_title)>0:
-            self._add_text(page_title,fig)
+            self._add_title(page_title,fig)
         tab.scale(1,0.5)
+        self.out_file.savefig(fig)
+        #self._save_plots(fig, suffix=None, tight=True)
         
-        self._save_plots(fig, suffix=None, tight=True)
-                      
-    def plot_2d_pixel_4(self, dat, page_title="Pixel configurations before scan",
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.set_adjustable('box')
+
+    def plot_2d_pixel_4(self, dat, page_title="Pixel configurations",
                         title=["Preamp","Inj","Mon","TDAC"], 
                         x_axis_title="Column", y_axis_title="Row", z_axis_title="",
                         z_min=[0,0,0,0], z_max=[1,1,1,15]):
@@ -138,18 +144,113 @@ class PlottingBase(object):
             cb = fig.colorbar(im, cax=cax)
             cb.set_label(z_axis_title)
         if page_title is not None and len(page_title)>0:
-            self._add_text(page_title, fig)
+            fig.suptitle(page_title, fontsize=12,color=OVERTEXT_COLOR, y=1.05)
+        self._save_plots(fig)
+        
+    def plot_1d_pixel_hists(self,hist2d_array, mask=None, bins=30,
+                           top_axis_factor=None,
+                           top_axis_title="Threshold [e]",
+                           x_axis_title="Test pulse injection [V]",
+                           y_axis_title="# of pixel",
+                           dat_title=["TH=0.81V"],
+                           page_title=None,
+                           title="Threshold dispersion"):
+        if mask is None:
+            mask=np.ones([COL_SIZE, ROW_SIZE],dtype=int)
+
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.set_adjustable('box')
+
+        for hist2d in hist2d_array:
+            hist2d=hist2d[mask==1]
+            hist=ax.hist(hist2d.reshape([-1]),
+            bins=bins, histtype="step")
+            
+        ax.set_xbound(hist[1][0],hist[1][-1])
+
+        ax.set_xlabel(x_axis_title)
+        ax.set_ylabel(y_axis_title)
+        
+        if top_axis_factor is None:
+            ax.set_title(title,color=TITLE_COLOR)
+        else:
+            ax2=ax.twiny()
+            ax2.set_xbound(hist[1][0]*top_axis_factor,hist[1][-1]*top_axis_factor)
+            ax2.set_xlabel(top_axis_title)
+            pad=40
+            ax.set_title(title,pad=40,color=TITLE_COLOR)
+
+
+        if page_title is not None and len(page_title)>0:
+            self._add_title(page_title,fig)
         self._save_plots(fig)
         
     def plot_2d_pixel_hist(self, hist2d, page_title=None,
                            title="Hit Occupancy",
-                           x_axis_title="Column", y_axis_title="Row", z_axis_title=None, 
-                           z_min=0, z_max=None, 
-                           cmap=None):
+                           z_axis_title=None, 
+                           z_min=0, z_max=None):
         if z_max == 'median':
             z_max = 2 * np.ma.median(hist2d)
         elif z_max == 'maximum':
             z_max = np.ma.max(hist2d)
+        elif z_max is None:
+            z_max = np.percentile(hist2d, q=90)
+            if np.any(hist2d > z_max):
+                z_max = 1.1 * z_max
+        if z_max < 1 or hist2d.all() is np.ma.masked:
+            z_max = 1.0
+
+        if z_min is None:
+            z_min = np.ma.min(hist2d)
+        if z_min == z_max or hist2d.all() is np.ma.masked:
+            z_min = 0
+            
+        x_axis_title="Column"
+        y_axis_title="Row"
+
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.set_adjustable('box')
+        #extent = [0.5, 400.5, 192.5, 0.5]
+        bounds = np.linspace(start=z_min, stop=z_max + 1, num=255, endpoint=True)
+        cmap = cm.get_cmap('viridis')
+        cmap.set_bad('k')
+        cmap.set_over('r')  # Make noisy pixels red
+        cmap.set_under('w')
+        #norm = colors.BoundaryNorm(bounds, cmap.N)
+
+        im = ax.imshow(np.transpose(hist2d), interpolation='none', aspect='auto', 
+                       vmax=z_max+1,vmin=z_min,
+                       cmap=cmap, # norm=norm,
+                       origin='lower')  # TODO: use pcolor or pcolormesh
+        ax.set_ylim((-0.5, ROW_SIZE-0.5))
+        ax.set_xlim((-0.5, COL_SIZE-0.5))
+        ax.set_title(title + r' ($\Sigma$ = {0})'.format((0 if hist2d.all() is np.ma.masked else np.ma.sum(hist2d))), color=TITLE_COLOR)
+        ax.set_xlabel(x_axis_title)
+        ax.set_ylabel(y_axis_title)
+
+        divider = make_axes_locatable(ax)
+
+        cax = divider.append_axes("right", size="5%", pad=0.2)
+        cb = fig.colorbar(im, cax=cax)
+        cb.set_label(z_axis_title)
+        if page_title is not None and len(page_title)>0:
+            self._add_title(page_title,fig)
+        self._save_plots(fig)
+        
+    def plot_2d_hist(self, hist2d, bins=None,
+                     page_title=None,
+                     title="Hit Occupancy",
+                     x_axis_title="Test pulse injection [V]",
+                     y_axis_title="Counts", 
+                     z_axis_title=None, z_min=1, z_max=None, z_scale="lin"):
+        if z_max == 'median':
+            z_max = 2 * np.ma.median(hist2d)
+        elif z_max == 'maximum':
+            z_max = np.ma.max(hist2d)*1.1
         elif z_max is None:
             z_max = np.percentile(hist2d, q=90)
             if np.any(hist2d > z_max):
@@ -166,19 +267,26 @@ class PlottingBase(object):
         FigureCanvas(fig)
         ax = fig.add_subplot(111)
         ax.set_adjustable('box')
-        #extent = [0.5, 400.5, 192.5, 0.5]
+
         bounds = np.linspace(start=z_min, stop=z_max + 1, num=255, endpoint=True)
-        cmap = cm.get_cmap('plasma')
-        cmap.set_bad('w')
-        cmap.set_over('r')  # Make noisy pixels red
-        #norm = colors.BoundaryNorm(bounds, cmap.N)
+        cmap = cm.get_cmap('viridis')
+        
+        cmap.set_over('r')
+        cmap.set_under('w')
+        
+        if z_scale=="log":
+            norm = colors.LogNorm()
+            cmap.set_bad('w')
+        else:
+            norm = None
+            cmap.set_bad('k')
 
         im = ax.imshow(np.transpose(hist2d), interpolation='none', aspect='auto', 
                        vmax=z_max+1,vmin=z_min,
-                       cmap=cmap, # norm=norm,
-                       origin='lower')  # TODO: use pcolor or pcolormesh
-        ax.set_ylim((-0.5, ROW_SIZE-0.5))
-        ax.set_xlim((-0.5, COL_SIZE-0.5))
+                       cmap=cmap,norm=norm,
+                       extent=[bins[0][0],bins[0][-1],bins[1][0],bins[1][-1]],
+                       origin='lower')
+
         ax.set_title(title + r' ($\Sigma$ = {0})'.format((0 if hist2d.all() is np.ma.masked else np.ma.sum(hist2d))), color=TITLE_COLOR)
         ax.set_xlabel(x_axis_title)
         ax.set_ylabel(y_axis_title)
@@ -186,9 +294,8 @@ class PlottingBase(object):
         divider = make_axes_locatable(ax)
 
         cax = divider.append_axes("right", size="5%", pad=0.2)
-        cb = fig.colorbar(im, cax=cax) #, ticks=np.linspace(start=z_min, stop=z_max, num=10, endpoint=True), orientation='horizontal')
-        #cax.set_xticklabels([int(round(float(x.get_text().replace(u'\u2212', '-').encode('utf8')))) for x in cax.xaxis.get_majorticklabels()])
+        cb = fig.colorbar(im, cax=cax)
         cb.set_label(z_axis_title)
         if page_title is not None and len(page_title)>0:
-            self._add_text(page_title,fig)
+            self._add_title(page_title,fig)
         self._save_plots(fig)

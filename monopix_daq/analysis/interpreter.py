@@ -106,37 +106,34 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
         ########################
         ### TIMESTMP
         ########################
-        elif r & 0xFF000000 == 0x40000000: 
+        elif r & 0xFF000000 == 0x40000000 and (debug & 0x1==0x1): 
             pass ## TODO get count
-        elif r & 0xFF000000 == 0x41000000: ## timestamp
+        elif r & 0xFF000000 == 0x41000000 and (debug & 0x1==0x1): ## timestamp
             ts_timestamp = (ts_timestamp & TS_MASK1) | np.uint64(r & TS_MASK_DAT)
             ts_cnt=ts_cnt+1
             #if debug & 0x4 ==0x4:
                 #print r_i,hex(r),"timestamp1",hex(ts_timestamp),ts_cnt
-
             if ts_flg==2:
                ts_flg=0
-               if debug & 0x1 == 0x1:
-                   ts_inter=(ts_timestamp-ts_pre)& 0xFFFFFFFF
-                   buf[buf_i]["col"]=0xFE
-                   buf[buf_i]["row"]= np.uint8(ts_inter)
-                   buf[buf_i]["le"]=np.uint8(ts_inter>>np.uint64(8))
-                   buf[buf_i]["te"]=np.uint8(ts_inter>>np.uint64(16))
-                   buf[buf_i]["timestamp"]=ts_timestamp
-                   buf[buf_i]["cnt"]=ts_cnt
-                   buf_i=buf_i+1
+               ts_inter=(ts_timestamp-ts_pre)& 0xFFFFFFFF
+               buf[buf_i]["col"]=0xFE
+               buf[buf_i]["row"]= np.uint8(ts_inter)
+               buf[buf_i]["le"]=np.uint8(ts_inter>>np.uint64(8))
+               buf[buf_i]["te"]=np.uint8(ts_inter>>np.uint64(16))
+               buf[buf_i]["timestamp"]=ts_timestamp
+               buf[buf_i]["cnt"]=ts_cnt
+               buf_i=buf_i+1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEE
-                   buf[buf_i]["row"]=2
-                   buf[buf_i]["le"]=ts_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=0
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts_flg = 0 
-                err=err+1 
-        elif r & 0xFF000000 == 0x42000000: ## timestamp
+               buf[buf_i]["col"]=0xEE
+               buf[buf_i]["row"]=2
+               buf[buf_i]["le"]=ts_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=0
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts_flg = 0 
+               err=err+1 
+        elif r & 0xFF000000 == 0x42000000 and (debug & 0x1==0x1): ## timestamp
             ts_timestamp=(ts_timestamp & TS_MASK2) + (np.uint64(r & TS_MASK_DAT) << np.uint64(24))
             #if debug & 0x4 ==0x4:
                 #print r_i,hex(r),"timestamp2",hex(ts_timestamp),
@@ -144,17 +141,16 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts_flg==0x1:
               ts_flg=0x2
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEE
-                   buf[buf_i]["row"]=1
-                   buf[buf_i]["le"]=ts_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=0
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts_flg = 0 
-                err=err+1 
-        elif r & 0xFF000000 == 0x43000000: ## timestamp
+               buf[buf_i]["col"]=0xEE
+               buf[buf_i]["row"]=1
+               buf[buf_i]["le"]=ts_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=0
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts_flg = 0 
+               err=err+1 
+        elif r & 0xFF000000 == 0x43000000 and (debug & 0x1==0x1): ## timestamp
             ts_pre=ts_timestamp
             ts_timestamp=(ts_timestamp & TS_MASK3)+ (np.uint64(r & TS_MASK_DAT) << np.uint64(48))
             #if debug & 0x4 ==0x4:
@@ -163,23 +159,22 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts_flg==0x0:
                ts_flg=0x1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEE
-                   buf[buf_i]["row"]=0
-                   buf[buf_i]["le"]=ts2t_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=0
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts3_flg = 0 
-                err=err+1     
+               buf[buf_i]["col"]=0xEE
+               buf[buf_i]["row"]=0
+               buf[buf_i]["le"]=ts2t_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=0
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts3_flg = 0 
+               err=err+1     
                
         ########################
         ### TIMESTMP640 INJ
         ########################
-        elif r & 0xFF000000 == 0x50000000:
+        elif r & 0xFF000000 == 0x50000000 and (debug & 0x1==0x1):
             pass  # TODO get count
-        elif r & 0xFF000000 == 0x51000000:  # timestamp
+        elif r & 0xFF000000 == 0x51000000 and (debug & 0x1==0x1):  # timestamp
             ts3_timestamp = (ts3_timestamp & np.uint64(0xFFFFFFFFFF000000)) | np.uint64( r & TS_MASK_DAT )
             ts3_cnt = ts3_cnt+1
             # if debug & 0x4 ==0x4:
@@ -187,28 +182,26 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
 
             if ts3_flg == 2:
                 ts3_flg = 0
-                if debug & 0x1 == 0x1:
-                    buf[buf_i]["col"] = 0xFC
-                    buf[buf_i]["row"] = 2
-                    buf[buf_i]["le"] = 0
-                    buf[buf_i]["te"] = 0
-                    buf[buf_i]["timestamp"] = ts3_timestamp
-                    buf[buf_i]["cnt"] = ts3_cnt
-                    #if debug & 0x80 == 0x80:
-                    #    buf[buf_i]['idx']=r_i
-                    buf_i = buf_i+1
+                buf[buf_i]["col"] = 0xFC
+                buf[buf_i]["row"] = 2
+                buf[buf_i]["le"] = 0
+                buf[buf_i]["te"] = 0
+                buf[buf_i]["timestamp"] = ts3_timestamp
+                buf[buf_i]["cnt"] = ts3_cnt
+                #if debug & 0x80 == 0x80:
+                #    buf[buf_i]['idx']=r_i
+                buf_i = buf_i+1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEC
-                   buf[buf_i]["row"]=2
-                   buf[buf_i]["le"]=ts3_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=0
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts3_flg = 0 
-                err=err+1     
-        elif r & 0xFF000000 == 0x52000000:  # timestamp
+               buf[buf_i]["col"]=0xEC
+               buf[buf_i]["row"]=2
+               buf[buf_i]["le"]=ts3_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=0
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts3_flg = 0 
+               err=err+1     
+        elif r & 0xFF000000 == 0x52000000 and (debug & 0x1==0x1):  # timestamp
             ts3_timestamp = (ts3_timestamp & np.uint64(0xFFFF000000FFFFFF)) | \
                 (np.uint64(r & TS_MASK_DAT) << np.uint64(24))
             # if debug & 0x4 ==0x4:
@@ -217,17 +210,16 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts3_flg == 0x1:
                 ts3_flg = 0x2
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEC
-                   buf[buf_i]["row"]=1
-                   buf[buf_i]["le"]=ts3_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=0
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts3_flg = 0 
-                err=err+1     
-        elif r & 0xFF000000 == 0x53000000:  # timestamp
+               buf[buf_i]["col"]=0xEC
+               buf[buf_i]["row"]=1
+               buf[buf_i]["le"]=ts3_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=0
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts3_flg = 0 
+               err=err+1     
+        elif r & 0xFF000000 == 0x53000000 and (debug & 0x1==0x1):
             ts3_timestamp = (ts3_timestamp & np.uint64(0x0000FFFFFFFFFFFF)) | (np.uint64(r & np.uint64(0x000000000000FFFF)) << np.uint64(48))
             # if debug & 0x4 ==0x4:
             #print r_i,hex(r),"ts2_timestamp",hex(ts_timestamp)
@@ -235,22 +227,21 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts3_flg == 0x0:
                 ts3_flg = 0x1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEC
-                   buf[buf_i]["row"]=1
-                   buf[buf_i]["le"]=ts3_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=0
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts3_flg = 0 
-                err=err+1               
+               buf[buf_i]["col"]=0xEC
+               buf[buf_i]["row"]=1
+               buf[buf_i]["le"]=ts3_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=0
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts3_flg = 0 
+               err=err+1               
         ########################
         ### TIMESTMP640 MON
         ########################
-        elif r & 0xFF000000 == 0x60000000:
+        elif r & 0xFF000000 == 0x60000000 and (debug & 0x1==0x1):
             pass  # TODO get count
-        elif r & 0xFF000000 == 0x61000000:  # timestamp
+        elif r & 0xFF000000 == 0x61000000 and (debug & 0x1==0x1):  # timestamp
             ts2_timestamp = (ts2_timestamp & np.uint64(0xFFFFFFFFFF000000)) | np.uint64( r & TS_MASK_DAT )
             ts2_cnt = ts2_cnt+1
             # if debug & 0x4 ==0x4:
@@ -258,26 +249,24 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
 
             if ts2_flg == 2:
                 ts2_flg = 0
-                if debug & 0x1 == 0x1:
-                    buf[buf_i]["col"] = 0xFD
-                    buf[buf_i]["row"] = 0
-                    buf[buf_i]["le"] = 0
-                    buf[buf_i]["te"] = 0
-                    buf[buf_i]["timestamp"] = ts2_timestamp
-                    buf[buf_i]["cnt"] = ts2_cnt
-                    buf_i = buf_i+1
+                buf[buf_i]["col"] = 0xFD
+                buf[buf_i]["row"] = 0
+                buf[buf_i]["le"] = 0
+                buf[buf_i]["te"] = 0
+                buf[buf_i]["timestamp"] = ts2_timestamp
+                buf[buf_i]["cnt"] = ts2_cnt
+                buf_i = buf_i+1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=2
-                   buf[buf_i]["le"]=ts2_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts2_flg = 0 
-                err=err+1   
-        elif r & 0xFF000000 == 0x62000000:  # timestamp
+               buf[buf_i]["col"]=0xED
+               buf[buf_i]["row"]=2
+               buf[buf_i]["le"]=ts2_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts2_flg = 0 
+               err=err+1   
+        elif r & 0xFF000000 == 0x62000000 and (debug & 0x1==0x1):  # timestamp
             ts2_timestamp = (ts2_timestamp & np.uint64(0xFFFF000000FFFFFF)) | \
                 (np.uint64(r & TS_MASK_DAT) << np.uint64(24))
             # if debug & 0x4 ==0x4:
@@ -296,7 +285,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                    buf_i=buf_i+1
                 ts2_flg = 0 
                 err=err+1   
-        elif r & 0xFF000000 == 0x63000000:  # timestamp
+        elif r & 0xFF000000 == 0x63000000 and (debug & 0x1==0x1):  # timestamp
             ts2_timestamp = (ts2_timestamp & np.uint64(0x0000FFFFFFFFFFFF)) | \
                 (np.uint64(r &  np.uint64(0xFFFF000000000000)) << np.uint64(48))
             # if debug & 0x4 ==0x4:
@@ -315,8 +304,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                    buf_i=buf_i+1
                 ts2t_flg = 0 
                 err=err+1   
-                      
-        elif r & 0xFF000000 == 0x65000000:  # timestamp
+        elif r & 0xFF000000 == 0x65000000 and (debug & 0x1==0x1):  # timestamp
             ts2t_timestamp = (ts2t_timestamp & np.uint64(0xFFFFFFFFFF000000)) | np.uint64( r & TS_MASK_DAT )
             ts2t_cnt = ts2t_cnt+1
             # if debug & 0x4 ==0x4:
@@ -324,26 +312,24 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
 
             if ts2t_flg == 2:
                 ts2t_flg = 0
-                if debug & 0x1 == 0x1:
-                    buf[buf_i]["col"] = 0xFD
-                    buf[buf_i]["row"] = 1
-                    buf[buf_i]["le"] = 0
-                    buf[buf_i]["te"] = 0
-                    buf[buf_i]["timestamp"] = ts2t_timestamp
-                    buf[buf_i]["cnt"] = ts2t_cnt
-                    buf_i = buf_i+1
+                buf[buf_i]["col"] = 0xFD
+                buf[buf_i]["row"] = 1
+                buf[buf_i]["le"] = 0
+                buf[buf_i]["te"] = 0
+                buf[buf_i]["timestamp"] = ts2t_timestamp
+                buf[buf_i]["cnt"] = ts2t_cnt
+                buf_i = buf_i+1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=5
-                   buf[buf_i]["le"]=ts2t_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts2t_flg = 0   
-                err=err+1 
-        elif r & 0xFF000000 == 0x66000000:  # timestamp
+               buf[buf_i]["col"]=0xED
+               buf[buf_i]["row"]=5
+               buf[buf_i]["le"]=ts2t_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts2t_flg = 0   
+               err=err+1 
+        elif r & 0xFF000000 == 0x66000000 and (debug & 0x1==0x1):  # timestamp
             ts2t_timestamp = (ts2t_timestamp & np.uint64(0xFFFF000000FFFFFF)) | \
                 (np.uint64(r & TS_MASK_DAT) << np.uint64(24))
             # if debug & 0x4 ==0x4:
@@ -352,39 +338,37 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts2t_flg == 0x1:
                 ts2t_flg = 0x2
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=4
-                   buf[buf_i]["le"]=ts2t_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts2t_flg = 0 
-                err=err+1   
-        elif r & 0xFF000000 == 0x67000000:  # timestamp
+               buf[buf_i]["col"]=0xED
+               buf[buf_i]["row"]=4
+               buf[buf_i]["le"]=ts2t_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts2t_flg = 0 
+               err=err+1   
+        elif r & 0xFF000000 == 0x67000000 and (debug & 0x1==0x1):  # timestamp
             ts2t_timestamp = (ts2t_timestamp & np.uint64(0x0000FFFFFFFFFFFF)) | \
                 (np.uint64(r & np.uint64(0xFFFF000000000000)) << np.uint64(48))
             if ts2t_flg == 0x0:
                 ts2t_flg = 0x1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=3
-                   buf[buf_i]["le"]=ts2t_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts2t_flg = 0  
-                err=err+1
+               buf[buf_i]["col"]=0xED
+               buf[buf_i]["row"]=3
+               buf[buf_i]["le"]=ts2t_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts2t_flg = 0  
+               err=err+1
                       
         ########################
         ### TIMESTMP640 TLU
         ########################
-        elif r & 0xFF000000 == 0x70000000:
+        elif r & 0xFF000000 == 0x70000000 and (debug & 0x1==0x1):
             pass  # TODO get count
-        elif r & 0xFF000000 == 0x71000000:  # timestamp
+        elif r & 0xFF000000 == 0x71000000 and (debug & 0x1==0x1):  # timestamp
             ts4_timestamp = (ts4_timestamp & np.uint64(0xFFFFFFFFFF000000)) | np.uint64( r & TS_MASK_DAT )
             ts4_cnt = ts4_cnt+1
             # if debug & 0x4 ==0x4:
@@ -392,26 +376,24 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
 
             if ts4_flg == 2:
                 ts4_flg = 0
-                if debug & 0x1 == 0x1:
-                    buf[buf_i]["col"] = 0xFB
-                    buf[buf_i]["row"] = 0
-                    buf[buf_i]["le"] = 0
-                    buf[buf_i]["te"] = 0
-                    buf[buf_i]["timestamp"] = ts4_timestamp
-                    buf[buf_i]["cnt"] = ts4_cnt
-                    buf_i = buf_i+1
+                buf[buf_i]["col"] = 0xFB
+                buf[buf_i]["row"] = 0
+                buf[buf_i]["le"] = 0
+                buf[buf_i]["te"] = 0
+                buf[buf_i]["timestamp"] = ts4_timestamp
+                buf[buf_i]["cnt"] = ts4_cnt
+                buf_i = buf_i+1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEB
-                   buf[buf_i]["row"]=1
-                   buf[buf_i]["le"]=ts4_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts4_flg = 0  
-                err=err+1
-        elif r & 0xFF000000 == 0x72000000:  # timestamp
+               buf[buf_i]["col"]=0xEB
+               buf[buf_i]["row"]=1
+               buf[buf_i]["le"]=ts4_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts4_flg = 0  
+               err=err+1
+        elif r & 0xFF000000 == 0x72000000 and (debug & 0x1==0x1):  # timestamp
             ts4_timestamp = (ts4_timestamp & np.uint64(0xFFFF000000FFFFFF)) | \
                 (np.uint64(r & TS_MASK_DAT) << np.uint64(24))
             # if debug & 0x4 ==0x4:
@@ -420,17 +402,16 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts4_flg == 0x1:
                 ts4_flg = 0x2
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEB
-                   buf[buf_i]["row"]=2
-                   buf[buf_i]["le"]=ts4_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts4_flg = 0  
-                err=err+1
-        elif r & 0xFF000000 == 0x73000000:  # timestamp
+               buf[buf_i]["col"]=0xEB
+               buf[buf_i]["row"]=2
+               buf[buf_i]["le"]=ts4_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts4_flg = 0  
+               err=err+1
+        elif r & 0xFF000000 == 0x73000000 and (debug & 0x1==0x1):  # timestamp
             ts4_timestamp = (ts4_timestamp & np.uint64(0x0000FFFFFFFFFFFF)) | (np.uint64(r & np.uint64(0x000000000000FFFF)) << np.uint64(48))
             # if debug & 0x4 ==0x4:
             #print r_i,hex(r),"ts2_timestamp",hex(ts_timestamp)
@@ -438,22 +419,20 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts4_flg == 0x0:
                 ts4_flg = 0x1
             else:
-                if debug & 0x1 == 0x1:
-                   buf[buf_i]["col"]=0xEB
-                   buf[buf_i]["row"]=3
-                   buf[buf_i]["le"]=ts4_flg
-                   buf[buf_i]["te"]=0
-                   buf[buf_i]["timestamp"]=np.uint64(r_i)
-                   buf[buf_i]["cnt"]=r
-                   buf_i=buf_i+1
-                ts4_flg = 0  
-                err=err+1                        
-
+               buf[buf_i]["col"]=0xEB
+               buf[buf_i]["row"]=3
+               buf[buf_i]["le"]=ts4_flg
+               buf[buf_i]["te"]=0
+               buf[buf_i]["timestamp"]=np.uint64(r_i)
+               buf[buf_i]["cnt"]=r
+               buf_i=buf_i+1
+               ts4_flg = 0  
+               err=err+1                        
 
         ########################
         ### TLU
         ########################
-        elif (r & 0x80000000 == 0x80000000):
+        elif (r & 0x80000000 == 0x80000000) and (debug & 0x2 == 0x2):
             tlu = r & 0xFFFF
             tlu_org =(r>>12) & 0x7FFF0  #16-4(160MHz)
             if debug & 0x20 ==0x00:
@@ -467,15 +446,19 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                     tlu_timestamp = tlu_timestamp + np.uint64(0x80000)
             #if debug & 0x4 ==0x4:
                 #print r_i,hex(r),"ts=",hex(tlu_timestamp),"tlu",tlu,hex(tlu_tmp),tlu_tmp < trig_tmp
-
-            if debug & 0x2 == 0x2:
-                buf[buf_i]["col"]=0xFF
-                buf[buf_i]["row"]=0xFF
-                buf[buf_i]["le"]= 0xFF 
-                buf[buf_i]["te"]= 0xFF
-                buf[buf_i]["timestamp"]=tlu_timestamp
-                buf[buf_i]["cnt"]=tlu
-                buf_i=buf_i+1
+            buf[buf_i]["col"]=0xFF
+            buf[buf_i]["row"]=0xFF
+            buf[buf_i]["le"]= 0xFF 
+            buf[buf_i]["te"]= 0xFF
+            buf[buf_i]["timestamp"]=tlu_timestamp
+            buf[buf_i]["cnt"]=tlu
+            buf_i=buf_i+1
+        elif   ((r & 0x80000000 == 0x80000000) and (debug & 0x2 == 0x0)) \
+            or ((r & 0xF8000000 == 0x70000000) and (debug & 0x1==0x0)) \
+            or ((r & 0xFC000000 == 0x60000000) and (debug & 0x1==0x0)) \
+            or ((r & 0xFC000000 == 0x50000000) and (debug & 0x1==0x0)) \
+            or ((r & 0xFC000000 == 0x40000000) and (debug & 0x1==0x0)) :
+            pass
         else:
             buf[buf_i]["col"]=0xE0
             buf[buf_i]["row"]=0
@@ -602,7 +585,6 @@ def without_noise(dat):
 
 class InterRaw():
     def __init__(self,chunk=100000000,debug=0):
-        print "WARN!! this InterRaw has not tested!!!!"
         self.reset()
         self.buf=np.empty(chunk,dtype=hit_dtype)
         self.n=chunk
@@ -643,7 +625,7 @@ class InterRaw():
 
         self.tlu=0
         self.tlu_timestamp=np.uint64(0x0)
-    def run(self,raw,data_format=3):
+    def run(self,raw,data_format=0):
         start=0
         end=len(raw)
         ret=np.empty(0,dtype=hit_dtype)
@@ -673,17 +655,17 @@ class InterRaw():
         
     def mk_list(self,raw,delete_noise=True):
         dat=self.run(raw)
-        if delete_noise==True:
+        if delete_noise==delete_noise:
             dat=without_noise(dat)
         return dat
 
     def mk_img(self,raw,delete_noise=True):
         dat=self.run(raw)
-        return list2img(dat,delete_noise=True)
+        return list2img(dat,delete_noise=delete_noise)
     
     def mk_cnt(self,raw,delete_noise=True):
         dat=self.run(raw)
-        return list2cnt(dat,delete_noise=True)
+        return list2cnt(dat,delete_noise=delete_noise)
         
 def raw2list(raw,delete_noise=True):
     inter=InterRaw()
@@ -694,7 +676,7 @@ def raw2list(raw,delete_noise=True):
 
 def raw2img(raw,delete_noise=True):
     inter=InterRaw()
-    return list2img(inter.run(raw),noise=noise)
+    return list2img(inter.run(raw),delete_noise=delete_noise)
 
 def raw2cnt(raw,delete_noise=True):
     inter=InterRaw()

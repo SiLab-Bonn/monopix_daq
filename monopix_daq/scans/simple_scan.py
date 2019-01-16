@@ -72,17 +72,18 @@ class SimpleScan(scan_base.ScanBase):
                 self.meta_data_table.attrs.tlu_status = yaml.dump(self.dut["tlu"].get_configuration())
             self.monopix.stop_monoread()
 
-    def analyze(self, fraw='',event="tlu",debug=3):
-        if fraw == '':
-           fraw = self.output_filename +'.h5'
+    def analyze(self, event="tlu",debug=3):
+        fraw = self.output_filename +'.h5'
            
         import monopix_daq.analysis.interpreter as interpreter
         fhit=fraw[:-7]+'hit.h5'
         interpreter.interpret_h5(fraw,fhit,debug=3)
         self.logger.info('interpreted file %s'%(fhit))
         
-        import monopix_daq.analysis.analysis_base as analysis_base
-        analysis_base.AnalysisBase(fhit)
+        import monopix_daq.analysis.analyze_hits as analyze_hits
+        ana=analyze_hits.AnalyzeHits(fhit,fraw)
+        ana.init_hist()
+        ana.run()
      
     def plot(self,fhit="",fraw=""):
         if fhit =="":

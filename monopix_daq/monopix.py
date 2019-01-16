@@ -13,15 +13,15 @@ OUTPUT_DIR=os.path.join(os.path.dirname(os.path.abspath(__file__)),"output_data"
 
 import basil.dut
 
-def format_power(dat): ### TODO improve a bit...
+def format_power(dat): ### TODO improve more...
     s="power:"
     for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
         s=s+" %s=%fV(%fmA)"%(pwr,dat[pwr+'[V]'] ,dat[pwr+'[mA]']) 
     return s
-def format_dac(dat): ### TODO improve a bit...
+def format_dac(dat): ### TODO improve more...
     s="DAC:"
     return s
-def format_pix(dat): ### TODO improve a bit...
+def format_pix(dat): ### TODO improve more...
     s="Pixels:"
     return s
     
@@ -400,9 +400,6 @@ class Monopix():
                           stop_freeze=90+37,stop=90+37+10,
                     gray_reset_by_tdc=0):
         # start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+36,stop=52+36+10
-        # start_freeze=50,start_read=60,stop_read=61,stop_freeze=120,stop=130
-        # start_freeze=88,start_read=92,stop_read=94,stop_freeze=127,stop=128,
-        # start_freeze=3,start_read=6,stop_read=7,stop_freeze=45,stop=46
         th=self.dut.SET_VALUE["TH"]
         self.dut["TH"].set_voltage(1.5,unit="V")
         self.dut.SET_VALUE["TH"]=1.5
@@ -484,17 +481,17 @@ class Monopix():
        self.dut["timestamp_%s"%src]["EXT_TIMESTAMP"]=True
        if src=="tlu":
             self.dut["timestamp_tlu"]["INVERT"]=0
-            #self.dut["timestamp_tlu"]["ENABLE_TRAILING"]=0
+            self.dut["timestamp_tlu"]["ENABLE_TRAILING"]=0
             self.dut["timestamp_tlu"]["ENABLE"]=0
             self.dut["timestamp_tlu"]["ENABLE_EXTERN"]=1
        elif src=="inj":
             self.dut["timestamp_inj"]["ENABLE_EXTERN"]=0 ##although this is connected to gate
             self.dut["timestamp_inj"]["INVERT"]=0
-            #self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
+            self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
             self.dut["timestamp_inj"]["ENABLE"]=1
        else: #"mon"
             self.dut["timestamp_mon"]["INVERT"]=1
-            #self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
+            self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
             self.dut["timestamp_mon"]["ENABLE_EXTERN"]=0
             self.dut["timestamp_mon"]["ENABLE"]=1
        self.logger.info("set_timestamp640:src=%s"%src)
@@ -530,7 +527,6 @@ class Monopix():
         conf=self.dut.get_configuration()
         conf.update(self.power_status())
         conf.update(self.dac_status())
-        #conf.update(self.dut.SET_VALUE)
         for k in self.dut.PIXEL_CONF.keys():
             conf["pix_"+k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
         #for k in ["ColRO_En","MON_EN","INJ_EN","BUFFER_EN","REGULATOR_EN"]:
@@ -552,11 +548,14 @@ class Monopix():
             self.set_tdac(ret["tdac"])
             self.set_global(LSBdacL=ret["LSBdacL"])
         else:
-            if fname[-4:] ==".h5":
+            if fname[-3:] ==".h5":
                 with tables.open_file(fname) as f:
-                    ret=yaml.load(f.root.meta_data.attrs.dac_status)
+                    ret=yaml.load(f.root.meta_data.attrs.firmware)
+                    ret.update(yaml.load(f.root.meta_data.attrs.dac_status))
                     ret.update(yaml.load(f.root.meta_data.attrs.power_status))
-                    ret.update(yaml.load(f.root.meta_data.attrs.pixel_conf))
+                    tmp=yaml.load(f.root.meta_data.attrs.pixel_conf)
+                    for k in tmp.keys():
+                        ret["pix_"+k]=np.array(tmp[k],int).tolist()
             else:
                 with open(fname) as f:
                     ret=yaml.load(f)

@@ -127,7 +127,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=np.uint8(ts_inter>>np.uint64(16))
                    buf[buf_i]["timestamp"]=ts_timestamp
                    buf[buf_i]["cnt"]=ts_cnt
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
             else:
                if debug & 0x1 == 0x1:
@@ -137,7 +137,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                err=err+1
                ts_flg=0
@@ -156,7 +156,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                ts_flg=0x0
                err=err+1
@@ -176,7 +176,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                ts_flg=0x0  
                err=err+1
@@ -201,7 +201,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                     buf[buf_i]["te"] = 0
                     buf[buf_i]["timestamp"] = ts3_timestamp
                     buf[buf_i]["cnt"] = ts3_cnt
-                    buf[buf_i]["index"]=r_i
+                    buf[buf_i]["index"]=r_i+start
                     #if debug & 0x80 == 0x80:
                     #    buf[buf_i]['idx']=r_i
                     buf_i = buf_i+1
@@ -213,7 +213,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                ts3_flg = 0 
                err=err+1
@@ -233,7 +233,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts3_flg = 0 
                 err=err+1
@@ -252,7 +252,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts3_flg = 0 
                 err=err+1      
@@ -276,7 +276,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                     buf[buf_i]["te"] = 0
                     buf[buf_i]["timestamp"] = ts2_timestamp
                     buf[buf_i]["cnt"] = ts2_cnt
-                    buf[buf_i]["index"]=r_i
+                    buf[buf_i]["index"]=r_i+start
                     #if debug & 0x80 == 0x80:
                     #    buf[buf_i]['idx']=r_i
                     buf_i = buf_i+1
@@ -288,7 +288,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts2_flg = 0   
                 err=err+1 
@@ -308,7 +308,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts2_flg = 0 
                 err=err+1   
@@ -329,7 +329,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts2_flg = 0  
                 err=err+1
@@ -348,7 +348,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                     buf[buf_i]["te"] = 0
                     buf[buf_i]["timestamp"] = ts2t_timestamp
                     buf[buf_i]["cnt"] = ts2t_cnt
-                    buf[buf_i]["index"]=r_i
+                    buf[buf_i]["index"]=r_i+start
                     #if debug & 0x80 == 0x80:
                     #    buf[buf_i]['idx']=r_i
                     buf_i = buf_i+1
@@ -360,7 +360,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts2t_flg = 0   
                 err=err+1 
@@ -380,7 +380,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts2t_flg = 0 
                 err=err+1   
@@ -397,7 +397,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts2t_flg = 0  
                 err=err+1
@@ -422,7 +422,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                     buf[buf_i]["te"] = 0
                     buf[buf_i]["timestamp"] = ts4_timestamp
                     buf[buf_i]["cnt"] = ts4_cnt
-                    buf[buf_i]["index"]=r_i
+                    buf[buf_i]["index"]=r_i+start
                     #if debug & 0x80 == 0x80:
                     #    buf[buf_i]['idx']=r_i
                     buf_i = buf_i+1
@@ -434,7 +434,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                ts4_flg = 0  
                err=err+1
@@ -454,7 +454,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts4_flg = 0 
                 err=err+1 
@@ -473,7 +473,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
                    buf[buf_i]["cnt"]=r
-                   buf[buf_i]["index"]=r_i
+                   buf[buf_i]["index"]=r_i+start
                    buf_i=buf_i+1
                 ts4_flg = 0 
                 err=err+1                         
@@ -503,7 +503,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                 buf[buf_i]["te"]= 0xFF
                 buf[buf_i]["timestamp"]=tlu_timestamp
                 buf[buf_i]["cnt"]=tlu
-                buf[buf_i]["index"]=r_i
+                buf[buf_i]["index"]=r_i+start
                 buf_i=buf_i+1
         else:
             buf[buf_i]["col"]=0xE0
@@ -512,7 +512,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
             buf[buf_i]["te"]=0
             buf[buf_i]["timestamp"]=0
             buf[buf_i]["cnt"]=r
-            buf[buf_i]["index"]=r_i
+            buf[buf_i]["index"]=r_i+start
             buf_i=buf_i+1
             err=err+1   
     return err,buf[:buf_i],r_i,col,row,le,te,noise,timestamp,rx_flg,\
@@ -601,9 +601,8 @@ def interpret_idx_h5(fin,fout,debug=12, n=100000000):
                 hit_total=hit_total+n_hit
                 err,hit_dat,m_i,d_i = _assign_scan_id(hit_dat,meta)
                 meta=meta[m_i:]
-                if d_i+1!=n_hit:
-                    print "assing_scan has error data=%d, assigned=%d"%(n_hit,d_i+1)
-                hit_total=hit_total+len(hit_dat)
+                if d_i!=n_hit:
+                    print "assing_scan has error data=%d, assigned=%d"%(n_hit,d_i)
                 print "%d %d %.3f%% %.3fs %dhits %derrs"%(start,r_i,100.0*(start+r_i+1)/end,time.time(),len(hit_dat),err)
                 hit_table.append(hit_dat)
                 hit_table.flush()
@@ -619,7 +618,7 @@ def list2cnt(dat,delete_noise=True):
         dat=without_noise(dat)
     uni,cnt=np.unique(dat[["col","row"]],return_counts=True)
     ret=np.empty(len(uni),dtype=[("col","<u1"),("row","<u1"),("cnt","<i8")])
-    print ret.dtype.names
+
     ret["col"]=uni["col"]
     ret["row"]=uni["row"]
     ret["cnt"]=cnt

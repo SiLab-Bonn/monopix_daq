@@ -14,7 +14,7 @@ COL_SIZE=36
 ROW_SIZE=129
 
 @njit
-def _assign_timestamp(dat,param,inj_th,inj_period,inj_n,mode,buf,sid,pre_inj,inj_i,inj_cnt):
+def _build_inj(dat,param,inj_th,inj_period,inj_n,mode,buf,sid,pre_inj,inj_i,inj_cnt):
     b_i=0
     d_i=0
     while d_i < len(dat):
@@ -50,6 +50,7 @@ def _assign_timestamp(dat,param,inj_th,inj_period,inj_n,mode,buf,sid,pre_inj,inj
                 elif dat[d_ii]["col"]<COL_SIZE:
                     ts_token=np.int64(dat[d_ii]["timestamp"])
                     buf[b_ii]["event_number"]= sid*len(inj_th)*inj_n+inj_i*inj_n+inj_cnt
+                    buf[b_ii]["scan_param_id"]= sid
                     buf[b_ii]["col"]= dat[d_ii]["col"]
                     buf[b_ii]["row"]= dat[d_ii]["row"]
                     buf[b_ii]["inj"]= inj_th[inj_i,0]
@@ -63,20 +64,22 @@ def _assign_timestamp(dat,param,inj_th,inj_period,inj_n,mode,buf,sid,pre_inj,inj
                     b_ii=b_ii+1
                 d_ii=d_ii+1
             pre_inj=ts_inj
-            if d_ii==len(dat):
+            if d_ii==len(dat) :
+              if mode==0:
                 d_i=d_ii
                 b_i=b_ii
-                return 0,d_i,buf[:b_i],sid,pre_inj,inj_i,inj_cnt
+              return 0,d_i,buf[:b_i],sid,pre_inj,inj_i,inj_cnt
         else:
             d_i=d_i+1
     return 1,d_i,buf[:b_i],sid,pre_inj,inj_i,inj_cnt
 
-buf_type=[("event_number","<i8"),("col","<u1"),("row","<u1"),("tot","<u1"),
-                           ("ts_inj","<i8"),("ts_mon","<i8"),("ts_token","<i8"),("tot_mon","<i8"),
-                           ("inj","<f4"),("th","<f4")]
+buf_type=[("event_number","<i8"),("scan_param_id","<i4"),
+          ("col","<u1"),("row","<u1"),("tot","<u1"),
+          ("ts_inj","<i8"),("ts_mon","<i8"),("ts_token","<i8"),("tot_mon","<i8"),
+          ("inj","<f4"),("th","<f4")]
 
-def assign_timestamp_h5(fhit,fraw,fout,n=5000000):
-    hit_dat=np.empty(n,dtype=buf_type)
+def build_inj_h5(fhit,fraw,fout,n=5000000):
+    buf=np.empty(n,dtype=buf_type)
     with tables.open_file(fraw) as f:
         meta=f.root.meta_data[:]
         param=f.root.scan_parameters[:]
@@ -104,13 +107,13 @@ def assign_timestamp_h5(fhit,fraw,fout,n=5000000):
                 mode=0
             else:
                 mode=1
-            err,d_i,hit_dat,sid,pre_inj,inj_i,inj_cnt =_assign_timestamp(
-                dat,param,inj_th,inj_period,inj_n,mode,hit_dat,
+            err,d_i,hit_dat,sid,pre_inj,inj_i,inj_cnt =_build_inj(
+                dat,param,inj_th,inj_period,inj_n,mode,buf,
                 sid,pre_inj,inj_i,inj_cnt)
             hit_table.append(hit_dat)
             hit_table.flush()
-            start=start+d_i
             print "%d %d %.3f%% %.3fs %dhits %derrs"%(start,d_i,100.0*(start+d_i)/end,time.time()-t0,len(hit_dat),err)
+            start=start+d_i
             
 if __name__ == "__main__":
     import sys
