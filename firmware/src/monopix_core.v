@@ -42,7 +42,7 @@ module monopix_mio_core (
     output wire SR_EN,    //DOUT13
     output wire RESET,    //DOUT14
     output wire INJECTION,
-    input wire MONITOR,   //DIN1
+    input  wire MONITOR,   //DIN1
     
     output wire CLK_BX,   //DOUT1
     output wire READ,     //DOUT2
@@ -57,16 +57,18 @@ module monopix_mio_core (
     input wire DATA,              //DIN0
     input wire DATA_LVDS,         //DIN8_LVDS0
  
-    input  wire INJECTION_TS_IN,
+    input  wire INJECTION_IN,
     output wire DEBUG //DOUT0
 );
 
 // -------  MODULE ADREESSES  ------- //
+// DO NOT assign 32'h2000-32'h3000 it is for GPAC in mio3!!
+
 localparam GPIO_BASEADDR = 16'h0010;
 localparam GPIO_HIGHADDR = 16'h0100-1;
 
-localparam PULSE_INJ_BASEADDR = 16'h0100;
-localparam PULSE_INJ_HIGHADDR = 16'h0200-1;
+localparam PULSE_INJ_BASEADDR = 16'h0300;
+localparam PULSE_INJ_HIGHADDR = 16'h0400-1;
 
 localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
 localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
@@ -86,8 +88,8 @@ localparam TS_TLU_HIGHADDR = 16'h0900-1;
 localparam TS_INJ_BASEADDR = 16'h0900;
 localparam TS_INJ_HIGHADDR = 16'h0a00-1;
 
-localparam TS_MON_BASEADDR = 16'h0300;
-localparam TS_MON_HIGHADDR = 16'h0400-1;
+localparam TS_MON_BASEADDR = 16'h0a00;
+localparam TS_MON_HIGHADDR = 16'h0b00-1;
 
 localparam SPI_BASEADDR = 16'h1000;
 localparam SPI_HIGHADDR = 16'h2000-1;
@@ -95,10 +97,8 @@ localparam SPI_HIGHADDR = 16'h2000-1;
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-2;
 
-
-
 // -------  USER MODULES  ------- //
-localparam VERSION = 8'h100;
+localparam VERSION = 8'h03;
 
 reg RD_VERSION;
 always@(posedge BUS_CLK)
@@ -114,7 +114,7 @@ gpio
     .BASEADDR(GPIO_BASEADDR), 
     .HIGHADDR(GPIO_HIGHADDR),
     .IO_WIDTH(16),
-    .IO_DIRECTION(16'hffff)
+    .IO_DIRECTION(16'h7fff)
 ) gpio
 (
     .BUS_CLK(BUS_CLK),
@@ -127,8 +127,8 @@ gpio
     );    
 
 wire RESET_CONF, LDDAC_CONF, LDPIX_CONF, SREN_CONF, EN_BX_CLK_CONF, EN_OUT_CLK_CONF, RESET_GRAY_CONF;
-wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF, EN_GRAY_RESET_WITH_TDC_PULSE;
-wire [1:0] TIMESTAMP_SOURCE;
+wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF, EN_GRAY_RESET_WITH_TIMESTAMP;
+reg RST_GRAY_reg;
 
 assign RESET_CONF = GPIO_OUT[0];
 assign LDDAC_CONF = GPIO_OUT[1];
@@ -142,8 +142,9 @@ assign RESET_GRAY_CONF = GPIO_OUT[6];
 assign EN_TEST_PATTERN_CONF = GPIO_OUT[7];
 assign EN_DRIVER_CONF = GPIO_OUT[8];
 assign EN_DATA_CMOS_CONF = GPIO_OUT[9];
-assign EN_GRAY_RESET_WITH_TDC_PULSE = GPIO_OUT[10];
-assign TIMESTAMP_SOURCE = GPIO_OUT[12:11];
+assign EN_GRAY_RESET_WITH_TIMESTAMP = GPIO_OUT[10];
+
+assign GPIO_OUT[15]=RST_GRAY_reg;
 
 
 wire CONF_CLK;
@@ -200,13 +201,16 @@ always@(posedge CONF_CLK)
 assign SR_EN = SREN_CONF ? !((SEN | (|delay_cnt))) : 0;
 
 wire GATE_TDC;
+wire INJECTION_MON;
     
-pulse_gen
+pulse_gen640
 #( 
     .BASEADDR(PULSE_INJ_BASEADDR), 
-    .HIGHADDR(PULSE_INJ_HIGHADDR)
-) pulse_gen_inj
-(
+    .HIGHADDR(PULSE_INJ_HIGHADDR),
+    .ABUSWIDTH(16),
+    .CLKDV(4),
+    .OUTPUT_SIZE(2)
+) pulse_gen_inj (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -214,12 +218,14 @@ pulse_gen
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .PULSE_CLK(CLK40), //~CLK40),
+    .PULSE_CLK320(CLK320),
+    .PULSE_CLK160(CLK160),
+    .PULSE_CLK(CLK40),
     .EXT_START(GATE_TDC),
-    .PULSE(INJECTION) //DUT_INJ
+    .PULSE({INJECTION_MON,INJECTION}),
+    .DEBUG(DEBUG)
 );
-
-    
+ 
 pulse_gen
 #( 
     .BASEADDR(PULSE_GATE_TDC_BASEADDR), 
@@ -326,17 +332,14 @@ tlu_controller #(
 	 
     .TLU_TRIGGER(RJ45_TRIGGER),
     //.TLU_TRIGGER(1'b0),
-    .TLU_RESET(RJ45_RESET),
+    .TLU_RESET(1'b0),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
     
     .TIMESTAMP(TIMESTAMP)
 );
 
-wire DI;
-assign DI = TIMESTAMP_SOURCE[0]? LEMO_RX[1]: GATE_TDC;
-//assign DI = TIMESTAMP_SOURCE[1]? (TIMESTAMP_SOURCE[0]? INJECTION:GATE_TDC) : (TIMESTAMP_SOURCE[0]? LEMO_RX[1]:LEMO_RX[0]);
-timestamp
+timestamp640
 #(
     .BASEADDR(TS_BASEADDR),
     .HIGHADDR(TS_HIGHADDR),
@@ -349,8 +352,10 @@ timestamp
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
       
-    .CLK(CLK40),
-    .DI(DI),
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .CLK40(CLK40),
+    .DI(LEMO_RX[1]),
     .EXT_TIMESTAMP(TIMESTAMP),
     .EXT_ENABLE(1'b1),
 
@@ -358,7 +363,6 @@ timestamp
     .FIFO_EMPTY(TS_FIFO_EMPTY),
     .FIFO_DATA(TS_FIFO_DATA)
 );
-
 
 
 timestamp640
@@ -377,7 +381,7 @@ timestamp640
     .CLK320(CLK320),
     .CLK160(CLK160),
     .CLK40(CLK40),
-    .DI(INJECTION_TS_IN),
+    .DI(INJECTION_IN),
     .EXT_TIMESTAMP(TIMESTAMP),
     .EXT_ENABLE(GATE_TDC),
 
@@ -431,9 +435,9 @@ timestamp640
     .CLK320(CLK320),
     .CLK160(CLK160),
     .CLK40(CLK40),
-    .DI(RJ45_TRIGGER),
+    .DI(RJ45_RESET),
     .EXT_TIMESTAMP(TIMESTAMP),
-    .EXT_ENABLE(TLU_BUSY),
+    .EXT_ENABLE(~TLU_BUSY),
 
     .FIFO_READ(TS_TLU_FIFO_READ),
     .FIFO_EMPTY(TS_TLU_FIFO_EMPTY),
@@ -478,10 +482,14 @@ assign nRST = nRST_reg;
 always@(negedge CLK40)
     nRST_reg <= !RESET_CONF;
    
-reg RST_GRAY_reg;
+
 assign RST_GRAY = RST_GRAY_reg;
-always@(negedge CLK40)
-    RST_GRAY_reg <= RESET_GRAY_CONF | (GATE_TDC & EN_GRAY_RESET_WITH_TDC_PULSE);
+always@(negedge CLK40) begin
+    if (EN_GRAY_RESET_WITH_TIMESTAMP==1 && TIMESTAMP[7:0]==8'hFF)
+        RST_GRAY_reg <= RESET_GRAY_CONF;
+    else
+        RST_GRAY_reg <= RESET_GRAY_CONF;
+end
 
 assign EN_TEST_PATTERN = EN_TEST_PATTERN_CONF;
 assign EN_DRIVER = EN_DRIVER_CONF;
@@ -491,14 +499,14 @@ assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 assign RESET = 0;
 
 // LED assignments
-assign LED[0] = 1;
-assign LED[1] = 0;
+assign LED[0] = 0;
+assign LED[1] = 1;
 assign LED[2] = 0;
 assign LED[3] = 0;
 assign LED[4] = 0;
 
 assign LEMO_TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign LEMO_TX[1] = TLU_BUSY;  // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has 
-assign LEMO_TX[2] = INJECTION; // Do not use this port (no TX2 in MIO3)
-assign DEBUG = MONITOR;
+assign LEMO_TX[2] = INJECTION_MON; // TX2 for mio, J502 for mio3
+
 endmodule

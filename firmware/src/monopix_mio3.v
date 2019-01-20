@@ -45,14 +45,14 @@
 `include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller_core.v"
 `include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller_fsm.v"
 
-`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp640/timestamp640.v"
-`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp640/timestamp640_core.v"
-
-`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp/timestamp.v"
-`include "/home/user/workspace/basil/basil_thinn/firmware/modules/timestamp/timestamp_core.v"
+`include "timestamp640/timestamp640.v"
+`include "timestamp640/timestamp640_core.v"
 
 `include "/home/user/workspace/basil/basil_thinn/firmware/modules/pulse_gen/pulse_gen.v"
 `include "/home/user/workspace/basil/basil_thinn/firmware/modules/pulse_gen/pulse_gen_core.v"
+
+`include "pulse_gen640/pulse_gen640.v"
+`include "pulse_gen640/pulse_gen640_core.v"
 
 `include "mono_data_rx/mono_data_rx.v"
 `include "mono_data_rx/mono_data_rx_core.v"
@@ -92,8 +92,8 @@ module monopix_mio3(
     input wire  DATA,              //DIN0
     input wire  DATA_LVDS,         //DIN8_LVDS0
  
-    input  wire INJECTION_TS_IN, //flatcable 6
-    output wire INJECTION_OUT,    //flatcable 5
+    input  wire INJECTION_IN, //flatcable 6
+    output wire INJECTION_OUT,//flatcable 5
     output wire DEBUG,
     
     // I2C
@@ -555,7 +555,7 @@ monopix_mio_core i_monopix_mio_core(
     .DATA(DATA),       //DIN0
     .DATA_LVDS(DATA_LVDS),              //DIN8_LVDS0
     
-    .INJECTION_TS_IN(INJECTION_TS_IN),
+    .INJECTION_IN(INJECTION_IN),
     .DEBUG(DEBUG)
 
 );

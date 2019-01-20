@@ -41,18 +41,18 @@ class Monopix():
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
-        
+
         self.debug=0
         self.plot=1
         self.inj_device="gpac"
-        self.COL_SIZE = 36  ##TODO this will be used in scans..
+        self.COL_SIZE = 36  ##TODO this will be used in scans... maybe not here
         self.ROW_SIZE = 129
 
         if dut is None:
             dut = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
         if isinstance(dut,str):
             self.dut=basil.dut.Dut(conf=dut)
-        elif isinstance(dut,monopix.monopix):
+        elif isinstance(dut,monopix.Monopix):
             self.dut=dut
             
         self.dut.PIXEL_CONF = {'PREAMP_EN': np.full([36,129], True, dtype = np.bool),
@@ -80,6 +80,7 @@ class Monopix():
         self.set_mon_en([18,25])
         self.set_tdac(0)
         
+        self.dut["gate_tdc"].reset()
         self.set_inj_all()
         
     def _write_global_conf(self):        
@@ -300,7 +301,7 @@ class Monopix():
         self.logger.info("get_th:th_set=%f th_meas=%f"%(self.dut.SET_VALUE["TH"],th_meas))
         return th_meas
         
-##### tmp and inj ####
+##### temp and inj ####
     def get_temperature(self):
         vol=self.dut["NTC"].get_voltage()
         if not (vol>0.5 and vol<1.5):
@@ -334,7 +335,7 @@ class Monopix():
             time.sleep(0.1)
         self.dut.SET_VALUE["INJ_LO"]=inj_low
        
-    def set_inj_all(self,inj_high=0.5,inj_low=0.1,inj_n=100,inj_width=5000,delay=700,ext=False):
+    def set_inj_all(self,inj_high=0.5,inj_low=0.1,inj_n=100,inj_width=5000,delay=700,ext=False,inj_phase=0):
         self.set_inj_high(inj_high)
         self.set_inj_low(inj_low)
 
@@ -342,26 +343,24 @@ class Monopix():
         self.dut["inj"]["REPEAT"]=inj_n
         self.dut["inj"]["DELAY"]=inj_width
         self.dut["inj"]["WIDTH"]=inj_width
-        self.dut["inj"]["EN"]=1
-        
-        self.dut["gate_tdc"].reset()
-        self.dut["gate_tdc"]["REPEAT"]=1
-        self.dut["gate_tdc"]["DELAY"]=delay
-        self.dut["gate_tdc"]["WIDTH"]=inj_n*inj_width*2+10
-        self.dut["gate_tdc"]["EN"]=ext
-        self.logger.info("inj:%.4f,%.4f inj_width:%d inj_n:%d delay:%d ext:%d"%(
-            inj_high,inj_low,inj_width,inj_n,delay,int(ext)))
+        self.dut["inj"].set_phase(inj_phase)
+        self.dut["inj"]["EN"]=0
+
+        self.logger.info("inj:%.4f,%.4f inj_width:%d inj_n:%d delay:%d,0x%x ext:%d"%(
+            inj_high,inj_low,inj_width,
+            self.dut["inj"]["REPEAT"],delay,
+            self.dut["inj"]["PHASE_DES"],int(ext)))
             
     def start_inj(self,inj_high=None,wait=False):
-        if inj_high!=None:
-            if inj_high!=None:
-                self.set_inj_high(inj_high)
+        if inj_high is not None:
+            self.set_inj_high(inj_high)
         self.dut["inj"].start()
-        self.logger.info("start_inj:%.4f,%.4f"%(self.dut.SET_VALUE["INJ_HI"],self.dut.SET_VALUE["INJ_LO"]))
+        self.logger.info("start_inj:%.4f,%.4f phase=%d"%(
+                self.dut.SET_VALUE["INJ_HI"],self.dut.SET_VALUE["INJ_LO"],
+                self.dut["inj"].get_phase()))
         while self.dut["inj"].is_done()!=1 and wait==True:
              time.sleep(0.001)
             
-        
 ###### data fifo ####
     def get_data_now(self):
         return self.dut['fifo'].get_data()
@@ -385,20 +384,21 @@ class Monopix():
             self.logger.warn("get_data: error cnt=%d"%lost_cnt)      
         return raw
         
-    def reset_monoread(self,wait=0.001):
+    def reset_monoread(self,wait=0.001,sync_timestamp=1):
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TIMESTAMP'] = sync_timestamp
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF'].write()
-        time.sleep(0.001)
+        time.sleep(wait)
         self.dut['CONF']['RESET'] = 0
         self.dut['CONF'].write()
-        time.sleep(0.001)
+        time.sleep(wait)
         self.dut['CONF']['RESET_GRAY'] = 0
         self.dut['CONF'].write()
         
     def set_monoread(self,start_freeze=90,start_read=90+2,stop_read=90+2+2,
-                          stop_freeze=90+37,stop=90+37+10,
-                    gray_reset_by_tdc=0):
+                     stop_freeze=90+37,stop=90+37+10,
+                     sync_timestamp=1):
         # start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+36,stop=52+36+10
         th=self.dut.SET_VALUE["TH"]
         self.dut["TH"].set_voltage(1.5,unit="V")
@@ -412,7 +412,7 @@ class Monopix():
         self.dut['data_rx'].CONF_STOP = stop
         
         ## set switches
-        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = gray_reset_by_tdc ## TODO for what?
+        self.dut['CONF']['EN_GRAY_RESET_WITH_TIMESTAMP'] = sync_timestamp
         self.dut['CONF']['RESET_GRAY'] = 1
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF']['EN_DATA_CMOS'] = 0
@@ -489,6 +489,11 @@ class Monopix():
             self.dut["timestamp_inj"]["INVERT"]=0
             self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
             self.dut["timestamp_inj"]["ENABLE"]=1
+       elif src=="rx1":
+            self.dut["timestamp_tlu"]["INVERT"]=0
+            self.dut["timestamp_inj"]["ENABLE_EXTERN"]=0 ## connected to 1'b1
+            self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
+            self.dut["timestamp"]["ENABLE"]=1
        else: #"mon"
             self.dut["timestamp_mon"]["INVERT"]=1
             self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
@@ -502,23 +507,6 @@ class Monopix():
         lost_cnt=self.dut["timestamp_%s"%src]["LOST_COUNT"]
         self.logger.info("stop_timestamp640:src=%s lost_cnt=%d"%(src,lost_cnt))
         
-    def set_timestamp(self,src="rx1"):
-        if src=="gate":
-            self.dut['CONF']['RX1_OR_GATE'] = 0
-        else: #"rx1"
-            self.dut['CONF']['RX1_OR_GATE'] = 1
-        self.dut['CONF'].write()
-        self.dut["timestamp"].reset()
-        self.dut["timestamp"]["EXT_TIMESTAMP"]=True
-        self.dut["timestamp"]["ENABLE"]=1
-        self.logger.info("set_timestamp:src=%s"%src)
-        
-    def stop_timestamp(self):
-        self.dut["timestamp"]["ENABLE"]=0
-        lost_cnt=self.dut["timestamp"]["LOST_COUNT"]
-        if lost_cnt!=0:
-            self.logger.warn("stop_timestamp: lost_cnt=%d"%lost_cnt)
-        return lost_cnt
         
 #### load and save config
     def save_config(self,fname=None):
@@ -574,10 +562,12 @@ class Monopix():
             self.set_preamp_en(ret["pix_PREAMP_EN"],ColRO_En=ret["CONF_SR"]["ColRO_En"][::-1])
             self.set_inj_en(ret["pix_INJECT_EN"])
             self.set_tdac(ret["pix_TRIM_EN"])
-            self.set_inj_all(inj_high=power["INJ_HI"],inj_low=power["INJ_LO"],
-                             inj_n=ret["inj"]["REPEAT"],inj_width=ret["inj"]["WIDTH"],delay=ret["inj"]["DELAY"],
-                             ext=bool(ret["gate_tdc"]["EN"]))
-           
+            for module in ["inj","gate_tdc","tlu","timestamp_inj","timestamp_tlu","timestamp_mon","data_rx"]:
+                s="load_config: %s "%module
+                for reg in ret[module]:
+                    self.dut[module][reg]=ret[module][reg]
+                    s=s+" %s=%d"%(reg,ret[module][reg])
+                self.logger.info(s)
             ## TODO check Col_RO_En etc
         return ret
         

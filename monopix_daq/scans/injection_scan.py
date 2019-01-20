@@ -10,6 +10,7 @@ import monopix_daq.scan_base as scan_base
 
 local_configuration={"injlist": np.arange(0.1,1.9,0.05),
                      "thlist": [0.82], # None, #[b,e,s]=[1.5,0.5,0.05],
+                     "phaselist":np.arange(0,16,1),
                      "pix":[18,25],
                      "n_mask_pix":12,
                      "with_mon": False
@@ -36,7 +37,10 @@ class InjectionScan(scan_base.ScanBase):
         thlist = kwargs.pop('thlist', None)
         if thlist is None or len(thlist)==0:
             thlist=[self.dut.SET_VALUE["TH"]]
-        inj_th=np.reshape(np.stack(np.meshgrid(injlist,thlist),axis=2),[-1,2])
+        phaselist = kwargs.pop('phaselist', None)
+        if phaselist is None or len(phaselist)==0:
+            phaselist=[self.dut["inj"].get_phase()]
+        inj_th_phase=np.reshape(np.stack(np.meshgrid(injlist, thlist, phaselist),axis=3),[-1,3])
 
         with_mon = kwargs.pop('with_mon', False)
 
@@ -55,7 +59,7 @@ class InjectionScan(scan_base.ScanBase):
         self.scan_param_table = self.h5_file.create_table(self.h5_file.root, 
                       name='scan_parameters', title='scan_parameters',
                       description=description, filters=self.filter_tables)
-        self.meta_data_table.attrs.inj_th = yaml.dump(inj_th)
+        self.meta_data_table.attrs.inj_th_phase = yaml.dump(inj_th_phase)
         
         t0=time.time()
         scan_param_id=0
@@ -97,7 +101,7 @@ class InjectionScan(scan_base.ScanBase):
             cnt=0     
             with self.readout(scan_param_id=scan_param_id,fill_buffer=False,clear_buffer=True,
                               readout_interval=0.005):
-              for inj,th in inj_th:
+                for inj,th,phase in inj_th_phase:
                   if th>0 and self.dut.SET_VALUE["TH"]!=th:
                     self.dut["TH"].set_voltage(th,unit="V")
                     self.dut.SET_VALUE["TH"]=th
@@ -105,6 +109,8 @@ class InjectionScan(scan_base.ScanBase):
                   if inj_high>0 and self.dut.SET_VALUE["INJ_HI"]!=inj_high:
                     self.dut["INJ_HI"].set_voltage(inj_high,unit="V")
                     self.dut.SET_VALUE["INJ_HI"]=inj_high
+                  if phase>0 and self.dut["inj"].get_phase()!=phase:
+                      self.dut["inj"].set_phase(phase)
                   #pre_cnt=cnt
                   #cnt=self.fifo_readout.get_record_count()
                   self.dut["inj"].start()
@@ -112,14 +118,14 @@ class InjectionScan(scan_base.ScanBase):
                         time.sleep(0.001)
                   #self.logger.info('mask=%d inj=%.3f dat=%d'%(i,inj,cnt-pre_cnt))    
                        
-              ####################
-              ## stop readout
-              self.monopix.stop_timestamp640("inj")
-              self.monopix.stop_timestamp640("mon")
-              self.monopix.stop_monoread()
-              time.sleep(0.2)
-              pre_cnt=cnt
-              cnt=self.fifo_readout.get_record_count()
+                ####################
+                ## stop readout
+                self.monopix.stop_timestamp640("inj")
+                self.monopix.stop_timestamp640("mon")
+                self.monopix.stop_monoread()
+                time.sleep(0.2)
+                pre_cnt=cnt
+                cnt=self.fifo_readout.get_record_count()
             self.logger.info('mask=%d pix=%s dat=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             scan_param_id=scan_param_id+1
 

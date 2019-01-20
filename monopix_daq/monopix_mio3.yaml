@@ -9,7 +9,6 @@ transfer_layer:
     type  : SiTcp
     init:
         ip : "192.168.10.19"
-        #ip : "192.168.12.16"
         udp_port : 4660
         tcp_port : 24
         tcp_connection : True
@@ -27,7 +26,7 @@ hw_drivers:
     base_addr : 0x00000
     init:
         no_calibration : False
-        no_power_reset : True
+        no_power_reset : False
 
   - name      : fifo
     type      : sram_fifo
@@ -58,7 +57,7 @@ hw_drivers:
     size      : 8
     
   - name      : timestamp  #4
-    type      : timestamp
+    type      : timestamp640
     interface : intf
     base_addr : 0x10700
     size      : 8
@@ -66,7 +65,7 @@ hw_drivers:
   - name      : timestamp_mon  #6
     type      : timestamp640
     interface : intf
-    base_addr : 0x10300
+    base_addr : 0x10a00
     
   - name      : timestamp_tlu #7
     type      : timestamp640
@@ -80,9 +79,9 @@ hw_drivers:
     base_addr : 0x11000
     
   - name      : inj
-    type      : pulse_gen
+    type      : pulse_gen640
     interface : intf
-    base_addr : 0x10100
+    base_addr : 0x10300
     
   - name      : gate_tdc
     type      : pulse_gen
@@ -107,13 +106,10 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
-      - name    : INJ_OR_TLU
+      - name    : RST_GRAY_reg
         size    : 1
-        offset  : 12
-      - name    : RX1_OR_GATE
-        size    : 1
-        offset  : 11
-      - name    : EN_GRAY_RESET_WITH_TDC_PULSE
+        offset  : 15
+      - name    : EN_GRAY_RESET_WITH_TIMESTAMP
         size    : 1
         offset  : 10
       - name    : EN_DATA_CMOS
@@ -214,25 +210,6 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
-
-  - name        : I_LSBdacL
-    type        : FunctionalRegister
-    hw_driver   : GPAC
-    arg_names   : [ value ]
-    arg_add     : { 'channel': 'ISRC7'}
-
-  - name        : I_VPFB
-    type        : FunctionalRegister
-    hw_driver   : GPAC
-    arg_names   : [ value ]
-    arg_add     : { 'channel': 'ISRC5'}
-
-  - name        : I_VPLoad
-    type        : FunctionalRegister
-    hw_driver   : GPAC
-    arg_names   : [ value ]
-    arg_add     : { 'channel': 'ISRC9'}
-
 
   - name        : CONF_SR
     type        : StdRegister

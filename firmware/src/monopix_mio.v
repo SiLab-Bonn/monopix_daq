@@ -26,8 +26,8 @@
 `include "timestamp/timestamp.v"
 `include "timestamp/timestamp_core.v"
 
-`include "timestamp640/timestamp640.v"
-`include "timestamp640/timestamp640_core.v"
+`include "timestamp160/timestamp160.v"
+`include "timestamp160/timestamp160_core.v"
 
 `include "utils/fx2_to_bus.v"
 

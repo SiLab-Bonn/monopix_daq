@@ -244,12 +244,10 @@ set_property IOSTANDARD LVCMOS33 [get_ports RJ45_TRIGGER]
 
 set_property PACKAGE_PIN G12 [get_ports INJECTION_OUT]
 set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_OUT]
-set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_TS_IN]
 set_property SLEW FAST [get_ports INJECTION_OUT]
 set_property DRIVE 16 [get_ports INJECTION_OUT]
 
 set_property PACKAGE_PIN T25 [get_ports MONITOR]
-set_property PACKAGE_PIN F12 [get_ports INJECTION_TS_IN]
 set_property PACKAGE_PIN T24 [get_ports DATA]
 
 
@@ -257,3 +255,7 @@ set_property PACKAGE_PIN AD21 [get_ports DEBUG]
 set_property IOSTANDARD LVCMOS33 [get_ports DEBUG]
 set_property SLEW FAST [get_ports DEBUG]
 set_property DRIVE 16 [get_ports DEBUG]
+
+
+set_property PACKAGE_PIN F12 [get_ports INJECTION_IN]
+set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_IN]
