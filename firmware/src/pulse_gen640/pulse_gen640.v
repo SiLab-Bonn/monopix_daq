@@ -15,13 +15,13 @@ module pulse_gen640
     parameter CLKDV = 4,
     parameter OUTPUT_SIZE =2 
 )(
-    input wire                  BUS_CLK,
-    input wire                  BUS_RST,
-    input wire  [ABUSWIDTH-1:0] BUS_ADD,
-    inout wire  [7:0]           BUS_DATA,
-    input wire                  BUS_RD,
-    input wire                  BUS_WR,
-    
+    input wire BUS_CLK,
+    input wire [ABUSWIDTH-1:0] BUS_ADD,
+    inout wire [7:0] BUS_DATA,
+    input wire BUS_RST,
+    input wire BUS_WR,
+    input wire BUS_RD,
+
     input wire  PULSE_CLK,
     input wire PULSE_CLK160,
     input wire  PULSE_CLK320,

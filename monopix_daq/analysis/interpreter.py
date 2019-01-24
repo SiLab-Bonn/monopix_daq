@@ -6,6 +6,13 @@ import tables
 
 hit_dtype=np.dtype([("col","<u1"),("row","<u1"),("le","<u1"),("te","<u1"),("cnt","<u4"),
                     ("timestamp","<u8")])
+TS_TLU= 0xFB #251
+TS_INJ= 0xFC #252
+TS_MON= 0xFD #253
+TS_GATE= 0xFE #254
+TLU= 0xFF #255
+COL_SIZE=36
+ROW_SIZE=129
 
 @njit
 def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
@@ -182,7 +189,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
 
             if ts3_flg == 2:
                 ts3_flg = 0
-                buf[buf_i]["col"] = 0xFC
+                buf[buf_i]["col"] = TS_INJ
                 buf[buf_i]["row"] = 2
                 buf[buf_i]["le"] = 0
                 buf[buf_i]["te"] = 0
@@ -192,7 +199,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                 #    buf[buf_i]['idx']=r_i
                 buf_i = buf_i+1
             else:
-               buf[buf_i]["col"]=0xEC
+               buf[buf_i]["col"]= TS_INJ & 0x7F
                buf[buf_i]["row"]=2
                buf[buf_i]["le"]=ts3_flg
                buf[buf_i]["te"]=0
@@ -210,7 +217,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts3_flg == 0x1:
                 ts3_flg = 0x2
             else:
-               buf[buf_i]["col"]=0xEC
+               buf[buf_i]["col"]= TS_INJ & 0x7F
                buf[buf_i]["row"]=1
                buf[buf_i]["le"]=ts3_flg
                buf[buf_i]["te"]=0
@@ -227,7 +234,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
             if ts3_flg == 0x0:
                 ts3_flg = 0x1
             else:
-               buf[buf_i]["col"]=0xEC
+               buf[buf_i]["col"]= TS_INJ & 0x7F
                buf[buf_i]["row"]=1
                buf[buf_i]["le"]=ts3_flg
                buf[buf_i]["te"]=0
@@ -446,7 +453,7 @@ def _interpret(raw,buf,col,row,le,te,noise,timestamp,rx_flg,
                     tlu_timestamp = tlu_timestamp + np.uint64(0x80000)
             #if debug & 0x4 ==0x4:
                 #print r_i,hex(r),"ts=",hex(tlu_timestamp),"tlu",tlu,hex(tlu_tmp),tlu_tmp < trig_tmp
-            buf[buf_i]["col"]=0xFF
+            buf[buf_i]["col"]= TLU 
             buf[buf_i]["row"]=0xFF
             buf[buf_i]["le"]= 0xFF 
             buf[buf_i]["te"]= 0xFF

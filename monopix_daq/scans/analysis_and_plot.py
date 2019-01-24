@@ -52,6 +52,8 @@ if __name__ == "__main__":
     args=parser.parse_args()
 
     x=importlib.import_module('monopix_daq.scans.%s'%args.scan_module_name)
+    #print './scans/%s.py'%args.scan_module_name
+    #x=imp.load_source('monopix_daq.scans.%s'%args.scan_module_name,'./scans/%s.py'%args.scan_module_name)
     for name, ScanClass in inspect.getmembers(x):
         if inspect.isclass(ScanClass):
             break

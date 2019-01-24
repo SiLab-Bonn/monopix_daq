@@ -14,13 +14,14 @@ module pulse_gen640_core
     parameter OUTPUT_SIZE =2 
 )
 (
-    input wire                      BUS_CLK,
-    input wire                      BUS_RST,
-    input wire     [ABUSWIDTH-1:0]  BUS_ADD,
-    input wire     [7:0]            BUS_DATA_IN,
-    input wire                      BUS_RD,
-    input wire                      BUS_WR,
-    output reg     [7:0]            BUS_DATA_OUT,
+    input wire BUS_CLK,
+    input wire [ABUSWIDTH-1:0] BUS_ADD,
+    input wire [7:0] BUS_DATA_IN,
+    output reg [7:0] BUS_DATA_OUT,
+    input wire BUS_RST,
+    input wire BUS_WR,
+    input wire BUS_RD,
+
     
     input wire PULSE_CLK,
     input wire PULSE_CLK160,

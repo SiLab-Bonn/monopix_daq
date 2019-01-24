@@ -57,6 +57,8 @@
 `include "mono_data_rx/mono_data_rx.v"
 `include "mono_data_rx/mono_data_rx_core.v"
 
+`define CODE_FOR_MIO3
+
 module monopix_mio3(
 
     input wire FCLK_IN, // 100MHz

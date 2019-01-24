@@ -67,8 +67,8 @@ module monopix_mio_core (
 localparam GPIO_BASEADDR = 16'h0010;
 localparam GPIO_HIGHADDR = 16'h0100-1;
 
-localparam PULSE_INJ_BASEADDR = 16'h0300;
-localparam PULSE_INJ_HIGHADDR = 16'h0400-1;
+localparam PULSE_INJ_BASEADDR = 16'h6000;
+localparam PULSE_INJ_HIGHADDR = 16'h7000-1;
 
 localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
 localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
@@ -223,9 +223,9 @@ pulse_gen640
     .PULSE_CLK(CLK40),
     .EXT_START(GATE_TDC),
     .PULSE({INJECTION_MON,INJECTION}),
-    .DEBUG(DEBUG)
+    .DEBUG()
 );
- 
+
 pulse_gen
 #( 
     .BASEADDR(PULSE_GATE_TDC_BASEADDR), 
@@ -364,7 +364,7 @@ timestamp640
     .FIFO_DATA(TS_FIFO_DATA)
 );
 
-
+ 
 timestamp640
 #(
     .BASEADDR(TS_INJ_BASEADDR),
@@ -471,8 +471,6 @@ mono_data_rx #(
     .LOST_ERROR()
 ); 
 
-
-
 ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_BX) );
 //ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );
 assign CLK_OUT = EN_OUT_CLK_CONF ? CLK40 : 1'b0;
@@ -481,7 +479,6 @@ reg nRST_reg;
 assign nRST = nRST_reg;
 always@(negedge CLK40)
     nRST_reg <= !RESET_CONF;
-   
 
 assign RST_GRAY = RST_GRAY_reg;
 always@(negedge CLK40) begin
@@ -499,14 +496,16 @@ assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 assign RESET = 0;
 
 // LED assignments
-assign LED[0] = 0;
-assign LED[1] = 1;
-assign LED[2] = 0;
+assign LED[0] = 1;
+assign LED[1] = 0;
+assign LED[2] = 1;
 assign LED[3] = 0;
 assign LED[4] = 0;
 
 assign LEMO_TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign LEMO_TX[1] = TLU_BUSY;  // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has 
 assign LEMO_TX[2] = INJECTION_MON; // TX2 for mio, J502 for mio3
+
+assign DEBUG = RST_GRAY_reg;
 
 endmodule

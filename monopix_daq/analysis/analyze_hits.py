@@ -22,8 +22,16 @@ class AnalyzeHits():
             while start<end:
                 tmpend=min(end,start+n)
                 hits=f.root.Hits[start:tmpend]
+                if tmpend!=end:
+                    last=hits[-1]
+                    for i,h in enumerate(hits[::-1][1:]):
+                        if h["scan_param_id"]!= last["scan_param_id"]:
+                            hits=hits[:len(hits)-i-1]
+                            break
+                    if last["scan_param_id"]==h["scan_param_id"]:
+                        print "ERROR data chunck is too small increase n"
                 self.analyze(hits,f.root)
-                start=start+n
+                start=start+len(hits)
         self.save()
 
     def analyze(self, hits, fhit_root):
@@ -33,6 +41,10 @@ class AnalyzeHits():
             self.run_hist_ev(hits)
         if "cnts" in self.res.keys():
             self.run_cnts(hits,fhit_root)
+        if "le_hist" in self.res.keys():
+            self.run_le_hist(hits,fhit_root)
+        if "le_cnts" in self.res.keys():
+            self.run_le_cnts(hits,fhit_root)
 
     def save(self):
         if "hist_occ" in self.res.keys():
@@ -44,46 +56,72 @@ class AnalyzeHits():
         if "cnts" in self.res.keys():
             self.save_cnts()
 
+######### le-counts
+    def init_le_cnts(self):
+        with tb.open_file(self.fraw) as f:
+            cnt_dtype=f.root.scan_parameters.dtype
+        cnt_dtype=cnt_dtype.descr
+        for i in range(len(cnt_dtype)):
+            if cnt_dtype[i][0]=="pix":
+                cnt_dtype.pop(i)
+                break
+        cnt_dtype = cnt_dtype + [
+                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),('tof', "<u1"),
+                    ('th', "<f4"),('phase', "<i4")]
+
+        self.res["le_cnts"]=list(np.zeros(0,dtype=cnt_dtype).dtype.names)
+        with tb.open_file(self.fhit,"a") as f:
+            try:
+                f.remove_node(f.root,"LECnts")
+            except:
+                pass
+            f.create_table(f.root,name="LECnts",
+                           description=np.zeros(0,dtype=cnt_dtype+[('cnt',"<i4")]).dtype,
+             title='le_cnt_data')
+
+    def run_le_cnts(self,hits,fhit_root):
+        hits["tof"] = hits["tof"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
+        uni,cnt=np.unique(hits[self.res["le_cnts"]],return_counts=True)
+        buf=np.empty(len(uni),dtype=fhit_root.LECnts.dtype)
+        for c in self.res["le_cnts"]:
+            buf[c]=uni[c]
+        buf["cnt"]=cnt
+        #### TODO copy scan_param_id to the data here
+        fhit_root.LECnts.append(buf)
+        fhit_root.LECnts.flush()
+            
 ######### counts
     def init_cnts(self):
         with tb.open_file(self.fraw) as f:
             param_len=len(f.root.scan_parameters)
             cnt_dtype=f.root.scan_parameters.dtype
-            inj_th_len=len(yaml.load(f.root.meta_data.attrs.inj_th))
         n_mask_pix=cnt_dtype["pix"].shape[0]
         cnt_dtype=cnt_dtype.descr
         for i in range(len(cnt_dtype)):
-                if cnt_dtype[i][0]=="pix":
-                    break
-        cnt_dtype.pop(i)
+            if cnt_dtype[i][0]=="pix":
+                cnt_dtype.pop(i)
+                break
         cnt_dtype = cnt_dtype + [
-                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),('th', "<f4"),('cnt',"<i4")]
-        self.res["cnts"]=np.zeros(0,dtype=cnt_dtype)
+                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),
+                    ('th', "<f4"),('phase', "<i4"),('cnt',"<i4")]
+
+        self.res["cnts"]=list(np.zeros(0,dtype=cnt_dtype).dtype.names)[:-1]
         with tb.open_file(self.fhit,"a") as f:
+            try:
+                f.remove_node(f.root,"Cnts")
+            except:
+                pass
             f.create_table(f.root,name="Cnts",
-                           description=self.res["cnts"].dtype,
+                           description=np.zeros(0,dtype=cnt_dtype).dtype,
                            title='cnt_data')
+
     def run_cnts(self,hits,fhit_root):
-        cols=["scan_param_id","col","row",'inj','th']
-        uni,cnt=np.unique(hits[cols],return_counts=True)
-        if len(fhit_root.Cnts)==0:
-           last_flg=False
-        else:
-           last=fhit_root.Cnts[len(fhit_root.Cnts)-1]
-           last_flg=False
-           for c in cols:
-             if uni[-1][c]!=last[c]:
-               last_flg=True
-               break
-        if last_flg==True:
-            fhit_root.Cnts[len(fhit_root.Cnts)-1]["cnt"]=uni[-1]['cnt']+last["cnt"]
-            uni=uni[1:]
-            cnt=cnt[1:]
-        fhit_root.Cnts.flush()
-        buf=np.empty(len(uni),self.res["cnts"].dtype)
-        for c in cols:
+        uni,cnt=np.unique(hits[self.res["cnts"]],return_counts=True)
+        buf=np.empty(len(uni),dtype=fhit_root.Cnts.dtype)
+        for c in self.res["cnts"]:
             buf[c]=uni[c]
         buf["cnt"]=cnt
+        #### TODO copy scan_param_id to the data here
         fhit_root.Cnts.append(buf)
         fhit_root.Cnts.flush()
     def save_cnts(self):
@@ -106,6 +144,10 @@ class AnalyzeHits():
                     continue
                 injected[p[0],p[1]]= int(en[p[0],p[1]])
         with tb.open_file(self.fhit,"a") as f:
+            try:
+                f.remove_node(f.root,"Injected")
+            except:
+                pass
             f.create_carray(f.root, name='Injected',
                             title='Injected pixels',
                             obj=injected,
@@ -123,6 +165,10 @@ class AnalyzeHits():
                        bins=[np.arange(0,COL_SIZE+1),np.arange(0,ROW_SIZE+1)])[0]
     def save_hist(self,res_name="hist_occ"):
         with tb.open_file(self.fhit,"a") as f:
+            try:
+                f.remove_node(f.root,"HistOcc")
+            except:
+                pass
             f.create_carray(f.root, name='HistOcc',
                             title='Hit Occupancy',
                             obj=self.res[res_name],
@@ -136,8 +182,70 @@ class AnalyzeHits():
                        hits['col'],
                        hits['row'],
                        bins=[np.arange(0,COL_SIZE+1),np.arange(0,ROW_SIZE+1)])[0]
+                       
+######### analyze delay
+    def init_le_hist(self):
+        with tb.open_file(self.fraw) as f:
+            phaselist=np.sort(np.unique(np.array(
+                          yaml.load(f.root.meta_data.attrs.phaselist))))
+        with tb.open_file(self.fhit,"a") as f_o:
+            try:
+                f_o.remove_node(f_o.root,"LEHist")
+                f_o.remove_node(f_o.root,"LEDist")
+            except:
+                pass
+            dat_dtype=[('scan_param_id', '<i4'),('col', 'u1'),
+                       ('row', 'u1'), ('inj', '<f4'), ('th', '<f4')]
+            t=f_o.create_table(
+                f_o.root,name="LEHist",
+                description=np.empty(0,dtype=dat_dtype+[('LE','u1',(len(phaselist),256))]),
+                title='LE_hist_data')
+            t.attrs.phaselist=phaselist
+            f_o.create_table(
+                f_o.root,name="LEDist",
+                description=np.empty(0,dtype=dat_dtype+[('ts_le','<i4'),('cnt','<f4')]),
+                title='LE_distribution_data')
+        self.res["le_hist"]=phaselist
 
-                            
+    def run_le_hist(self,hits,fhit_root):
+        buf=np.empty(1,dtype=fhit_root.LEHist.dtype)
+        buf_dist=np.empty(16*256,dtype=fhit_root.LEDist.dtype)
+
+        uni,idx,cnt=np.unique(hits[['scan_param_id', 'col', 'row','th','inj']],
+                          return_counts=True,return_index=True)
+        for u_i,u in enumerate(uni):
+            dat=hits[hits[['scan_param_id', 'col', 'row', 'th','inj']]==u]
+            ph0=dat[0]["phase"]
+            
+            for i,ph in enumerate(self.res["le_hist"]):
+                tmp=dat[dat["phase"]==ph]
+                buf[0]["LE"][i,:]=np.bincount(
+                          tmp["tof"]- np.uint8(np.uint64(tmp["ts_inj"]-ph)>>np.uint64(4)),
+                          minlength=256)
+            for c in ['scan_param_id', 'col', 'row', 'th','inj']:
+                buf[0][c]=u[c]
+            fhit_root.LEHist.append(buf)
+            fhit_root.LEHist.flush()
+
+            if False: ### debug
+                import matplotlib.pyplot as plt
+                plt.imshow(np.transpose(buf[0]["LE"]),origin="lower",
+                       cmap="viridis",
+                       aspect="auto",interpolation="none",
+                       #vmax=1,vmin=0
+                       )
+                plt.title("inj=%.3f"%buf[0]["inj"])
+                a_start=min(np.argwhere(buf[0]["LE"][0,:]!=0)-10,0)
+                a_stop=max(np.argwhere(buf[0]["LE"][-1,:]!=0)+10,256)
+                plt.ylim(a_start,a_stop)
+                c=plt.colorbar()
+                c.set_label("#")
+                plt.xlabel("Injection delay [%.3fns]"%(25/16.))
+                plt.ylabel("Monopix timestamp")
+                plt.savefig("LE_inj%.4f_th%.4f.png"%(buf[0]["inj"],buf[0]["th"]),fmt="png",dpi=300)
+                print "LE_inj%.4f_th%.4f.png"%(buf[0]["inj"],buf[0]["th"])
+                plt.clf()
+
 if "__main__"==__name__:
     import sys
     fraw=sys.argv[1]

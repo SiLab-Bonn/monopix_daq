@@ -26,6 +26,8 @@ ROW_SIZE = 129
 TITLE_COLOR = '#07529a'
 OVERTEXT_COLOR = '#07529a'
 
+import monopix_daq.analysis.utils
+
 class PlottingBase(object):
     def __init__(self, fout, save_png=False,save_single_pdf=False):
         self.logger = logging.getLogger()
@@ -296,6 +298,85 @@ class PlottingBase(object):
         cax = divider.append_axes("right", size="5%", pad=0.2)
         cb = fig.colorbar(im, cax=cax)
         cb.set_label(z_axis_title)
+        if page_title is not None and len(page_title)>0:
+            self._add_title(page_title,fig)
+        self._save_plots(fig)
+        
+    def plot_2d_hist_4(self, dat, page_title="Pixel configurations",
+                        bins=None,
+                        title=["Preamp","Inj","Mon","TDAC"], 
+                        x_axis_title="Column",
+                        y_axis_title="Row",
+                        z_axis_title="",
+                        z_min=[0,0,0,0], z_max=[1,1,1,15]):
+        fig = Figure()
+        FigureCanvas(fig)
+        for i in range(4):
+            ax = fig.add_subplot(221+i)
+            if z_max[i]=='maximum':
+                z_max[i]=np.max(dat[i])
+            
+            cmap = cm.get_cmap('viridis')
+            cmap.set_bad('w')
+            cmap.set_over('r')  # Make noisy pixels red
+            im=ax.imshow(np.transpose(dat[i]),origin='lower',aspect="auto",
+                     vmax=z_max[i]+1,vmin=z_min[i], interpolation='none',
+                     extent=[bins[0][0],bins[0][-1],bins[1][0],bins[1][-1]],
+                     cmap=cmap #, norm=norm
+                     )
+            ax.set_title(title[i])
+            #ax.set_ylim((-0.5, ROW_SIZE-0.5))
+            #ax.set_xlim((-0.5, COL_SIZE-0.5))
+
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            cb = fig.colorbar(im, cax=cax)
+            cb.set_label(z_axis_title)
+        if page_title is not None and len(page_title)>0:
+            fig.suptitle(page_title, fontsize=12,color=OVERTEXT_COLOR, y=1.05)
+        self._save_plots(fig)
+        
+    def plot_scurve(self,dat,
+                   top_axis_factor=None,
+                   top_axis_title="Threshold [e]",
+                   x_axis_title="Test pulse injection [V]",
+                   y_axis_title="# of pixel",
+                   z_max=200,
+                   x_min=0,
+                   x_max=None,
+                   reverse=True,
+                   dat_title=["TH=0.81V"],
+                   page_title=None,
+                   title="Pixel %d-%d"):
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.set_adjustable('box')
+        
+        for i, d in enumerate(dat):
+            color = next(ax._get_lines.prop_cycler)['color']
+            ax.plot(d["x"],d["y"],linestyle="", marker="o",color=color,label=dat_title[i])
+            x,y=monopix_daq.analysis.utils.scurve_from_fit(d["x"], d["A"],d["mu"],d["sigma"],reverse=reverse,n=500)
+            ax.plot(x,y,linestyle="-", marker="",color=color)
+        if x_min is None:
+            x_min=np.min(d["x"])
+        if x_max is None:
+            x_max=np.max(d["x"])
+        ax.set_xbound(x_min,x_max)
+        
+        ax.set_xlabel(x_axis_title)
+        ax.set_ylabel(y_axis_title)
+        
+        if top_axis_factor is None:
+            ax.set_title(title,color=TITLE_COLOR)
+        else:
+            ax2=ax.twiny()
+            ax2.set_xbound(x_min*top_axis_factor,x_max*top_axis_factor)
+            ax2.set_xlabel(top_axis_title)
+            pad=40
+            ax.set_title(title,pad=40,color=TITLE_COLOR)
+        ax.legend()
+
         if page_title is not None and len(page_title)>0:
             self._add_title(page_title,fig)
         self._save_plots(fig)

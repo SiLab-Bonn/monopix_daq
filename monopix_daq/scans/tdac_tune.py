@@ -17,21 +17,28 @@ import monopix_daq.online_monitor.sender
 
 local_configuration={"exp_time": 1.0,
                      "cnt_th": 1,
-                     "cnt_repeat_th": 100,
+                     #"cnt_repeat_th": 100,
                      "pix": [18,25],
                      "n_mask_pix": 30,
-                     "mode": "active",
+                     #"mode": "active",
 }
 
 class TdacTune(scan_base.ScanBase):
     scan_id = "tdac_tune"
     
     def scan(self,**kwargs):
+        """
+        cnt_th: count threshold
+        pix: list of pixels to be tuned
+        n_mask_pix: number of pixels tuned at onece
+        exp_time: exposure time for noise tuning, -1 for test pulse tuning
+        Other paramters must be configured before scan.start
+        """
         cnt_th=kwargs.pop("cnt_th",1)
-        cnt_repeat_th=kwargs.pop("cnt_repeat_th",100)
+        #cnt_repeat_th=kwargs.pop("cnt_repeat_th",100)
         exp_time=kwargs.pop("exp_time",1.0)
         pix=kwargs.pop("pix",None)
-        mode=kwargs.pop("mode","active")
+        #mode=kwargs.pop("mode","active")
         if pix is None:
             pix=np.argwhere(self.dut.PIXEL_CONF["PREAMP_EN"])
         elif isinstance(pix[0],int):
@@ -51,36 +58,26 @@ class TdacTune(scan_base.ScanBase):
                       description=description, filters=self.filter_tables)
                       
         scan_param_id=0
-        en=np.copy(self.dut.PIXEL_CONF["PREAMP_EN"][:,:])
-        tdac=np.copy(self.dut.PIXEL_CONF["TRIM_EN"][:,:])
-        
-        for mask_i in range(mask_n):
-          mask_pix=[]
-          for i in range(mask_i,len(pix),mask_n):
-              if en[pix[i][0],pix[i][1]]==1:
-                  mask_pix.append(pix[i])
+        fig,ax=plt.subplots(2,2)
+
+        tdac=self.monopix.get_tdac_memory()
+        cnt=np.ones([16,COL_SIZE,ROW_SIZE])*100
+
+        m=0
+        for m in range(mask_n):
+          m_pix=[]
+          for i in range(m,len(pix),mask_n):
+             m_pix.append(pix[i])
+
           for t in range(15,-1,-1):
-            for p in mask_pix:
-                tdac[p[0],p[1]]=t
-            flg=1
-            while flg==1 and len(mask_pix)>0:
-                ##########################
-                ### set pixel config
+              flg=1
+              while flg==1 and len(m_pix)>0:
+                #self.set_preamp_en(m_pix)
+                self.monopix.set_inj_en(m_pix)
+                self.monopix.set_mon_en(m_pix)
+                for p in m_pix:
+                    tdac[p[0],p[1]]=t
                 self.monopix.set_tdac(tdac)
-                self.monopix.set_preamp_en(en)
-                if exp_time < 0:
-                    self.monopix.set_inj_en(mask_pix)
-                
-                ##########################
-                #### write to param_table
-                self.scan_param_table.row['scan_param_id'] = scan_param_id
-                self.scan_param_table.row['tdac'] = t
-                mask_pix_tmp=mask_pix
-                for i in range(n_mask_pix-len(mask_pix)):
-                    mask_pix_tmp.append([-1,-1])
-                self.scan_param_table.row['pix']=mask_pix_tmp
-                self.scan_param_table.row.append()
-                self.scan_param_table.flush()
 
                 ##########################
                 ## read data
@@ -92,73 +89,65 @@ class TdacTune(scan_base.ScanBase):
                         self.monopix.start_inj()
                         while self.dut["inj"].is_done()!=1:
                             time.sleep(0.001)
-                        time.sleep(0.1)
                         self.monopix.stop_timestamp640("inj")
                     else:
                         time.sleep(exp_time)
                     self.monopix.stop_monoread()
+                    time.sleep(0.2)
                 scan_param_id=scan_param_id+1
                 
                 ##########################
-                ## get data from buffer
+                ### get data from buffer
                 buf = self.fifo_readout.data
                 if len(buf)==0:
-                    self.logger.info("tune_tdac:tdac=%d pix=%d, no data"%(t,len(np.argwhere(mask_pix))))
-                    flg=0
+                    self.logger.info("tdac_tune: mask=%d tdac=%d no data"%(t,m))
                     continue
                 data = np.concatenate([buf.popleft()[0] for i in range(len(buf))])
-                img=interpreter.raw2img(data)
+                img=interpreter.raw2img(data,delete_noise=False)
                 
-                ##########################
-                ## showing status
-                self.logger.info("tune_tdac:%2d===data %d=====cnt %d==========="%(mask_i,len(data),np.sum(img)))
-                fig,ax=plt.subplots(2,2)
-                ax[0,0].imshow(np.transpose(img),vmax=min(np.max(img),100),origin="low",aspect="auto")
-                ax[0,0].set_title("mask_pix=%d th=%.4f"%(len(mask_pix),self.dut.SET_VALUE["TH"]))
-                ax[1,0].imshow(np.transpose(tdac),vmax=16,vmin=0,origin="low",aspect="auto")
-                ax[1,0].set_title("mask_i=%d tdac=%d"%(mask_i, t))
-                ax[1,1].hist(np.reshape(tdac[en],[-1]),bins=np.arange(0,16,1))
-                ax[1,1].set_title("TDAC0=%d"%len(np.where(tdac==0)))
-                ax[0,1].imshow(np.transpose(en),vmax=1,vmin=0,origin="low",aspect="auto")
-                ax[0,1].set_title("en=%d"%len(np.where(en[0])))
+                ax[0,0].cla()
+                ax[0,0].hist(tdac[pix[:,0],pix[:,1]],bins=np.arange(-1,17,1))
+                ax[0,0].set_title("tdac=%d"%t)
+                ax[1,0].cla()
+                ax[1,0].imshow(img,origin="lower",vmax=100,aspect="auto")
+                ax[0,1].set_title("cnt=%d"%(np.sum(img)))
+                ax[0,1].cla()
+                for p in pix[m:len(pix):mask_n]:
+                    ax[0,1].plot(cnt[:,p[0],p[1]],".-")
+                ax[0,1].set_title("mask=%d n_pix=%d"%(m,len(m_pix)))
+                ax[1,1].cla()
                 fig.tight_layout()
-                fig.savefig(os.path.join(self.working_dir,"last_scan.png"),format="png")
+                plt.pause(0.005)
                 
-                ##########################
-                ## find next tdac value
+                m_pix_next=[]
                 flg=0
-                next_pix=[]
-                for p_i, p in enumerate(mask_pix):
-                    if img[p[0],p[1]] > cnt_repeat_th:
+                for p_i,p in enumerate(m_pix):
+                    cnt[t,p[0],p[1]]=img[p[0],p[1]]
+                    print "=====%d====="%t,p,img[p[0],p[1]]
+                    if img[p[0],p[1]] < cnt_th:
+                        m_pix_next.append(p)
+                    else:
                         flg=1
-                    if img[p[0],p[1]] > cnt_th:
-                        self.logger.info("tune_tdac:%2d-%3d tdac=%2d cnt=%d"%(p[0],p[1],tdac[p[0],p[1]],img[p[0],p[1]]))
-                        if tdac[p[0],p[1]]==15:
-                            en[p[0],p[1]]=False
-                            img[p[0],p[1]]=0
-                        else:
-                            tdac[p[0],p[1]]=tdac[p[0],p[1]]+1
-                            img[p[0],p[1]]=0
-                    else:
-                        next_pix.append([p[0],p[1]])
-                if mode=="active":
-                  for p in np.argwhere(img>cnt_repeat_th):
-                    self.logger.info("tune_tdac(active):%2d-%3d tdac=%2d cnt=%d"%(p[0],p[1],tdac[p[0],p[1]],img[p[0],p[1]]))
-                    if tdac[p[0],p[1]]==15:
-                        tdac[p[0],p[1]]=15
-                        #en[p[0],p[1]]=False
-                        img[p[0],p[1]]=0
-                    else:
-                        tdac[p[0],p[1]]=tdac[p[0],p[1]]+1
-                        img[p[0],p[1]]=0
-                        
-                if flg!=0:
-                    self.logger.info("tune_tdac:repeat tdac=%d"%(t))
-                mask_pix=next_pix
+                        tdac[p[0],p[1]]=min(tdac[p[0],p[1]]+1,15)
+                m_pix=m_pix_next
 
-        ### set tdac and en from the last step
+        self.h5_file.create_carray(self.h5_file.root, name='TDACCnts',
+                        title='TDAC Cnts',
+                        obj=cnt,
+                        filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                
+        for i in range(0,len(pix)):
+            p=pix[i]
+            t=np.argmin(np.abs(cnt[:,p[0],p[1]]-50))
+            if t==0 and cnt[15,p[0],p[1]] >= 100 :
+               t= 15
+            elif t==15 and cnt[0,p[0],p[1]]==0 :
+               t=0
+            tdac[p[0],p[1]]=t
         self.monopix.set_tdac(tdac)
-        self.monopix.set_preamp_en(en)
+
+        ax[0,0].hist(tdac[pix[:,0],pix[:,1]],bins=np.arange(-1,17,1),histtype="step")
+        plt.pause(0.005)
 
     def analyze(self):
         pass
@@ -189,7 +178,7 @@ class TdacTune(scan_base.ScanBase):
                     title=["Preamp","Inj","Mon","TDAC"], 
                     z_min=[0,0,0,0], z_max=[1,1,1,15])
                 plotting.plot_1d_pixel_hists([np.array(dat["TRIM_EN"])],mask=dat["PREAMP_EN"],
-                                             x_axis_title="Testpulse [V]",
+                                             x_axis_title="TDAC",
                                              title="TDAC distribution",
                                              bins=np.arange(0,16,1))
 

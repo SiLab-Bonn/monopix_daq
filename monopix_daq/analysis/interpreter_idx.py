@@ -343,7 +343,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                 ts2t_flg = 0
                 if debug & 0x1 == 0x1:
                     buf[buf_i]["col"] = 0xFD
-                    buf[buf_i]["row"] = 0
+                    buf[buf_i]["row"] = 1
                     buf[buf_i]["le"] = 0
                     buf[buf_i]["te"] = 0
                     buf[buf_i]["timestamp"] = ts2t_timestamp
@@ -355,7 +355,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
             else:
                 if debug & 0x1 == 0x1:
                    buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=2
+                   buf[buf_i]["row"]=2+4
                    buf[buf_i]["le"]=ts2t_flg
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
@@ -375,7 +375,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
             else:
                 if debug & 0x1 == 0x1:
                    buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=1
+                   buf[buf_i]["row"]=1+4
                    buf[buf_i]["le"]=ts2t_flg
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
@@ -392,7 +392,7 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
             else:
                 if debug & 0x1 == 0x1:
                    buf[buf_i]["col"]=0xED
-                   buf[buf_i]["row"]=0
+                   buf[buf_i]["row"]=0+4
                    buf[buf_i]["le"]=ts2t_flg
                    buf[buf_i]["te"]=0
                    buf[buf_i]["timestamp"]=0
@@ -630,7 +630,6 @@ def without_noise(dat):
 
 class InterRawIdx():
     def __init__(self,chunk=100000000,debug=0):
-        print "WARN!! this InterRaw has not tested!!!!"
         self.reset()
         self.buf=np.empty(chunk,dtype=hit_idx_dtype)
         self.n=chunk
@@ -648,20 +647,20 @@ class InterRawIdx():
         self.ts_pre=self.ts_timestamp
         self.ts_cnt=0x0
         self.ts_flg=0
-
+        
         self.ts2_timestamp=np.uint64(0x0)
         self.ts2_pre=self.ts2_timestamp
         self.ts2_cnt=0x0
         self.ts2_flg=0
-        self.ts2_timestamp=np.uint64(0x0)
+        self.ts2t_timestamp=np.uint64(0x0)
         self.ts2t_cnt=0x0
         self.ts2t_flg=0
-        self.ts2t_tot=0
-
+        
         self.ts3_timestamp=np.uint64(0x0)
         self.ts3_pre=self.ts3_timestamp
         self.ts3_cnt=0x0
         self.ts3_flg=0
+        
         self.ts4_timestamp=np.uint64(0x0)
         self.ts4_pre=self.ts4_timestamp
         self.ts4_cnt=0x0
@@ -676,14 +675,16 @@ class InterRawIdx():
             ( err,hit_dat,r_i,
               self.col,self.row,self.le,self.te,self.noise,self.timestamp,self.rx_flg,
               self.ts_timestamp,self.ts_pre,self.ts_flg,self.ts_cnt,
-              self.ts2_timestamp,self.ts2_pre,self.ts2_flg,self.ts2_cnt,self.ts2t_timestamp,self.ts2t_flg,self.ts2t_cnt,
+              self.ts2_timestamp,self.ts2_pre,self.ts2_flg,self.ts2_cnt,
+              self.ts2t_timestamp,self.ts2t_flg,self.ts2t_cnt,
               self.ts3_timestamp,self.ts3_pre,self.ts3_flg,self.ts3_cnt,
               self.ts4_timestamp,self.ts4_pre,self.ts4_flg,self.ts4_cnt
-              ) = _interpret(
+              ) = _interpret_idx(
               raw[start:tmpend],self.buf,start,
               self.col,self.row,self.le,self.te,self.noise,self.timestamp,self.rx_flg,
               self.ts_timestamp,self.ts_pre,self.ts_flg,self.ts_cnt,
-              self.ts2_timestamp,self.ts2_pre,self.ts2_flg,self.ts2_cnt,self.ts2t_timestamp,self.ts2t_flg,self.ts2t_cnt,
+              self.ts2_timestamp,self.ts2_pre,self.ts2_flg,self.ts2_cnt,
+              self.ts2t_timestamp,self.ts2t_flg,self.ts2t_cnt,
               self.ts3_timestamp,self.ts3_pre,self.ts3_flg,self.ts3_cnt,
               self.ts4_timestamp,self.ts4_pre,self.ts4_flg,self.ts4_cnt,data_format)
             if err!=0:

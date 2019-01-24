@@ -302,7 +302,7 @@ class FifoReadout(object):
         #sleep(0.1)  # sleep here for a while
 
     def get_tdc_fifo_discard_count(self, channels=None):
-        return self.dut['timestamp_mon'].LOST_COUNT
+        return self.dut['tdc'].LOST_DATA_COUNTER
     
     def get_data_rx_fifo_discard_count(self, channels=None):
         return self.dut['data_rx'].LOST_COUNT
@@ -323,6 +323,7 @@ class FifoReadout(object):
         
     def get_float_time(self):
         '''returns time as double precision floats - Time64 in pytables - mapping to and from python datetime's
+
         '''
         t1 = time()
         t2 = datetime.datetime.fromtimestamp(t1)

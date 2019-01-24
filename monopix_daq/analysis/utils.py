@@ -34,11 +34,11 @@ def fit_scurve(xarray,yarray,A=None,cut_ratio=0.05,reverse=True,debug=0):
     cut_high=np.argwhere(yarray>=A*(1+cut_ratio))
     cut_low=np.argwhere(yarray>=A*(1-cut_ratio))
     if len(cut_high)>0:
-        cut=cut_high[0]
+        cut=cut_high[0][0]
     else:
         cut=len(yarray)
     if len(cut_low)>0:
-        cut=min(cut,cut_low[-1])
+        cut=min(cut,cut_low[-1][0])
     yarray=yarray[:cut]
     xarray=xarray[:cut]
     #if debug==1:
@@ -56,9 +56,11 @@ def fit_scurve(xarray,yarray,A=None,cut_ratio=0.05,reverse=True,debug=0):
     err=np.sqrt(np.diag(cov))
     return p[0],p[1],p[2],err[0],err[1],err[2]
     
-def scurve_from_fit1(th,A_fit,mu_fit,sigma_fit,reverse=True):
-    sort_th=th[np.argsort(th)]
+def scurve_from_fit(th, A_fit,mu_fit,sigma_fit,reverse=True,n=500):
+    th_min=np.min(th)
+    th_max=np.max(th)
+    x=np.arange(th_min,th_max,(th_max-th_min)/float(n))
     if reverse:
-        return sort_th,scurve_rev(sort_th,A_fit,mu_fit,sigma_fit)
+        return x,scurve_rev(x,A_fit,mu_fit,sigma_fit)
     else:
-        return sort_th,scurve(sort_th,A_fit,mu_fit,sigma_fit)
+        return x,scurve(x,A_fit,mu_fit,sigma_fit)

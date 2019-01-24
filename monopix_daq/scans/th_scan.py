@@ -9,7 +9,7 @@ import yaml
 import monopix_daq.scans.injection_scan as injection_scan
 INJCAP=2.7E-15
 
-local_configuration={"injlist": np.arange(0.1,1.9,0.005),
+local_configuration={"injlist": np.arange(0.005,0.6,0.005),
                      'pix': [18,25],
                      "n_mask_pix": 30,
 }
@@ -18,7 +18,15 @@ class ThScan(injection_scan.InjectionScan):
     scan_id = "th_scan"
     
     def scan(self,**kwargs):
-        
+        """
+        pix: list of pixels 
+        injlist: array of injection voltage to scan (inj_high-inj_low)
+        n_mask_pix: number of pixels which injected at once.
+        Other configuration must be configured before scan.start()
+        """
+        kwargs["phaselist"]=None
+        kwargs["thlist"]=None
+        kwargs["injlist"]=kwargs.pop("injlist",np.arange(0.005,0.6,0.005))
         super(ThScan, self).scan(**kwargs)
 
     def analyze(self):
@@ -68,9 +76,10 @@ class ThScan(injection_scan.InjectionScan):
                 ## Scurve
                 for i in range(len(f.root.Scurve)):
                   dat=f.root.Scurve[i]["scurve"]
-                  bins=yaml.load(f.root.Scurve.attrs.bins)
+                  xbins=yaml.load(f.root.Scurve.attrs.xbins)
+                  ybins=yaml.load(f.root.Scurve.attrs.ybins)
                   plotting.plot_2d_hist(dat,
-                       bins=bins,
+                       bins=[xbins,ybins],
                        title=f.root.Scurve.title,
                        z_axis_title="",z_min=1,z_max="maximum",z_scale="log")
 
@@ -78,8 +87,9 @@ class ThScan(injection_scan.InjectionScan):
                 for i in range(len(f.root.ThDist)):
                     dat=f.root.ThDist[i]
                     plotting.plot_2d_pixel_hist(dat["mu"],title=f.root.ThDist.title,
-                                                z_min=0.5)
-                plotting.plot_1d_pixel_hists([dat["mu"]],mask=injected,
+                                                z_min=0.0,
+                                                z_max=0.5)
+                    plotting.plot_1d_pixel_hists([dat["mu"]],mask=injected,
                                              top_axis_factor=INJCAP/1.602E-19,
                                              top_axis_title="Threshold [e]",
                                              x_axis_title="Testpulse injection [V]",
@@ -88,11 +98,11 @@ class ThScan(injection_scan.InjectionScan):
                 for i in range(len(f.root.NoiseDist)):
                     dat=f.root.NoiseDist[i]
                     plotting.plot_2d_pixel_hist(dat["sigma"],title=f.root.NoiseDist.title,
-                                                z_min=0.5)
-                plotting.plot_1d_pixel_hists([dat["sigma"]],mask=injected,
+                                                z_min=0.0)
+                    plotting.plot_1d_pixel_hists([dat["sigma"]],mask=injected,
                                              top_axis_factor=INJCAP/1.602E-19,
                                              top_axis_title="Noise [e]",
-                                             x_axis_title="Testpulse [V]",
+                                             x_axis_title="S-curve Sigma [V]",
                                              title=f.root.ThDist.title)
 
 if __name__ == "__main__":
@@ -103,14 +113,16 @@ if __name__ == "__main__":
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=None)
-    parser.add_argument("--tdac", type=float, default=None)
+
     parser.add_argument('-ib',"--inj_start", type=float, 
          default=local_configuration["injlist"][0])
     parser.add_argument('-ie',"--inj_stop", type=float, 
          default=local_configuration["injlist"][-1])
     parser.add_argument('-is',"--inj_step", type=float, 
          default=local_configuration["injlist"][1]-local_configuration["injlist"][0])
+
     parser.add_argument("-n","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
+
     args=parser.parse_args()
     local_configuration["injlist"]=np.arange(args.inj_start,args.inj_stop,args.inj_step)
     local_configuration["n_mask_pix"]=args.n_mask_pix
@@ -122,11 +134,10 @@ if __name__ == "__main__":
         m.load_config(args.config_file)
     if args.th is not None:
         m.set_th(args.th)
-    if args.tdac is not None:
-        m.set_tdac(args.tdac)
+
     en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
-    local_configuration["pix"]=np.argwhere(en)    
-    
+    local_configuration["pix"]=list(np.argwhere(en))    
+
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

@@ -14,20 +14,20 @@ import monopix_daq.analysis.interpreter as interpreter
 local_configuration={"exp_time": 1.0,
                      "cnt_th": 1,
                      "n_pix": 512,
-                     "th_start": 0.95,
+                     "th_start": 0.85,
                      "th_stop": 0.5,
-                     "th_step":[-0.05,-0.005,-0.0005]
+                     "th_step":[-0.01,-0.002,-0.0005]
 }
 
-class ThTune(scan_base.ScanBase):
-    scan_id = "th_tune"
+class EnTune(scan_base.ScanBase):
+    scan_id = "en_tune"
     def scan(self,**kwargs):
-        th=kwargs.pop("th_start",0.95)
+        th=kwargs.pop("th_start",0.85)
         th_stop=kwargs.pop("th_stop",0.5)
-        th_step=kwargs.pop("th_step",[-0.02,-0.005,-0.0005])
+        th_step=kwargs.pop("th_step",[-0.01,-0.002,-0.0005])
         cnt_th=kwargs.pop("cnt_th",1)
         exp_time=kwargs.pop("exp_time",1.0)
-        n_pix=kwargs.pop("n_pix",1.0)
+        n_pix=kwargs.pop("n_pix",512)
 
         ####################
         ## create a table for scan_params
@@ -40,7 +40,8 @@ class ThTune(scan_base.ScanBase):
         scan_param_id=0
         en_org=np.copy(self.dut.PIXEL_CONF["PREAMP_EN"][:,:])
         th_step_i=0
-        #plt.ion()
+        fig,ax=plt.subplots(2,2)
+        plt.ion()
         while th > th_stop or th_step_i==len(th_step): 
             self.monopix.set_th(th)
             en=np.copy(self.dut.PIXEL_CONF["PREAMP_EN"][:,:])
@@ -69,15 +70,19 @@ class ThTune(scan_base.ScanBase):
             
             ##########################
             ## showing status
-            self.logger.info("th_tune:%.4f===data %d=====cnt %d==========="%(th,len(data),np.sum(img)))
-            fig,ax=plt.subplots(2,2)
+            self.logger.info("th_tune:==== %.4f===data %d=====cnt %d======en %d====="%(
+                th,len(data),np.sum(img), len(en[en])))
+            ax[0,0].cla()
             ax[0,0].imshow(np.transpose(img),vmax=min(np.max(img),100),origin="low",aspect="auto")
             ax[0,0].set_title("th=%.4f"%th)
+            ax[1,0].cla()
             ax[1,0].imshow(np.transpose(self.monopix.get_tdac_memory()),vmax=16,vmin=0,origin="low",aspect="auto")
+            ax[0,1].cla()
             ax[0,1].imshow(np.transpose(en),vmax=1,vmin=0,origin="low",aspect="auto")
             ax[0,1].set_title("en=%d"%len(np.where(en)))
             fig.tight_layout()
             fig.savefig(os.path.join(self.working_dir,"last_scan.png"),format="png")
+            plt.pause(0.003)
             
             ##########################
             ### find noisy
@@ -133,37 +138,38 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(usage="analog_scan.py xxx_scan",
              formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-e',"--exp_time", type=float, default=local_configuration["exp_time"])
     parser.add_argument('-n',"--n_pix", type=float, default=local_configuration["n_pix"])
     parser.add_argument('-t',"--th_start", type=float, default=local_configuration["th_start"])
     parser.add_argument("-f","--flavor", type=str, default="16:20")
-    parser.add_argument("--tdac", type=int, default=15)
-    parser.add_argument("--LSBdacL", type=int, default=32)
+    parser.add_argument("--tdac", type=int, default=None)
+    parser.add_argument("--LSBdacL", type=int, default=None)
     args=parser.parse_args()
     local_configuration["exp_time"]=args.exp_time
     local_configuration["n_pix"]=args.n_pix
     local_configuration["th_start"]=args.th_start
-    if isinstance(args.flavor,str):
+    
+    m=monopix.Monopix()
+
+    if args.config_file is not None:
+        m.load_config(args.config_file) 
+    if args.flavor is not None:
+        m.set_preamp_en("none")
         if args.flavor=="all":
           collist=np.arange(0,36,1)
         else:
           tmp=args.flavor.split(":")
           collist=np.arange(int(tmp[0]),int(tmp[1]),1)
-    elif isinstance(args.flavor,int):
-        collist=[args.flavor]
-    else:
-        collist=args.flavor
-
-    m=monopix.Monopix()
-    m.set_preamp_en("none")
-    en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
-    for c in collist:
+        en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
         en[c,:]=True
-    m.set_preamp_en(en)
-    m.set_tdac(args.tdac)
-    m.set_global(LSBdacL=args.LSBdacL)
+        m.set_preamp_en(en)
+    if args.tdac is not None:
+        m.set_tdac(args.tdac)
+    if args.LSBdacL is not None:
+        m.set_global(LSBdacL=args.LSBdacL)
     
-    scan = ThTune(m,online_monitor_addr="tcp://127.0.0.1:6500")
+    scan = EnTune(m,online_monitor_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)
     #scan.analyze()
     scan.plot()
