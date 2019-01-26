@@ -138,8 +138,8 @@ assign SREN_CONF = GPIO_OUT[3];
 assign EN_BX_CLK_CONF = GPIO_OUT[4];
 assign EN_OUT_CLK_CONF = GPIO_OUT[5];
 assign RESET_GRAY_CONF = GPIO_OUT[6];
-
 assign EN_TEST_PATTERN_CONF = GPIO_OUT[7];
+
 assign EN_DRIVER_CONF = GPIO_OUT[8];
 assign EN_DATA_CMOS_CONF = GPIO_OUT[9];
 assign EN_GRAY_RESET_WITH_TIMESTAMP = GPIO_OUT[10];
@@ -225,6 +225,7 @@ pulse_gen640
     .PULSE({INJECTION_MON,INJECTION}),
     .DEBUG()
 );
+
 
 pulse_gen
 #( 
@@ -390,6 +391,8 @@ timestamp640
     .FIFO_DATA(TS_INJ_FIFO_DATA)
 );
 
+
+
 timestamp640
 #(
     .BASEADDR(TS_MON_BASEADDR),
@@ -482,9 +485,9 @@ always@(negedge CLK40)
 
 assign RST_GRAY = RST_GRAY_reg;
 always@(negedge CLK40) begin
-    if (EN_GRAY_RESET_WITH_TIMESTAMP==1 && TIMESTAMP[7:0]==8'hFF)
+    if (EN_GRAY_RESET_WITH_TIMESTAMP==1 && TIMESTAMP[8:0]==9'h100)
         RST_GRAY_reg <= RESET_GRAY_CONF;
-    else
+    else if (EN_GRAY_RESET_WITH_TIMESTAMP==0)
         RST_GRAY_reg <= RESET_GRAY_CONF;
 end
 
@@ -496,7 +499,7 @@ assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 assign RESET = 0;
 
 // LED assignments
-assign LED[0] = 1;
+assign LED[0] = 0;
 assign LED[1] = 0;
 assign LED[2] = 1;
 assign LED[3] = 0;
@@ -506,6 +509,6 @@ assign LEMO_TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign LEMO_TX[1] = TLU_BUSY;  // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has 
 assign LEMO_TX[2] = INJECTION_MON; // TX2 for mio, J502 for mio3
 
-assign DEBUG = RST_GRAY_reg;
+assign DEBUG = TIMESTAMP[9];
 
 endmodule

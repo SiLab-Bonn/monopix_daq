@@ -259,3 +259,22 @@ set_property DRIVE 16 [get_ports DEBUG]
 
 set_property PACKAGE_PIN F12 [get_ports INJECTION_IN]
 set_property IOSTANDARD LVCMOS33 [get_ports INJECTION_IN]
+
+
+
+
+
+
+
+
+set_property SLEW FAST [get_ports CKCONF]
+set_property DRIVE 16 [get_ports CKCONF]
+
+
+
+
+set_property DRIVE 16 [get_ports INJECTION]
+set_property SLEW FAST [get_ports INJECTION]
+
+
+set_property OFFCHIP_TERM NONE [get_ports CKCONF]

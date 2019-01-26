@@ -31,7 +31,7 @@ module pulse_gen640_core
     output wire DEBUG
 );
 
-localparam VERSION = 1;
+localparam VERSION = 9;
 
 wire SOFT_RST;
 wire START;
