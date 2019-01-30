@@ -67,8 +67,8 @@ module monopix_mio_core (
 localparam GPIO_BASEADDR = 16'h0010;
 localparam GPIO_HIGHADDR = 16'h0100-1;
 
-localparam PULSE_INJ_BASEADDR = 16'h6000;
-localparam PULSE_INJ_HIGHADDR = 16'h7000-1;
+localparam PULSE_INJ_BASEADDR = 16'h4000;
+localparam PULSE_INJ_HIGHADDR = 16'h5000-1;
 
 localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
 localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
@@ -223,7 +223,7 @@ pulse_gen640
     .PULSE_CLK(CLK40),
     .EXT_START(GATE_TDC),
     .PULSE({INJECTION_MON,INJECTION}),
-    .DEBUG()
+    .DEBUG(DEBUG)
 );
 
 
@@ -485,7 +485,7 @@ always@(negedge CLK40)
 
 assign RST_GRAY = RST_GRAY_reg;
 always@(negedge CLK40) begin
-    if (EN_GRAY_RESET_WITH_TIMESTAMP==1 && TIMESTAMP[8:0]==9'h100)
+    if (EN_GRAY_RESET_WITH_TIMESTAMP==1 && TIMESTAMP[8:0]==9'h1F0)
         RST_GRAY_reg <= RESET_GRAY_CONF;
     else if (EN_GRAY_RESET_WITH_TIMESTAMP==0)
         RST_GRAY_reg <= RESET_GRAY_CONF;
@@ -508,7 +508,5 @@ assign LED[4] = 0;
 assign LEMO_TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign LEMO_TX[1] = TLU_BUSY;  // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has 
 assign LEMO_TX[2] = INJECTION_MON; // TX2 for mio, J502 for mio3
-
-assign DEBUG = TIMESTAMP[9];
 
 endmodule

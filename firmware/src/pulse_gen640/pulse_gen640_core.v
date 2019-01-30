@@ -31,7 +31,7 @@ module pulse_gen640_core
     output wire DEBUG
 );
 
-localparam VERSION = 9;
+localparam VERSION = 1;
 
 wire SOFT_RST;
 wire START;
@@ -89,7 +89,7 @@ always@(posedge BUS_CLK) begin
         else if(BUS_ADD == 20)
             BUS_DATA_OUT <= CNT[31:24];
         else if(BUS_ADD == 21)
-            BUS_DATA_OUT <= {7'b0, CNT[32]};
+            BUS_DATA_OUT <= {6'b0,PULSE_REF, CNT[32]};
         else
             BUS_DATA_OUT <= 8'b0;
     end
@@ -205,6 +205,7 @@ always @ (posedge PULSE_CLK) begin
     end
     else if(CNT == CONF_DELAY+1) begin
         PULSE_DES <= 16'b1111111111111111;
+        PULSE_REF<=1;
     end
     else if(CNT == LAST_CNT) begin
         PULSE_DES <= 0;
