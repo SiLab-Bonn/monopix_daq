@@ -392,7 +392,6 @@ timestamp640
 );
 
 
-
 timestamp640
 #(
     .BASEADDR(TS_MON_BASEADDR),
@@ -462,7 +461,7 @@ mono_data_rx #(
     .CLK_BX(CLK40),
     .RX_TOKEN(TOKEN), 
     .RX_DATA(DATA_LVDS), 
-    .RX_CLK(CLK40),
+    .RX_CLK(~CLK40),
     .RX_READ(READ), 
     .RX_FREEZE(FREEZE), 
     .TIMESTAMP(TIMESTAMP),

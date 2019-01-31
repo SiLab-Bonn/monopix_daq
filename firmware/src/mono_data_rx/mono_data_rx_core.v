@@ -67,8 +67,7 @@ reg [7:0] CONF_STOP_FREEZE;
 reg [7:0] CONF_START_READ;
 reg [7:0] CONF_STOP_READ;
 reg [7:0] CONF_STOP;
-reg [63:0] CONF_EXPOSURE_TIME;
-reg CONF_EXPOSURE_TIME_RST;
+reg [7:0] CONF_READ_SHIFT;
 
 always @(posedge BUS_CLK) begin
     if(RST) begin
@@ -79,6 +78,7 @@ always @(posedge BUS_CLK) begin
           CONF_STOP_READ <= 7;
           CONF_STOP_FREEZE <= 15;
           CONF_STOP <= 45;
+          CONF_READ_SHIFT <=58; // (29<<2)
     end
     else if(BUS_WR) begin
         if(BUS_ADD == 2) begin
@@ -95,8 +95,8 @@ always @(posedge BUS_CLK) begin
             CONF_STOP_READ <= BUS_DATA_IN;
           else if(BUS_ADD == 8)
             CONF_STOP <= BUS_DATA_IN;
-		  else if (BUS_ADD == 9)  // BUS_ADD== 10~16 reserved
-		      CONF_EXPOSURE_TIME_RST=BUS_DATA_IN[0];
+          else if(BUS_ADD == 9)
+            CONF_READ_SHIFT <= BUS_DATA_IN;
     end
 end
 
@@ -121,28 +121,12 @@ always @(posedge BUS_CLK) begin
             BUS_DATA_OUT <= CONF_STOP_READ;
         else if(BUS_ADD == 8)
             BUS_DATA_OUT <= CONF_STOP;
-		  	else if(BUS_ADD == 9)
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[7:0];
-         else if(BUS_ADD == 10) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[15:8];
-         else if(BUS_ADD == 11) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[23:16];
-         else if(BUS_ADD == 12) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[31:24];
-         else if(BUS_ADD == 13) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[39:32];
-         else if(BUS_ADD == 14) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[47:40];
-         else if(BUS_ADD == 15) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[55:48];
-         else if(BUS_ADD == 16) 
-            BUS_DATA_OUT <= CONF_EXPOSURE_TIME[63:56];
+		else if(BUS_ADD == 9)
+            BUS_DATA_OUT <= CONF_READ_SHIFT[7:0];
          else if(BUS_ADD == 17)
             BUS_DATA_OUT <= {7'b0,READY};
          else if (BUS_ADD ==18)  ///debug
             BUS_DATA_OUT <= TIMESTAMP[8:0];
-		   //else if (BUS_ADD ==19)
-			//    BUS_DATA_OUT <= token_timestamp[8:0];
         else
             BUS_DATA_OUT <= 8'b0;
     end
@@ -157,11 +141,6 @@ wire CONF_EN_SYNC;
 assign CONF_EN_SYNC  = CONF_EN;
 
 assign READY = ~RX_FREEZE & CONF_EN;
-always@(posedge CLK_BX)
-    if (RST_SYNC | CONF_EXPOSURE_TIME_RST) //TODO this is not right
-	     CONF_EXPOSURE_TIME <= 64'b0;
-    else if ( READY )
-        CONF_EXPOSURE_TIME <= CONF_EXPOSURE_TIME+1;
 
 reg [3:0] TOKEN_FF;
 always@(posedge RX_CLK)
@@ -244,16 +223,17 @@ always@(posedge CLK_BX)
         TOKEN_NEXT <= TOKEN_FF[0];
 
 always@(posedge CLK_BX)
+//always@(negedge CLK_BX)
     RX_READ <= (DelayCnt >= CONF_START_READ && DelayCnt < CONF_STOP_READ); 
 
-always@(posedge CLK_BX)
+always@(posedge CLK_BX) begin
     if(RST_SYNC)
         RX_FREEZE <= 1'b0;
     else if(DelayCnt == CONF_START_FREEZE)
         RX_FREEZE <= 1'b1;
     else if(DelayCnt == CONF_STOP_FREEZE && !TOKEN_FF[0])
         RX_FREEZE <= 1'b0;
-         
+end         
     
 reg [1:0] read_dly;
 always@(posedge CLK_BX)
@@ -277,29 +257,38 @@ always@(posedge RX_CLK)
         cnt <= cnt + 1;
 
         
+reg [29:0] ser_neg;
+always@(negedge RX_CLK)
+    ser_neg <= {ser_neg[28:0], RX_DATA};
+    
 reg [29:0] ser;
 always@(posedge RX_CLK)
     ser <= {ser[28:0], RX_DATA};
 
 wire store_data;
-assign store_data = (cnt == 29);
+assign store_data = (cnt == CONF_READ_SHIFT[7:1]);
 
 reg [29:0] data_out;
 wire [110:0] data_to_cdc;   // [82:0] data_to_cdc;
 
-always@(posedge RX_CLK)
+always@(posedge RX_CLK) begin
     if(RST_SYNC)
         data_out <= 0;
-    else if(store_data)
-        data_out <= ser;
-
-reg data_out_strobe;        
-always@(posedge RX_CLK)
+    else if(store_data) begin
+        if (CONF_READ_SHIFT[0]==1)
+            data_out <= ser_neg;
+        else 
+            data_out <= ser;
+    end
+end
+        
+reg data_out_strobe;    
+always@(posedge RX_CLK) begin
     if(store_data)
         data_out_strobe <= 1;
     else 
         data_out_strobe <= 0; 
-        
+end
 //
 wire cdc_fifo_write;
 assign cdc_fifo_write = data_out_strobe;
