@@ -10,24 +10,23 @@ import monopix_daq.scans.injection_scan as injection_scan
 INJCAP=2.7E-15
 
 local_configuration={"phaselist": np.arange(0,17,1),
-                     "injlist": np.arange(0.05,3,0.05),
                      'pix': [18,25],
                      "with_mon": False
 }
 
-class TwScan(injection_scan.InjectionScan):
-    scan_id = "tw_scan"
+class InjTimeScan(injection_scan.InjectionScan):
+    scan_id = "inj_time_scan"
     
     def scan(self,**kwargs):
         kwargs["pix"]=kwargs.pop("pix",local_configuration['pix'])
 
         kwargs["thlist"]=None
-        kwargs["injlist"]=kwargs.pop("injlist",local_configuration['injlist'])
+        kwargs["injlist"]=None
         kwargs["phaselist"]=kwargs.pop("phaselist",local_configuration['phaselist'])
 
         kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",23)
         kwargs["with_mon"]=kwargs.pop("with_mon",local_configuration['with_mon'])
-        super(TwScan, self).scan(**kwargs)
+        super(InjTimeScan, self).scan(**kwargs)
 
     def analyze(self):
         fraw = self.output_filename +'.h5'
@@ -45,23 +44,24 @@ class TwScan(injection_scan.InjectionScan):
         ##analyze
         import monopix_daq.analysis.analyze_hits as analyze_hits
         ana=analyze_hits.AnalyzeHits(fev,fraw)
+        ana.init_apply_ts_inj_window()
+        ana.init_delete_noise()
         ana.init_hist_ev()
         ana.init_injected()
         ana.init_cnts()
         ana.init_le_hist()
         ana.init_le_cnts()
         ana.run()
-
-        import monopix_daq.analysis.analyze_cnts as analyze_cnts
-        ana=analyze_cnts.AnalyzeCnts(fev,fraw)
-        ana.init_scurve_fit()
-        ana.run()
-
+        
         import monopix_daq.analysis.analyze_le_cnts as analyze_le_cnts
         ana=analyze_le_cnts.AnalyzeLECnts(fev,fraw)
-        ana.init_scurve_fit()
+        ana.init_best_phase()
         ana.init_best_phase()
         ana.run()
+        
+        with tb.open_file(fev) as f:
+            dat=f.root.BestPhase[:]
+        return dat
 
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'
@@ -91,19 +91,9 @@ class TwScan(injection_scan.InjectionScan):
                     title=["Preamp","Inj","Mon","TDAC"], 
                     z_min=[0,0,0,0], z_max=[1,1,1,15])
                 
-                ## S-curve
-                res,le,ph=get_scurve(f.root,inj_n)
-                plotting.plot_scurve(res[0:2],
-                            dat_title=["all mu=%.4f sigma=%.4f"%(res[0]["mu"],res[0]["sigma"]),
-                            "25ns mu=%.4f sigma=%.4f"%(res[1]["mu"],res[1]["sigma"]),
-                            "",""],
-                            title="Phase=%d LE=%d"%(ph,le),
-                            y_max=inj_n*1.5,
-                            y_min=0,
-                            reverse=False)
-
                 ## Phase plots
                 phaselist=f.root.LEHist.attrs.phaselist
+                le=f.root.BestPhase[0]["LE"]
                 for i in range(len(f.root.LEHist)/4+1):
                     hist=["","","",""]
                     title=["","","",""]
@@ -118,94 +108,6 @@ class TwScan(injection_scan.InjectionScan):
                            bins=[phaselist,np.arange(le-10,le+10)],
                            z_max=["maximum","maximum","maximum","maximum"]
                            )
-                           
-def get_scurve(fhit_root,inj_n):
-    injlist=fhit_root.LEScurveFit.attrs.injlist
-    phaselist=fhit_root.LEHist.attrs.phaselist
-    end=len(fhit_root.LEHist)
-    start=0
-    tmpend=min(end,start+end)
-    hist=fhit_root.LEHist[:]
-    
-    uni=np.unique(hist[['scan_param_id','col','row','th']])
-    if len(uni)!=1:
-        return None
-    for u in uni:
-        dat=hist[hist[['scan_param_id','col','row','th']]==u]
-        a=np.argmax(dat["inj"])
-
-        flg=0
-        le0=np.argmax(dat[a]["LE"][0,:])
-        #print le0
-        for ph_i,ph in enumerate(phaselist[1:]):
-            le=np.argmax(dat[a]["LE"][ph_i+1,:])
-            #print ph_i,ph,le,dat[a]["LE"][ph_i+1,le]
-            if le0!=le:
-                flg=1
-            if flg==1 and dat[a]["LE"][ph_i+1,le]==inj_n:
-                break
-        #print "get_scurve()============ le",le,"phase_idx",ph_i+1,"phase",ph
-
-        cnt_1bin=np.zeros(len(injlist))
-        cnt=np.zeros(len(injlist))
-        for d in dat:
-            a=np.argmin(np.abs(injlist-d["inj"]))
-            if np.abs(injlist-d["inj"])[a] > 1E-4:
-                print "ERROR injlist is wrong"
-            cnt_1bin[a]=d["LE"][ph_i+1,le]
-            cnt[a]=np.sum(d["LE"][ph_i+1,:])
-            injlist[a]=d["inj"]
-
-    res=[{},{}]
-    u0=np.empty(1,dtype=uni.dtype.descr+[("tof","u1"),("phase",'<i4')])
-    u0[0]["tof"]=le
-    u0[0]["phase"]=ph
-    for c in uni.dtype.names:
-        u0[0][c]=u[c]
-    hist=fhit_root.LEScurveFit[:]
-    hist=hist[np.bitwise_and(hist["phase"]==ph, hist["tof"]==le)]
-    if len(hist)!=1:
-        print "tw_scan.get_scurve() 1error!!"
-    res[0]["x"]=injlist
-    res[0]["y"]=cnt_1bin
-    res[0]["A"]=hist[0]["A"]
-    res[0]["mu"]=hist[0]["mu"]
-    res[0]["sigma"]=hist[0]["sigma"]
-    
-    ### debug
-    #dat=fhit_root.LECnts[:]
-    #dat=dat[np.bitwise_and(dat["phase"]==ph, dat["tof"]==le)]
-    #res[2]["x"]=dat["inj"]
-    #res[2]["y"]=dat["cnt"]
-    #res[2]["A"]=hist[0]["A"]
-    #res[2]["mu"]=hist[0]["mu"]
-    #res[2]["sigma"]=hist[0]["sigma"]
-    
-
-    hist=fhit_root.ScurveFit[:]
-    u0=np.empty(1,dtype=uni.dtype.descr+[("phase",'<i4')])
-    u0[0]["phase"]=ph
-    for c in uni.dtype.names:
-        u0[0][c]=u[c]
-    hist=hist[hist['phase']==ph]
-    if len(hist)!=1:
-        print "tw_scan.get_scurve() 2error!!"
-    res[1]["x"]=injlist
-    res[1]["y"]=cnt
-    res[1]["A"]=hist[0]["A"]
-    res[1]["mu"]=hist[0]["mu"]
-    res[1]["sigma"]=hist[0]["sigma"]
-    
-    ### debug
-    #dat=fhit_root.Cnts[:]
-    #dat=dat[dat["phase"]==ph]
-    #res[3]["x"]=dat["inj"]
-    #res[3]["y"]=dat["cnt"]
-    #res[3]["A"]=hist[0]["A"]
-    #res[3]["mu"]=hist[0]["mu"]
-    #res[3]["sigma"]=hist[0]["sigma"]
-    
-    return res,le,ph
 
 if __name__ == "__main__":
     from monopix_daq import monopix

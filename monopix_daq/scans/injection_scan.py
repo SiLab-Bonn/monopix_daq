@@ -8,9 +8,9 @@ import yaml
 
 import monopix_daq.scan_base as scan_base
 
-local_configuration={"injlist": np.arange(0.1,0.6,0.05),
-                     "thlist": [0.82], # None, #[b,e,s]=[1.5,0.5,0.05],
-                     "phaselist":np.arange(0,16,1),
+local_configuration={"injlist": None, #np.arange(0.1,0.6,0.05),
+                     "thlist": None, # None, [0.82], np.arange(),
+                     "phaselist": None, # np.arange(0,16,1),
                      "pix":[18,25],
                      "n_mask_pix":12,
                      "with_mon": False
@@ -19,39 +19,55 @@ local_configuration={"injlist": np.arange(0.1,0.6,0.05),
 class InjectionScan(scan_base.ScanBase):
     scan_id = "injection_scan"
             
-    def scan(self,**kwargs): 
-        
+    def scan(self,**kwargs):
+        """ List of kwargs
+            pix: list of pixel
+            n_mask_pix: number of pixels injected at onece
+            injlist: list of inj (inj_high-inj_low)
+            thlist: list of th
+            phaselist: list of phase
+            with_mon: get timestamp of mon (mon will be enabled)
+        """
         ####################
         ## get scan params from args
-        pix = kwargs.pop('pix', [18,25])
+        pix=kwargs.pop("pix")
         if isinstance(pix[0],int):
             pix=[pix]
-        n_mask_pix = kwargs.pop('n_mask_pix', 30)
-        n_mask_pix = min(n_mask_pix,len(pix))
+
+        n_mask_pix = min(kwargs.pop("n_mask_pix"),len(pix))
         mask_n=int((len(pix)-0.5)/n_mask_pix+1)
         en=np.copy(self.dut.PIXEL_CONF["PREAMP_EN"])
-
-        injlist= kwargs.pop('injlist', np.arange(0.0,1.9,0.005))
+        
+        injlist=kwargs.pop("injlist")
         if injlist is None or len(injlist)==0:
-            injlist=[self.dut.SET_VALUE["INJ_HI"]+self.dut.SET_VALUE["INJ_LO"]]
-        thlist = kwargs.pop('thlist', None)
+            injlist=[self.dut.SET_VALUE["INJ_HI"]-self.dut.SET_VALUE["INJ_LO"]]
+        thlist=kwargs.pop("thlist")
         if thlist is None or len(thlist)==0:
             thlist=[self.dut.SET_VALUE["TH"]]
-        phaselist = kwargs.pop('phaselist', None)
+        phaselist=kwargs.pop("phaselist")
         if phaselist is None or len(phaselist)==0:
             phaselist=[self.dut["inj"].get_phase()]
         inj_th_phase = np.reshape(np.stack(np.meshgrid(injlist,thlist,phaselist),axis=3),[-1,3])
-
-        with_mon = kwargs.pop('with_mon', False)
+        
+        with_mon=kwargs.pop("with_mon")
+        
+        debug=kwargs.pop("debug",0)
+        
+        if (debug & 0x1)==1:
+            print "++++++++ injlist",len(injlist),injlist
+            print "++++++++ thlist",len(thlist),thlist
+            print "++++++++ phaselist",len(phaselist),phaselist
+            print "++++++++ with_mon",with_mon
 
         param_dtype=[("scan_param_id","<i4"),("pix","<i2",(n_mask_pix,2))]
-        gllist=[]
-        #if "LSBdacL" in kwargs.keys():
-        #    param_dtype.append(('LSBdacL',"<i1"))
-        #    for t in kwargs['LSBdacL']:
-        #        gllist.append({"LSBdacL":t})
-        if len(gllist)==0:
-           gllist=[None]
+
+        glist=[]
+        #for k,v in kwargs.iteritems():
+        #    param_dtype.append((k,"<u1"))
+        #    for v_e in v:
+        #        glist.append({k:v_e})
+        if len(glist)==0:
+            glist=[None]
 
         ####################
         ## create a table for scan_params
@@ -59,17 +75,23 @@ class InjectionScan(scan_base.ScanBase):
         self.scan_param_table = self.h5_file.create_table(self.h5_file.root, 
                       name='scan_parameters', title='scan_parameters',
                       description=description, filters=self.filter_tables)
-        self.meta_data_table.attrs.thlist = yaml.dump(inj_th_phase[:,1])
-        self.meta_data_table.attrs.injlist = yaml.dump(inj_th_phase[:,0])
-        self.meta_data_table.attrs.phaselist = yaml.dump(inj_th_phase[:,2])
+        self.kwargs.append("thlist")
+        self.kwargs.append(yaml.dump(inj_th_phase[:,1]))
+        self.kwargs.append("injlist")
+        self.kwargs.append(yaml.dump(inj_th_phase[:,0]))
+        self.kwargs.append("phaselist")
+        self.kwargs.append(yaml.dump(inj_th_phase[:,2]))
+        #self.meta_data_table.attrs.thlist = yaml.dump(inj_th_phase[:,1])
+        #self.meta_data_table.attrs.injlist = yaml.dump(inj_th_phase[:,0])
+        #self.meta_data_table.attrs.phaselist = yaml.dump(inj_th_phase[:,2])
         
         t0=time.time()
         scan_param_id=0
         inj_delay_org=self.dut["inj"].DELAY
         inj_width_org=self.dut["inj"].WIDTH
-        for gl in gllist:
-          if gl is not None:
-              self.monopix.set_global(**gl)
+        for g in glist:
+          if g is not None:
+              self.monopix.set_global(**g)
           for mask_i in range(mask_n):
             mask_pix=[]
             for i in range(mask_i,len(pix),mask_n):
@@ -94,9 +116,9 @@ class InjectionScan(scan_base.ScanBase):
             for i in range(n_mask_pix-len(mask_pix)):
                 mask_pix_tmp.append([-1,-1])
             self.scan_param_table.row['pix']=mask_pix_tmp
-            if gl is not None:
-              for gl_key in gl.keys():
-                self.scan_param_table.row[gl_key]=gl[gl_key]
+            if g is not None:
+              for g_key in g.keys():
+                self.scan_param_table.row[g_key]=g[g_key]
             self.scan_param_table.row.append()
             self.scan_param_table.flush()
 
@@ -104,7 +126,7 @@ class InjectionScan(scan_base.ScanBase):
             ## start read fifo 
             cnt=0
             with self.readout(scan_param_id=scan_param_id,fill_buffer=False,clear_buffer=True,
-                              readout_interval=0.005):
+                              readout_interval=0.001):
                 for inj,th,phase in inj_th_phase:
                   if th>0 and self.dut.SET_VALUE["TH"]!=th:
                     self.dut["TH"].set_voltage(th,unit="V")
@@ -115,15 +137,20 @@ class InjectionScan(scan_base.ScanBase):
                     self.dut.SET_VALUE["INJ_HI"]=inj_high
                   if phase>0 and self.dut["inj"].get_phase()!=phase:
                       self.dut["inj"].set_phase(int(phase)%16)
-                      #self.logger.info("%x"%self.dut["inj"].PHASE_DES)
+                      
                       self.dut["inj"].DELAY=inj_delay_org+int(phase)/16
                       self.dut["inj"].WIDTH=inj_width_org-int(phase)/16
+                      if (debug & 0x1)==1:
+                         self.logger.info("inj phase=%x,period=%d"%(
+                         self.dut["inj"].PHASE_DES,self.dut["inj"].DELAY+self.dut["inj"].WIDTH))
                   self.dut["inj"].start()
                   while self.dut["inj"].is_done()!=1:
-                        time.sleep(0.001)
+                        time.sleep(0.005)
                   pre_cnt=cnt
-                  cnt=self.fifo_readout.get_record_count()
-                  self.logger.info('mask=%d th=%.3f inj=%.3f phase=%d dat=%d'%(
+                  
+                  if (debug & 0x2)==2:
+                    cnt=self.fifo_readout.get_record_count()
+                    self.logger.info('mask=%d th=%.3f inj=%.3f phase=%d dat=%d'%(
                       scan_param_id,th,inj,self.dut["inj"].get_phase(),cnt-pre_cnt))    
                        
                 ####################
