@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2016 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="12" Path="/home/user/workspace/monopix/monopix_thinn/firmware/vivado/monopix_mio3.xpr">
+<Project Version="7" Minor="12" Path="/home/idcs/git/monopix_daq_timestamp640/firmware/vivado/monopix_mio3.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="25e90b18d3ad41a98b8911fbbc91521b"/>
@@ -55,8 +55,8 @@
         <Option Name="TopModule" Val="monopix_mio3"/>
         <Option Name="VerilogDir" Val="$PPRDIR/../src"/>
         <Option Name="VerilogDir" Val="$PPRDIR/../src/SiTCP"/>
-        <Option Name="VerilogDir" Val="$PPRDIR/../../../../basil/basil_thinn/firmware/modules"/>
-        <Option Name="VerilogDir" Val="$PPRDIR/../../../../basil/basil_thinn/firmware/modules/utils"/>
+        <Option Name="VerilogDir" Val="$PPRDIR/../../../basil_timestamp640/firmware/modules"/>
+        <Option Name="VerilogDir" Val="$PPRDIR/../../../basil_timestamp640/firmware/modules/utils"/>
       </Config>
     </FileSet>
     <FileSet Name="constrs_1" Type="Constrs" RelSrcDir="$PSRCDIR/constrs_1">

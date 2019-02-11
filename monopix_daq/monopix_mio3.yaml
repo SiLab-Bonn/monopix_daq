@@ -8,14 +8,13 @@ transfer_layer:
   - name  : intf
     type  : SiTcp
     init:
-        #ip : "192.168.10.19"
-        ip : "192.168.12.16"
+        ip : "192.168.10.19"
         udp_port : 4660
         tcp_port : 24
         tcp_connection : True
 
 hw_drivers:
-#	MIO3 start
+#   MIO3 start
   - name      : i2c
     type      : i2c
     interface : intf
@@ -26,8 +25,8 @@ hw_drivers:
     hw_driver : i2c
     base_addr : 0x00000
     init:
-        no_calibration : True
-        #no_power_reset : True
+        no_calibration : False
+        no_power_reset : True
 
   - name      : fifo
     type      : sram_fifo
@@ -45,17 +44,34 @@ hw_drivers:
     base_addr : 0x10010
     size      : 16
     
-  - name      : tlu
+  - name      : tlu     # 8,8,a,b,c,d,e,f
     type      : tlu
     interface : intf
     base_addr : 0x10600
     size      : 8
     
-#  - name      : timestamp
-#    type      : timestamp160
-#    interface : intf
-#    base_addr : 0x10700
-#    size      : 8
+  - name      : timestamp_inj #5
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10900
+    size      : 8
+    
+  - name      : timestamp_rx1  #4
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10700
+    size      : 8
+    
+  - name      : timestamp_mon  #6
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10a00
+    
+  - name      : timestamp_tlu #7
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10800
+    size      : 8
     
   - name      : spi
     type      : spi
@@ -63,27 +79,16 @@ hw_drivers:
     base_addr : 0x11000
     
   - name      : inj
-    type      : pulse_gen
+    type      : pulse_gen640
     interface : intf
-    base_addr : 0x10100
+    base_addr : 0x14000
     
-#  - name      : timestamp_mon
-#    type      : timestamp
-#    interface : intf
-#    base_addr : 0x10300
-    
-#  - name      : timestamp_tlu
-#    type      : timestamp160
-#    interface : intf
-#    base_addr : 0x10800
-#    size      : 8
-     
   - name      : gate_tdc
     type      : pulse_gen
     interface : intf
     base_addr : 0x10400
     
-  - name      : data_rx
+  - name      : data_rx       # 1,2,3,4
     type      : mono_data_rx
     interface : intf
     base_addr : 0x10500
@@ -101,13 +106,10 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
-      - name    : TIMESTAMP_SOURCE1
+      - name    : RST_GRAY_reg
         size    : 1
-        offset  : 12
-      - name    : EN_GATE_TIMESTAMP
-        size    : 1
-        offset  : 11
-      - name    : EN_GRAY_RESET_WITH_TDC_PULSE
+        offset  : 15
+      - name    : EN_GRAY_RESET_WITH_TIMESTAMP
         size    : 1
         offset  : 10
       - name    : EN_DATA_CMOS
@@ -208,7 +210,6 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
-
 
   - name        : CONF_SR
     type        : StdRegister
