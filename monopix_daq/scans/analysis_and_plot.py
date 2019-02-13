@@ -48,6 +48,7 @@ if __name__ == "__main__":
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("scan_module_name", metavar="scan_module_name", type=str)
     parser.add_argument("-p","--plot_only", action='store_const',const=True, default=False)
+    parser.add_argument("-a","--analysis_only", action='store_const',const=True, default=False)
     parser.add_argument("--fin", metavar="fin", type=str, default=None)
     args=parser.parse_args()
 
@@ -60,5 +61,6 @@ if __name__ == "__main__":
     a=AnalysisAndPlot(ScanClass,fin=args.fin)
     if not args.plot_only:
         a.analyze()
-    a.plot()
+    if not args.analysis_only:
+        a.plot()
 

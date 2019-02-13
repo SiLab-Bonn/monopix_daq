@@ -81,10 +81,10 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
-      - name    : EN_DEBUG_TIMESTAMP
+      - name    : INJ_OR_TLU
         size    : 1
         offset  : 12
-      - name    : EN_GATE_TIMESTAMP
+      - name    : RX1_OR_GATE
         size    : 1
         offset  : 11
       - name    : EN_GRAY_RESET_WITH_TDC_PULSE
@@ -170,7 +170,13 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'VSRC3'}
-    
+
+  - name        : PBias
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC10'}
+
   - name        : INJ_LO
     type        : FunctionalRegister
     hw_driver   : GPAC

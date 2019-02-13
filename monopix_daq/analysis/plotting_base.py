@@ -29,7 +29,7 @@ OVERTEXT_COLOR = '#07529a'
 import monopix_daq.analysis.utils
 
 class PlottingBase(object):
-    def __init__(self, fout, save_png=False,save_single_pdf=False):
+    def __init__(self, fout, save_png=False ,save_single_pdf=False):
         self.logger = logging.getLogger()
         #self.logger.setLevel(loglevel)
         
@@ -159,6 +159,8 @@ class PlottingBase(object):
                            title="Threshold dispersion"):
         if mask is None:
             mask=np.ones([COL_SIZE, ROW_SIZE],dtype=int)
+        elif isinstance(mask,list):
+            mask=np.array(mask)
 
         fig = Figure()
         FigureCanvas(fig)
@@ -341,28 +343,34 @@ class PlottingBase(object):
                    top_axis_title="Threshold [e]",
                    x_axis_title="Test pulse injection [V]",
                    y_axis_title="# of pixel",
-                   z_max=200,
-                   x_min=0,
+                   y_max=200,
+                   y_min=None,
+                   x_min=None,
                    x_max=None,
                    reverse=True,
                    dat_title=["TH=0.81V"],
                    page_title=None,
-                   title="Pixel %d-%d"):
+                   title="Pixel xx-xx"):
         fig = Figure()
         FigureCanvas(fig)
         ax = fig.add_subplot(111)
         ax.set_adjustable('box')
-        
+        print len(dat)
         for i, d in enumerate(dat):
             color = next(ax._get_lines.prop_cycler)['color']
-            ax.plot(d["x"],d["y"],linestyle="", marker="o",color=color,label=dat_title[i])
+            ax.plot(d["x"], d["y"],linestyle="", marker="o",color=color,label=dat_title[i])
             x,y=monopix_daq.analysis.utils.scurve_from_fit(d["x"], d["A"],d["mu"],d["sigma"],reverse=reverse,n=500)
             ax.plot(x,y,linestyle="-", marker="",color=color)
         if x_min is None:
             x_min=np.min(d["x"])
         if x_max is None:
             x_max=np.max(d["x"])
+        if y_min is None:
+            y_min=np.min(d["y"])
+        if y_max is None:
+            y_max=np.max(d["y"])
         ax.set_xbound(x_min,x_max)
+        ax.set_ybound(y_min,y_max)
         
         ax.set_xlabel(x_axis_title)
         ax.set_ylabel(y_axis_title)

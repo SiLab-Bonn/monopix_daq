@@ -27,13 +27,6 @@ class TdacTune(scan_base.ScanBase):
     scan_id = "tdac_tune"
     
     def scan(self,**kwargs):
-        """
-        cnt_th: count threshold
-        pix: list of pixels to be tuned
-        n_mask_pix: number of pixels tuned at onece
-        exp_time: exposure time for noise tuning, -1 for test pulse tuning
-        Other paramters must be configured before scan.start
-        """
         cnt_th=kwargs.pop("cnt_th",1)
         #cnt_repeat_th=kwargs.pop("cnt_repeat_th",100)
         exp_time=kwargs.pop("exp_time",1.0)

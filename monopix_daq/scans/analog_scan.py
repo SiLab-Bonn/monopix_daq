@@ -66,17 +66,18 @@ if __name__ == "__main__":
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=0.83)
     parser.add_argument('-i',"--inj", type=float, default=1.5)
-    parser.add_argument("-f","--flavor", type=str, default="16:20")
+    parser.add_argument("-f","--flavor", type=str, default="28:32")
+    parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     args=parser.parse_args()
     
-    m=monopix.Monopix()
+    m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
     if args.config_file is not None:
         m.load_config(args.config_file)
 
     if args.th is not None:
         m.set_th(args.th)
     if args.inj is not None:
-        m.set_inj_high(inj_inj+m.dut.SET_VALUE["INJ_LO"])
+        m.set_inj_high(args.inj+m.dut.SET_VALUE["INJ_LO"])
     if args.flavor is not None:
         if args.flavor=="all":
             collist=np.arange(0,self.monopix.COL_SIZE)

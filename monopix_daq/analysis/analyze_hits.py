@@ -35,6 +35,10 @@ class AnalyzeHits():
         self.save()
 
     def analyze(self, hits, fhit_root):
+        if "apply_ts_inj_window" in self.res.keys():
+            hits=self.run_apply_ts_inj_window(hits)
+        if "delete_noise" in self.res.keys():
+            hits=self.run_delete_noise(hits)
         if "hist_occ" in self.res.keys():
             self.run_hist(hits)
         if "hist_occ_ev" in self.res.keys():
@@ -56,6 +60,22 @@ class AnalyzeHits():
         if "cnts" in self.res.keys():
             self.save_cnts()
 
+######### cleaning
+    def init_delete_noise(self):
+        self.res["delete_noise"]=True
+    def run_delete_noise(self, hits):
+        return hits[hits["flg"]==0]
+        
+    def init_apply_ts_inj_window(self,inj_window=None):
+        if inj_window is None:
+            with tb.open_file(self.fraw) as f:
+                firmware=yaml.load(f.root.meta_data.attrs.firmware)
+                inj_window=int(firmware["inj"]["WIDTH"]/2)
+        self.res["apply_ts_inj_window"]=inj_window
+    def run_apply_ts_inj_window(self, hits):
+        ts_inj40=((np.int64(hits["ts_token"])>>4) - np.int64(hits["tot"]) - (np.int64(hits["ts_inj"])>>4))
+        return hits[ts_inj40 < self.res["apply_ts_inj_window"]]
+            
 ######### le-counts
     def init_le_cnts(self):
         with tb.open_file(self.fraw) as f:
@@ -78,6 +98,7 @@ class AnalyzeHits():
             f.create_table(f.root,name="LECnts",
                            description=np.zeros(0,dtype=cnt_dtype+[('cnt',"<i4")]).dtype,
              title='le_cnt_data')
+        print "AnalyzeHits: le_cnts will be analyzed"
 
     def run_le_cnts(self,hits,fhit_root):
         hits["tof"] = hits["tof"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
@@ -116,7 +137,8 @@ class AnalyzeHits():
                            title='cnt_data')
 
     def run_cnts(self,hits,fhit_root):
-        uni,cnt=np.unique(hits[self.res["cnts"]],return_counts=True)
+        uni,idx=np.unique(hits[["ts_inj"]],return_index=True)
+        uni,cnt=np.unique(hits[idx][self.res["cnts"]],return_counts=True)
         buf=np.empty(len(uni),dtype=fhit_root.Cnts.dtype)
         for c in self.res["cnts"]:
             buf[c]=uni[c]
@@ -186,8 +208,10 @@ class AnalyzeHits():
 ######### analyze delay
     def init_le_hist(self):
         with tb.open_file(self.fraw) as f:
-            phaselist=np.sort(np.unique(np.array(
-                          yaml.load(f.root.meta_data.attrs.phaselist))))
+            for i in range(0,len(f.root.kwargs),2):
+                if f.root.kwargs[i]=="phaselist":
+                    phaselist=np.sort(np.unique(np.array(
+                          yaml.load(f.root.kwargs[i+1]))))
         with tb.open_file(self.fhit,"a") as f_o:
             try:
                 f_o.remove_node(f_o.root,"LEHist")

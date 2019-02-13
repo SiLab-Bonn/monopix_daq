@@ -21,24 +21,27 @@ def format_power(dat): ### TODO improve more...
     return s
 def format_dac(dat): ### TODO improve more...
     s="DAC:"
+    for dac in ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']:
+        s=s+" %s=%i"%(dac,dat[dac]) 
     return s
 def format_pix(dat): ### TODO improve more...
     s="Pixels:"
     return s
     
-def mk_fname(prefix,ext="npy",dirname=None):
+def mk_fname(ext="data.npy",dirname=None):
     if dirname==None:
+        prefix=ext.split(".")[0]
         dirname=os.path.join(OUTPUT_DIR,prefix)
     if not os.path.exists(dirname):
         os.system("mkdir -p %s"%dirname)
-    return os.path.join(dirname,prefix+time.strftime("_%Y%m%d_%H%M%S.")+ext)
+    return os.path.join(dirname,time.strftime("%Y%m%d_%H%M%S0_")+ext)
 
 class Monopix():
     def __init__(self,dut=None,no_power_reset=True):
         ## set logger
         self.logger = logging.getLogger()
         logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] (%(threadName)-10s) %(message)s")
-        fname=mk_fname("log",ext="log")
+        fname=mk_fname(ext="log.log")
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
@@ -140,7 +143,7 @@ class Monopix():
                self.dut.PIXEL_CONF[pix_bit][p[0],p[1]]=1
                
 ###### power ##### 
-    def power_up(self,VDDD=1.8,VDDA=1.8,VDD_BCID_BUFF=1.8,VPC=1.5,BL=0.75,TH=1.5,VCascC=0.8,VCascN=0.4,
+    def power_up(self,VDDD=1.8,VDDA=1.8,VDD_BCID_BUFF=1.7,VPC=1.5,BL=0.75,TH=1.5,VCascC=0.8,VCascN=0.4,
                 PBias=0.5,NTC=5,INJ_HI=0.5,INJ_LO=0.1):
     
         #DACS
@@ -537,7 +540,7 @@ class Monopix():
 #### load and save config
     def save_config(self,fname=None):
         if fname==None:
-            fname=mk_fname("config",ext="yaml")
+            fname=mk_fname(ext="config.yaml")
         conf=self.dut.get_configuration()
         conf.update(self.power_status())
         conf.update(self.dac_status())
