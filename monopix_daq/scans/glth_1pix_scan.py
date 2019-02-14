@@ -14,7 +14,7 @@ def get_inj_high(e,inj_low=0.1,factor=1):
     return factor*e*1.602E-19/INJCAP+inj_low
 
 local_configuration={"thlist": np.arange(0.8,0.75,-0.0005),     #A list of values where the threshold will move
-                     'pix': [18,25],                         #A list of pixels to go through                          #A list of pixels to go through
+                     'pix': [19,53],                         #A list of pixels to go through                          #A list of pixels to go through
                      'disable_noninjected_pixel':True
 }
 
@@ -29,7 +29,7 @@ class Glth1pixScan(injection_scan.InjectionScan):
            all other parameters should be configured before scan.start()
         """
         kwargs["pix"]=kwargs.pop("pix",local_configuration['pix'])
-        if not isintance(kwargs["pix"][0],int):
+        if not isinstance(kwargs["pix"][0],int):
             print "ERROR select one pixel!!"
             return
         kwargs["thlist"]=kwargs.pop("thlist",local_configuration['thlist'])
@@ -105,7 +105,7 @@ class Glth1pixScan(injection_scan.InjectionScan):
 
 def get_scurve(fhit_root,injected):
     x=fhit_root.ScurveFit.attrs.thlist
-    res=np.empty(len(injected),dtype=[("x","<f4",(len(x),)),("y","<f4",(len(x),)),
+    res=np.empty(len(np.argwhere(injected)),dtype=[("x","<f4",(len(x),)),("y","<f4",(len(x),)),
                                       ("A","<f4"),("mu","<f4"),("sigma","<f4")])
     dat=fhit_root.Cnts[:]
     fit=fhit_root.ScurveFit[:]
@@ -128,6 +128,7 @@ def get_scurve(fhit_root,injected):
 if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
+    import ast
     
     parser = argparse.ArgumentParser(usage="glth_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
@@ -141,17 +142,15 @@ if __name__ == "__main__":
          default=local_configuration["thlist"][-1])
     parser.add_argument('-ts',"--th_step", type=float, 
          default=local_configuration["thlist"][1]-local_configuration["thlist"][0])
-    parser.add_argument("-n","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
-    #parser.add_argument("-px","--pix", type=ast.literal_eval, default=None,
-    #                    help="pixel or list of pixel")
+    parser.add_argument("-px","--pix", type=ast.literal_eval, default=None,
+                        help="pixel format [col, row]")
 
     args=parser.parse_args()
     local_configuration["thlist"]=np.arange(args.th_start,args.th_stop,args.th_step)
-    local_configuration["n_mask_pix"]=args.n_mask_pix
     
     m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
-    scan = GlthScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
+    scan = Glth1pixScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
     
     if args.config_file is not None:
         m.load_config(args.config_file)
@@ -161,11 +160,12 @@ if __name__ == "__main__":
         m.set_tdac(args.tdac)
     if args.inj is not None:
         m.set_inj_high(args.inj+m.dut.SET_VALUE["INJ_LO"])
-    #if args.pix is not None: 
-        #local_configuration["pix"]=np.arange(args.phase_start,args.phase_stop,args.phase_step)
+    if args.pix is not None: 
+        local_configuration["pix"]=args.pix
+        m.set_preamp_en(args.pix)
     #en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
     #local_configuration["pix"]=np.argwhere(en)
-    m.set_preamp_en(local_configuration["pix"]) #########TODO: Make it smart, and able to get a list of pixels as argument
+    #########TODO: Make it smart, and able to get a list of pixels as argument
     
     scan.start(debug=0,**local_configuration)
     scan.analyze()
