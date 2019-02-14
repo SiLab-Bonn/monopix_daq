@@ -13,7 +13,8 @@ local_configuration={"injlist": None, #np.arange(0.1,0.6,0.05),
                      "phaselist": None, # np.arange(0,16,1),
                      "pix":[18,25],
                      "n_mask_pix":12,
-                     "with_mon": False
+                     "with_mon": False,
+                     "disable_noninjected_pixel": False
 }
 
 class InjectionScan(scan_base.ScanBase):
@@ -50,6 +51,7 @@ class InjectionScan(scan_base.ScanBase):
         inj_th_phase = np.reshape(np.stack(np.meshgrid(injlist,thlist,phaselist),axis=3),[-1,3])
         
         with_mon=kwargs.pop("with_mon")
+        disable_noninjected_pixel=kwargs.pop("disable_noninjected_pixel")
         
         debug=kwargs.pop("debug",0)
         
@@ -81,6 +83,10 @@ class InjectionScan(scan_base.ScanBase):
         self.kwargs.append(yaml.dump(inj_th_phase[:,0]))
         self.kwargs.append("phaselist")
         self.kwargs.append(yaml.dump(inj_th_phase[:,2]))
+        self.kwargs.append("with_mon")
+        self.kwargs.append(yaml.dump(with_mon)) 
+        self.kwargs.append("disable_noninjected_pixel")
+        self.kwargs.append(yaml.dump(disable_noninjected_pixel))
         #self.meta_data_table.attrs.thlist = yaml.dump(inj_th_phase[:,1])
         #self.meta_data_table.attrs.injlist = yaml.dump(inj_th_phase[:,0])
         #self.meta_data_table.attrs.phaselist = yaml.dump(inj_th_phase[:,2])
@@ -97,7 +103,8 @@ class InjectionScan(scan_base.ScanBase):
             for i in range(mask_i,len(pix),mask_n):
                 if en[pix[i][0],pix[i][1]]==1:
                     mask_pix.append(pix[i])
-            self.monopix.set_preamp_en(mask_pix)
+            if disable_noninjected_pixel:
+                self.monopix.set_preamp_en(mask_pix)
             self.monopix.set_inj_en(mask_pix)
             if with_mon:
                 self.monopix.set_mon_en(mask_pix)
@@ -181,10 +188,15 @@ class InjectionScan(scan_base.ScanBase):
         ##analyze
         import monopix_daq.analysis.analyze_hits as analyze_hits
         ana=analyze_hits.AnalyzeHits(fev,fraw)
+        ana.init_apply_ts_inj_window()
+        ana.init_delete_noise()
+        ana.init_delete_noninjected()
         ana.init_hist_ev()
         ana.init_injected()
         ana.init_cnts()
         ana.run()
+        
+        os.remove(fhit)
         
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'

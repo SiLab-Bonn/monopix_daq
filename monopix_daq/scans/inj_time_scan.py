@@ -9,7 +9,7 @@ import yaml
 import monopix_daq.scans.injection_scan as injection_scan
 INJCAP=2.7E-15
 
-local_configuration={"phaselist": np.arange(0,17,1),
+local_configuration={"phaselist": np.arange(0,20,1),
                      'pix': [18,25],
                      "with_mon": False
 }
@@ -113,30 +113,38 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
     
-    parser = argparse.ArgumentParser(usage="tw_scan.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="inj_time_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=None)
-    parser.add_argument('-in',"--inj_n", type=float, default=100)
-    #parser.add_argument('-ib',"--inj_start", type=float, 
-    #     default=local_configuration["injlist"][0])
-    #parser.add_argument('-ie',"--inj_stop", type=float, 
-    #     default=local_configuration["injlist"][-1])
-    #parser.add_argument('-is',"--inj_step", type=float, 
-    #     default=local_configuration["injlist"][1]-local_configuration["injlist"][0])
+    parser.add_argument('-i',"--inj", type=float, default=None)
+    parser.add_argument('-in',"--inj_n", type=int, default=None)
+    parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
+    parser.add_argument('-pb',"--phase_start", type=int, 
+         default=local_configuration["phaselist"][0])
+    parser.add_argument('-pe',"--phase_stop", type=int, 
+         default=local_configuration["phaselist"][-1])
+    parser.add_argument('-ps',"--phase_step", type=int, 
+         default=local_configuration["phaselist"][1]-local_configuration["phaselist"][0])
     args=parser.parse_args()
-    #local_configuration["injlist"]=np.arange(args.inj_start,args.inj_stop,args.inj_step)
+    local_configuration["phaselist"]=np.arange(args.phase_start,args.phase_stop,args.phase_step)
 
-    m=monopix.Monopix()
-    scan = TwScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
+    m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
+    scan = InjTimeScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
     
     if args.config_file is not None:
         m.load_config(args.config_file)
     if args.th is not None:
         m.set_th(args.th)
+        
+    if args.inj is not None:
+        m.set_inj_high(args.inj+m.dut.SET_VALUE["INJ_LO"])
     if args.inj_n is not None:
-        m.set_inj_all(inj_n=args.inj_n)
-    m.set_th(0.82)
+        m.dut["inj"]["REPEAT"]=args.inj_n
+        m.logger.info("inj_n: %d"%args.inj_n)
+        
+    m.set_preamp_en(local_configuration["pix"])
+    
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

@@ -190,6 +190,7 @@ class AnalyzeCnts():
                 if dat_dtype[i][0]==c:
                     dat_dtype.pop(i)
                     break
+            #print "cols", list(np.empty(0,dtype=dat_dtype).dtype.names)
             self.res["scurve_fit"]={"cols":list(np.empty(0,dtype=dat_dtype).dtype.names),
                                     "x": x}
 
@@ -227,6 +228,7 @@ class AnalyzeCnts():
                     x=np.append(self.thlist[self.thlist>np.max(x)],x)
                 cnt=np.append(np.zeros(len(x)-len(cnt)),cnt)
                 fit=utils.fit_scurve1(x,cnt,A=self.inj_n,reverse=reverse)
+                
                 #for a in args:
                 #    buf[u_i]["cnt"][np.argmin(np.abs(self.injlist-dat[a]["inj"]))]=dat["cnt"][a]
                 #fit=utils.fit_scurve(self.injlist,buf[u_i]["cnt"],A=self.inj_n,reverse=False)

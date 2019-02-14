@@ -14,15 +14,14 @@ def get_inj_high(e,inj_low=0.1,factor=1):
     return factor*e*1.602E-19/INJCAP+inj_low
 
 local_configuration={"thlist": np.arange(0.8,0.75,-0.0005),     #A list of values where the threshold will move
-                     'pix': [[18,25],[19,6],[20,32]],                             #A list of pixels to go through
-                     'n_mask_pix': 25,                             #A list of pixels to go through
-                     "disable_noninjected_pixel":True
+                     'pix': [18,25],                         #A list of pixels to go through                          #A list of pixels to go through
+                     'disable_noninjected_pixel':True
 }
 
 #This is a simple threshold scan for a given set of pixels. Values of the steps are provided in order as a list.
 
-class GlthScan(injection_scan.InjectionScan):
-    scan_id = "glth_scan"
+class Glth1pixScan(injection_scan.InjectionScan):
+    scan_id = "glth_1pix_scan"
     def scan(self,**kwargs):
         """
            pix: [col,row]
@@ -30,20 +29,23 @@ class GlthScan(injection_scan.InjectionScan):
            all other parameters should be configured before scan.start()
         """
         kwargs["pix"]=kwargs.pop("pix",local_configuration['pix'])
+        if not isintance(kwargs["pix"][0],int):
+            print "ERROR select one pixel!!"
+            return
         kwargs["thlist"]=kwargs.pop("thlist",local_configuration['thlist'])
         kwargs["injlist"]=None
         kwargs["phaselist"]=None
         
-        kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",local_configuration['n_mask_pix'])
+        kwargs["n_mask_pix"]=1
         kwargs["with_mon"]=False
-        kwargs["disable_noninjected_pixel"]=kwargs.pop("disable_noninjected_pixel",local_configuration['disable_noninjected_pixel'])
-        super(GlthScan, self).scan(**kwargs)
+        kwargs["disable_noninjected_pixel"]=kwargs.pop("disable_noninjected_pixel",False)
+        super(Glth1pixScan, self).scan(**kwargs)
 
     def analyze(self):
         fraw = self.output_filename +'.h5'
         fhit=fraw[:-7]+'hit.h5'
         fev=fraw[:-7]+'ev.h5'
-        super(GlthScan, self).analyze()
+        super(Glth1pixScan, self).analyze()
         
         import monopix_daq.analysis.analyze_cnts as analyze_cnts
         ana=analyze_cnts.AnalyzeCnts(fev,fraw)
@@ -92,21 +94,18 @@ class GlthScan(injection_scan.InjectionScan):
                         title=["Preamp","Inj","Mon","TDAC"], 
                         z_min=[0,0,0,0], z_max=[1,1,1,15])
 
-                if pixel_scurve:
-                    res=get_scurve(f.root,injected)
-                    for p_i,p in enumerate(np.argwhere(injected)):
-                        plotting.plot_scurve([res[p_i]],
-                                dat_title=["mu=%.4f sigma=%.4f"%(res[0]["mu"],res[0]["sigma"])],
-                                title="Pixel [%d %d], Inj=%.4f"%(p[0],p[1],inj),
-                                y_min=0,
-                                y_max=inj_n*1.5,
-                                reverse=True)
-                else:
-                    pass #TODO make superimpose plot
-                                
+                res=get_scurve(f.root,injected)
+                for p_i,p in enumerate(np.argwhere(injected)):
+                    plotting.plot_scurve([res[p_i]],
+                            dat_title=["mu=%.4f sigma=%.4f"%(res[0]["mu"],res[0]["sigma"])],
+                            title="Pixel [%d %d], Inj=%.4f"%(p[0],p[1],inj),
+                            y_min=0,
+                            y_max=inj_n*1.5,
+                            reverse=True)
+
 def get_scurve(fhit_root,injected):
     x=fhit_root.ScurveFit.attrs.thlist
-    res=np.empty(len(np.argwhere(injected)),dtype=[("x","<f4",(len(x),)),("y","<f4",(len(x),)),
+    res=np.empty(len(injected),dtype=[("x","<f4",(len(x),)),("y","<f4",(len(x),)),
                                       ("A","<f4"),("mu","<f4"),("sigma","<f4")])
     dat=fhit_root.Cnts[:]
     fit=fhit_root.ScurveFit[:]
@@ -120,14 +119,10 @@ def get_scurve(fhit_root,injected):
         res[p_i]["y"]=np.copy(cnt)
         tmp=fit[np.bitwise_and(fit["col"]==p[0],fit["row"]==p[1])]
         if len(tmp)!=1:
-            print "onepix_scan.get_scurve() 1error!! pix=[%d %d]"%(p[0],p[1])
-            res[p_i]["A"]=float("nan")
-            res[p_i]["mu"]=float("nan")
-            res[p_i]["sigma"]=float("nan")
-        else:
-            res[p_i]["A"]=tmp[0]["A"]
-            res[p_i]["mu"]=tmp[0]["mu"]
-            res[p_i]["sigma"]=tmp[0]["sigma"]
+            print "onepix_scan.get_scurve() 1error!!"
+        res[p_i]["A"]=tmp[0]["A"]
+        res[p_i]["mu"]=tmp[0]["mu"]
+        res[p_i]["sigma"]=tmp[0]["sigma"]
     return res
 
 if __name__ == "__main__":
@@ -147,7 +142,6 @@ if __name__ == "__main__":
     parser.add_argument('-ts',"--th_step", type=float, 
          default=local_configuration["thlist"][1]-local_configuration["thlist"][0])
     parser.add_argument("-n","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
-    parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     #parser.add_argument("-px","--pix", type=ast.literal_eval, default=None,
     #                    help="pixel or list of pixel")
@@ -167,25 +161,11 @@ if __name__ == "__main__":
         m.set_tdac(args.tdac)
     if args.inj is not None:
         m.set_inj_high(args.inj+m.dut.SET_VALUE["INJ_LO"])
-    if args.flavor is not None:
-        if args.flavor=="all":
-            collist=np.arange(0,m.COL_SIZE)
-        else:
-            tmp=args.flavor.split(":")
-            collist=np.arange(int(tmp[0]),int(tmp[1]))
-        pix=[]
-        for i in collist:
-           for j in range(0,m.ROW_SIZE):
-               pix.append([i,j])
-        m.set_preamp_en(pix)
-    else:
-        pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
-    local_configuration["pix"]=pix
     #if args.pix is not None: 
         #local_configuration["pix"]=np.arange(args.phase_start,args.phase_stop,args.phase_step)
     #en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
     #local_configuration["pix"]=np.argwhere(en)
-     #########TODO: Make it smart, and able to get a list of pixels as argument
+    m.set_preamp_en(local_configuration["pix"]) #########TODO: Make it smart, and able to get a list of pixels as argument
     
     scan.start(debug=0,**local_configuration)
     scan.analyze()

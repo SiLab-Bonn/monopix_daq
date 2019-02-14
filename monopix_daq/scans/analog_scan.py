@@ -9,9 +9,11 @@ import yaml
 
 import monopix_daq.scans.injection_scan as injection_scan
 
-local_configuration={"pix": [16:20],
+local_configuration={"pix": [16,20],
                      "n_mask_pix": 25,
 }
+
+#This scan injects a certain amount of times and returns a map of the chip response.
 
 class AnalogScan(injection_scan.InjectionScan):
     scan_id = "analog_scan"
@@ -21,6 +23,7 @@ class AnalogScan(injection_scan.InjectionScan):
         kwargs["injlist"]=None
         kwargs["thlist"]=None
         kwargs["phaselist"]=None
+        kwargs["with_mon"]=False
         ## run scan
         super(AnalogScan, self).scan(**kwargs)
 
@@ -65,8 +68,9 @@ if __name__ == "__main__":
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=0.83)
-    parser.add_argument('-i',"--inj", type=float, default=1.5)
-    parser.add_argument("-f","--flavor", type=str, default="28:32")
+    parser.add_argument('-i',"--inj", type=float, default=None)
+    parser.add_argument('-np',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
+    parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     args=parser.parse_args()
     
@@ -80,17 +84,19 @@ if __name__ == "__main__":
         m.set_inj_high(args.inj+m.dut.SET_VALUE["INJ_LO"])
     if args.flavor is not None:
         if args.flavor=="all":
-            collist=np.arange(0,self.monopix.COL_SIZE)
+            collist=np.arange(0,m.COL_SIZE)
         else:
             tmp=args.flavor.split(":")
             collist=np.arange(int(tmp[0]),int(tmp[1]))
         pix=[]
         for i in collist:
-           for j in range(0,self.monopix.ROW_SIZE):
+           for j in range(0,m.ROW_SIZE):
                pix.append([i,j])
+    
     else:
         pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
     local_configuration["pix"]=pix
+    local_configuration["n_mask_pix"]=args.n_mask_pix
 
     scan = AnalogScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)

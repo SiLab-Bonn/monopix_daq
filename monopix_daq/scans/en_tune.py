@@ -11,13 +11,15 @@ import matplotlib.pyplot as plt
 import monopix_daq.scan_base as scan_base
 import monopix_daq.analysis.interpreter as interpreter
 
-local_configuration={"exp_time": 1.0,
-                     "cnt_th": 1,
-                     "n_pix": 512,
-                     "th_start": 0.85,
-                     "th_stop": 0.5,
-                     "th_step":[-0.01,-0.002,-0.0005]
+local_configuration={"exp_time": 1.0,   #Exposure time looking for noisy pixels [s] 
+                     "cnt_th": 1,       #Minimum number of counts defining that a pixel is noisy
+                     "n_pix": 512,      #Minimum number of enabled pixels
+                     "th_start": 0.85,  #Start point of the global threshold
+                     "th_stop": 0.5,    #Stop point of global threshold
+                     "th_step":[-0.01,-0.002,-0.0005]   #Array of step values for search (Always negative)   
 }
+
+#Reach lower global threshold without modifyng local tuning. (Down to a minimum number of total enabled pixels.)
 
 class EnTune(scan_base.ScanBase):
     scan_id = "en_tune"
@@ -136,7 +138,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
 
-    parser = argparse.ArgumentParser(usage="analog_scan.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="analog_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-e',"--exp_time", type=float, default=local_configuration["exp_time"])
@@ -145,12 +147,13 @@ if __name__ == "__main__":
     parser.add_argument("-f","--flavor", type=str, default="16:20")
     parser.add_argument("--tdac", type=int, default=None)
     parser.add_argument("--LSBdacL", type=int, default=None)
+    parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     args=parser.parse_args()
     local_configuration["exp_time"]=args.exp_time
     local_configuration["n_pix"]=args.n_pix
     local_configuration["th_start"]=args.th_start
     
-    m=monopix.Monopix()
+    m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
 
     if args.config_file is not None:
         m.load_config(args.config_file) 
@@ -162,7 +165,8 @@ if __name__ == "__main__":
           tmp=args.flavor.split(":")
           collist=np.arange(int(tmp[0]),int(tmp[1]),1)
         en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
-        en[c,:]=True
+        for c in collist:
+            en[c,:]=True
         m.set_preamp_en(en)
     if args.tdac is not None:
         m.set_tdac(args.tdac)

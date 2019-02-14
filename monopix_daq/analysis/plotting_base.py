@@ -355,10 +355,12 @@ class PlottingBase(object):
         FigureCanvas(fig)
         ax = fig.add_subplot(111)
         ax.set_adjustable('box')
-        print len(dat)
+
         for i, d in enumerate(dat):
             color = next(ax._get_lines.prop_cycler)['color']
             ax.plot(d["x"], d["y"],linestyle="", marker="o",color=color,label=dat_title[i])
+            if np.isnan(d["A"]):
+                continue
             x,y=monopix_daq.analysis.utils.scurve_from_fit(d["x"], d["A"],d["mu"],d["sigma"],reverse=reverse,n=500)
             ax.plot(x,y,linestyle="-", marker="",color=color)
         if x_min is None:

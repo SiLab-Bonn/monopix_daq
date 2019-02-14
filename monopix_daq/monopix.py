@@ -16,13 +16,14 @@ import basil.dut
 
 def format_power(dat): ### TODO improve more...
     s="power:"
-    for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
-        s=s+" %s=%fV(%fmA)"%(pwr,dat[pwr+'[V]'] ,dat[pwr+'[mA]']) 
+    for pwr in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC', "PBias", "NTC",
+                'BL', 'TH', 'VCascC', 'VCascN']:
+        s=s+" %s=%.4fV(%fmA)"%(pwr,dat[pwr+'[V]'] ,dat[pwr+'[mA]']) 
     return s
 def format_dac(dat): ### TODO improve more...
     s="DAC:"
     for dac in ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']:
-        s=s+" %s=%i"%(dac,dat[dac]) 
+        s=s+" %s=%d"%(dac,dat[dac]) 
     return s
 def format_pix(dat): ### TODO improve more...
     s="Pixels:"
@@ -618,6 +619,6 @@ class Monopix():
             s=format_power(ret)
             self.logger.info(s)
         if all=="all" or all=="dac":
-            ret=self.dut.dac_status()
+            ret=self.dac_status()
             s=format_dac(ret)
             self.logger.info(s)

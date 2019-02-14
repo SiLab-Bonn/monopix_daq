@@ -100,10 +100,13 @@ class ScanBase(object):
         
         ### execute scan
         self.fifo_readout = FifoReadout(self.dut)
-        self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        #self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        self.monopix.show("all")
         self.scan(**kwargs) 
         self.fifo_readout.print_readout_status()
-        self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        self.monopix.show("all")
+        self
+        #self.logger.info('DAC Status: %s', str(self.monopix.power_status()))
         
         ### save chip configurations
         self.meta_data_table.attrs.power_status = yaml.dump(self.monopix.power_status())

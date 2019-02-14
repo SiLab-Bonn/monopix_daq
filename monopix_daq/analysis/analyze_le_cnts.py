@@ -16,9 +16,13 @@ class AnalyzeLECnts():
         self.res={}
         with tb.open_file(self.fraw) as f:
             param=f.root.scan_parameters[:]
-            self.injlist=np.sort(np.unique(np.array(yaml.load(f.root.meta_data.attrs.injlist))))
-            self.thlist=np.sort(np.unique(np.array(yaml.load(f.root.meta_data.attrs.thlist))))
-            self.phaselist=np.sort(np.unique(np.array(yaml.load(f.root.meta_data.attrs.phaselist))))
+            for i in range(0,len(f.root.kwargs),2):
+                if f.root.kwargs[i]=="injlist":
+                    self.injlist=np.sort(np.unique(yaml.load(f.root.kwargs[i+1])))
+                elif f.root.kwargs[i]=="thlist":
+                    self.thlist=np.sort(np.unique(yaml.load(f.root.kwargs[i+1])))
+                elif f.root.kwargs[i]=="phaselist":
+                    self.phaselist=np.sort(np.unique(yaml.load(f.root.kwargs[i+1])))
             self.inj_n=yaml.load(f.root.meta_data.attrs.firmware)["inj"]["REPEAT"]
 
     def run(self,n=10000000):
@@ -50,15 +54,72 @@ class AnalyzeLECnts():
             self.run_scurve(dat,fdat_root)
             
     def save(self):
+        #print "========= save() start"
+        #print "========= save() keys",self.res.keys()
         if "scurve_fit" in self.res.keys():
             self.save_scurve_fit()
         if "scurve" in self.res.keys():
             self.save_scurve()
-        if "th_dist" in self.res.keys():
-            self.save_th_dist()
-        if "noise_dist" in self.res.keys():
-            self.save_noise_dist()
+        if "best_phase" in self.res.keys():
+            self.save_best_phase()
 
+    ######## best phase
+    def init_best_phase(self):
+        with tb.open_file(self.fdat,"a") as f:
+            dat_dtype=f.root.LEHist.dtype.descr
+            for c in ["LE","inj"]:
+                for i in range(len(dat_dtype)):
+                    if dat_dtype[i][0]==c:
+                        dat_dtype.pop(i)
+                        break
+            self.res["best_phase"]=list(np.empty(0,dtype=dat_dtype).dtype.names)
+            buf=np.empty(0,dtype=dat_dtype+[("LE","u1"),("phase","<i4"),("inj","<f4")])
+            try:
+                f.remove_node(f.root,"BestPhase")
+            except:
+                pass
+            table=f.create_table(f.root,name="BestPhase",
+                               description=buf.dtype,
+                               title='BestPhase')
+    def save_best_phase(self):
+        #print "========= save_best_phase() start"
+        with tb.open_file(self.fdat,"a") as f:
+            end=len(f.root.LEHist)
+            start=0
+            tmpend=min(end,start+end)
+            hist=f.root.LEHist[:]
+            #print "========= save_best_phase() n of LEHist =%d"%len(hist)
+            
+            #print "========= save_best_phase()",self.res["best_phase"]
+            #print "========= save_best_phase() hist.dtype",hist.dtype
+            uni=np.unique(hist[self.res["best_phase"]])
+            buf=np.empty(len(uni),dtype=f.root.BestPhase.dtype)
+            print "save_best_phase() number of LEhist", len(uni)
+            for u_i,u in enumerate(uni):
+                dat=hist[hist[self.res["best_phase"]]==u]
+                a=np.argmax(dat["inj"])
+                buf[u_i]["inj"]=dat["inj"][a]
+                flg=0
+                le0=np.argmax(dat[a]["LE"][0,:])
+                #print le0
+                for ph_i,ph in enumerate(self.phaselist[1:]):
+                    le=np.argmax(dat[a]["LE"][ph_i+1,:])
+                    #print "get_le",le,"cnt",dat[a]["LE"][ph_i+1,le],
+                    #print "phase_idx",ph_i+1,"phase",ph
+                    if le0!=le:
+                        flg=1
+                    if flg==1 and dat[a]["LE"][ph_i+1,le]>=self.inj_n:
+                        print "========= save_best_phase() [%d %d] phase=%d le=%d"%(u["col"],u["row"],ph,le)
+                        break
+
+                buf[u_i]["LE"]=le
+                buf[u_i]["phase"]=ph
+                for c in self.res["best_phase"]:
+                    buf[u_i][c]=u[c]
+            f.root.BestPhase.append(buf)
+            f.root.BestPhase.flush()
+        return le,ph
+        
 ######### superimposed s-curve
     def init_scurve(self):
         with tb.open_file(self.fdat,"a") as f:
@@ -133,7 +194,6 @@ class AnalyzeLECnts():
            for u in uni:
              tmp=dat[dat[p_names]==u]
              for d in tmp:
-               print d
                buf[0]["mu"][d["col"],d["row"]]=d["mu"]
              for p in p_names:
                buf[0][p]=u[p]
@@ -175,10 +235,10 @@ class AnalyzeLECnts():
              table.flush()
 
 ######### s-curve fit
-    def init_scurve_fit(self):
+    def init_scurve_fit(self,x="inj"):
         with tb.open_file(self.fdat,"a") as f:
             dat_dtype=f.root.LECnts.dtype.descr
-            for c in ["inj","cnt"]:
+            for c in [x,"cnt"]:
               for i in range(len(dat_dtype)):
                 if dat_dtype[i][0]==c:
                     dat_dtype.pop(i)
@@ -191,10 +251,14 @@ class AnalyzeLECnts():
                 f.remove_node(f.root,"LEScurveFit")
             except:
                 pass
-            f.create_table(f.root,name="LEScurveFit",
+            t=f.create_table(f.root,name="LEScurveFit",
                            description=np.empty(0,dtype=dat_dtype).dtype,
-                           title='scurve_fit')
-
+                           title='scurve_fit %s'%x)
+            if x=="inj":
+                t.attrs.injlist=self.injlist
+            elif x=="th":
+                t.attrs.thlist=self.thlist
+                
     def run_scurve_fit(self,dat,fdat_root):
         uni=np.unique(dat[self.res["scurve_fit"]])
         buf=np.empty(len(uni),dtype=fdat_root.LEScurveFit.dtype)
@@ -210,10 +274,6 @@ class AnalyzeLECnts():
                 fit=utils.fit_scurve(inj,cnt,A=self.inj_n,reverse=False)
             for c in self.res["scurve_fit"]:
                 buf[u_i][c]=u[c]
-            if fit[0]<97 and fit[0]>96:
-                print fit[0],fit[1],fit[2]
-                print cnt
-                print inj
             buf[u_i]["n"]=len(args)
             buf[u_i]["A"]=fit[0]
             buf[u_i]["A_err"]=fit[3]

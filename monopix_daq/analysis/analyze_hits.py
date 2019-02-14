@@ -39,6 +39,8 @@ class AnalyzeHits():
             hits=self.run_apply_ts_inj_window(hits)
         if "delete_noise" in self.res.keys():
             hits=self.run_delete_noise(hits)
+        if "delete_noninjected" in self.res.keys():
+            hits=self.run_delete_noninjected(hits)
         if "hist_occ" in self.res.keys():
             self.run_hist(hits)
         if "hist_occ_ev" in self.res.keys():
@@ -66,6 +68,30 @@ class AnalyzeHits():
     def run_delete_noise(self, hits):
         return hits[hits["flg"]==0]
         
+    def init_delete_noninjected(self):
+        with tb.open_file(self.fraw) as f: 
+            self.res["delete_noninjected"]=f.root.scan_parameters[:][["scan_param_id","pix"]]
+            
+    def run_delete_noninjected(self, hits):
+        uni,idx,cnt=np.unique(hits["scan_param_id"],return_index=True,return_counts=True)
+        buf=np.empty(0,dtype=hits.dtype)
+        for u_i,u in enumerate(uni):
+            #print "scan_param_id",u
+            tmp=hits[idx[u_i]:idx[u_i]+cnt[u_i]]
+            injected_pix=self.res["delete_noninjected"][self.res["delete_noninjected"]["scan_param_id"]==u]['pix'][0]
+            detected_pix=np.transpose(np.array([tmp["col"],tmp["row"]]))
+            mask=np.zeros(len(detected_pix),dtype=bool)
+            #print injected_pix
+            for ip in injected_pix:
+               #print "ip",ip
+               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["col"]==ip[0])
+               #print len(np.argwhere(tmp_mask))
+               mask=np.bitwise_or(tmp_mask,mask)
+            buf=np.append(buf,tmp[mask])
+        return buf
+        
+        return hits[hits["flg"]==0]      
+
     def init_apply_ts_inj_window(self,inj_window=None):
         if inj_window is None:
             with tb.open_file(self.fraw) as f:
@@ -125,7 +151,7 @@ class AnalyzeHits():
         cnt_dtype = cnt_dtype + [
                     ('col', "<i2"),('row', "<i2"),('inj', "<f4"),
                     ('th', "<f4"),('phase', "<i4"),('cnt',"<i4")]
-
+        #print list(np.zeros(0,dtype=cnt_dtype).dtype.names)[:-1]
         self.res["cnts"]=list(np.zeros(0,dtype=cnt_dtype).dtype.names)[:-1]
         with tb.open_file(self.fhit,"a") as f:
             try:
@@ -137,8 +163,11 @@ class AnalyzeHits():
                            title='cnt_data')
 
     def run_cnts(self,hits,fhit_root):
-        uni,idx=np.unique(hits[["ts_inj"]],return_index=True)
-        uni,cnt=np.unique(hits[idx][self.res["cnts"]],return_counts=True)
+        uni,cnt=np.unique(hits[self.res["cnts"]],return_counts=True)
+        #print len(uni)
+        #for u_i,u in enumerate(uni):
+        #    print u["th"],u["col"],u["row"],cnt[u_i]
+        #print cnt
         buf=np.empty(len(uni),dtype=fhit_root.Cnts.dtype)
         for c in self.res["cnts"]:
             buf[c]=uni[c]
