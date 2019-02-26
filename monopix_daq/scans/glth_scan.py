@@ -14,7 +14,7 @@ def get_inj_high(e,inj_low=0.1,factor=1):
     return factor*e*1.602E-19/INJCAP+inj_low
 
 local_configuration={"thlist": np.arange(0.8,0.75,-0.0005),     #A list of values where the threshold will move
-                     'pix': [[18,25],[19,6],[20,32]],                             #A list of pixels to go through
+                     'pix': [18,25],                         #A list of pixels to go through
                      'n_mask_pix': 25,                             #A list of pixels to go through
                      "disable_noninjected_pixel":True
 }
@@ -53,7 +53,7 @@ class GlthScan(injection_scan.InjectionScan):
            dat=f.root.ScurveFit[:]
         return dat
 
-    def plot(self,save_png=False,pixel_scurve=True):
+    def plot(self,save_png=False,pixel_scurve=False):
         fev=self.output_filename[:-4]+'ev.h5'
         fraw = self.output_filename +'.h5'
         fpdf = self.output_filename +'.pdf'
@@ -149,8 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("-n","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
-    #parser.add_argument("-px","--pix", type=ast.literal_eval, default=None,
-    #                    help="pixel or list of pixel")
+
 
     args=parser.parse_args()
     local_configuration["thlist"]=np.arange(args.th_start,args.th_stop,args.th_step)
@@ -187,6 +186,6 @@ if __name__ == "__main__":
     #local_configuration["pix"]=np.argwhere(en)
      #########TODO: Make it smart, and able to get a list of pixels as argument
     
-    scan.start(debug=0,**local_configuration)
+    scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

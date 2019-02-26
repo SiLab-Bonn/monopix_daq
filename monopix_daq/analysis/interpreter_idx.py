@@ -708,18 +708,18 @@ class InterRawIdx():
         return list2cnt(dat,delete_noise=True)
         
 def raw2list(raw,delete_noise=True):
-    inter=InterRaw()
+    inter=InterRawIdx()
     dat=inter.run(raw)
     if delete_noise==True:
         dat=without_noise(dat)
     return dat
 
 def raw2img(raw,delete_noise=True):
-    inter=InterRaw()
-    return list2img(inter.run(raw),noise=noise)
+    inter=InterRawIdx(chunk=len(raw))
+    return list2img(inter.run(raw),delete_noise=delete_noise)
 
 def raw2cnt(raw,delete_noise=True):
-    inter=InterRaw()
+    inter=InterRawIdx(chunk=len(raw))
     return list2cnt(inter.run(raw),delete_noise=delete_noise)
 
 if __name__ == "__main__":

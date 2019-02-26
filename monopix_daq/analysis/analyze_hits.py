@@ -66,13 +66,31 @@ class AnalyzeHits():
     def init_delete_noise(self):
         self.res["delete_noise"]=True
     def run_delete_noise(self, hits):
-        return hits[hits["flg"]==0]
+        len0=len(hits)
+        hits=hits[hits["flg"]==0]
+        print "delete_noise from %d to %d %.3f percent"%(len0,len(hits),100.0*len(hits)/len0)
+        return hits
+        
+    def init_apply_ts_inj_window(self,inj_window=None):
+        if inj_window is None:
+            with tb.open_file(self.fraw) as f:
+                firmware=yaml.load(f.root.meta_data.attrs.firmware)
+                inj_window=int(firmware["inj"]["WIDTH"]/2)
+        self.res["apply_ts_inj_window"]=inj_window
+
+    def run_apply_ts_inj_window(self, hits):
+        len0=len(hits)
+        ts_inj40=((np.int64(hits["ts_token"])>>4) - np.int64(hits["tot"]) - (np.int64(hits["ts_inj"])>>4))
+        hits=hits[ts_inj40 < self.res["apply_ts_inj_window"]]
+        print "apply_ts_inj_window from %d to %d %.3f percent"%(len0,len(hits),100.0*len(hits)/len0)
+        return hits
         
     def init_delete_noninjected(self):
         with tb.open_file(self.fraw) as f: 
             self.res["delete_noninjected"]=f.root.scan_parameters[:][["scan_param_id","pix"]]
             
     def run_delete_noninjected(self, hits):
+        len0=len(hits)
         uni,idx,cnt=np.unique(hits["scan_param_id"],return_index=True,return_counts=True)
         buf=np.empty(0,dtype=hits.dtype)
         for u_i,u in enumerate(uni):
@@ -88,19 +106,10 @@ class AnalyzeHits():
                #print len(np.argwhere(tmp_mask))
                mask=np.bitwise_or(tmp_mask,mask)
             buf=np.append(buf,tmp[mask])
+        print "delete_noninjected from %d to %d %.3f percent"%(len0,len(buf),100.0*len(buf)/len0)
         return buf
         
-        return hits[hits["flg"]==0]      
-
-    def init_apply_ts_inj_window(self,inj_window=None):
-        if inj_window is None:
-            with tb.open_file(self.fraw) as f:
-                firmware=yaml.load(f.root.meta_data.attrs.firmware)
-                inj_window=int(firmware["inj"]["WIDTH"]/2)
-        self.res["apply_ts_inj_window"]=inj_window
-    def run_apply_ts_inj_window(self, hits):
-        ts_inj40=((np.int64(hits["ts_token"])>>4) - np.int64(hits["tot"]) - (np.int64(hits["ts_inj"])>>4))
-        return hits[ts_inj40 < self.res["apply_ts_inj_window"]]
+        
             
 ######### le-counts
     def init_le_cnts(self):
@@ -151,7 +160,7 @@ class AnalyzeHits():
         cnt_dtype = cnt_dtype + [
                     ('col', "<i2"),('row', "<i2"),('inj', "<f4"),
                     ('th', "<f4"),('phase', "<i4"),('cnt',"<i4")]
-        #print list(np.zeros(0,dtype=cnt_dtype).dtype.names)[:-1]
+
         self.res["cnts"]=list(np.zeros(0,dtype=cnt_dtype).dtype.names)[:-1]
         with tb.open_file(self.fhit,"a") as f:
             try:
@@ -164,10 +173,6 @@ class AnalyzeHits():
 
     def run_cnts(self,hits,fhit_root):
         uni,cnt=np.unique(hits[self.res["cnts"]],return_counts=True)
-        #print len(uni)
-        #for u_i,u in enumerate(uni):
-        #    print u["th"],u["col"],u["row"],cnt[u_i]
-        #print cnt
         buf=np.empty(len(uni),dtype=fhit_root.Cnts.dtype)
         for c in self.res["cnts"]:
             buf[c]=uni[c]

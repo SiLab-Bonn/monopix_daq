@@ -3,7 +3,6 @@ import os,sys,time
 import numpy as np
 import bitarray
 import tables as tb
-import logging
 import yaml
 
 import monopix_daq.scan_base as scan_base
@@ -15,8 +14,8 @@ local_configuration={"with_tlu": True,
                      "tlu_delay": 8,
 }
 
-class SimpleScan(scan_base.ScanBase):
-    scan_id = "simple_scan"
+class SourceScan(scan_base.ScanBase):
+    scan_id = "source_scan"
             
     def scan(self,**kwargs): 
         with_tlu = kwargs.pop('with_tlu', True)
@@ -120,7 +119,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     m=monopix.Monopix()
     m.set_th(0.805)
-    scan = SimpleScan(m,fout=None,online_monitor_addr="tcp://127.0.0.1:6500")
+    scan = SourceScan(m,fout=None,online_monitor_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

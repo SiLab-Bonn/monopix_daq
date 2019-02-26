@@ -24,6 +24,9 @@ class AnalogScan(injection_scan.InjectionScan):
         kwargs["thlist"]=None
         kwargs["phaselist"]=None
         kwargs["with_mon"]=False
+        kwargs["pix"]=kwargs.pop("pix",local_configuration["pix"])
+        kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",local_configuration["n_mask_pix"])
+        kwargs["disable_noninjected_pixel"]=True
         ## run scan
         super(AnalogScan, self).scan(**kwargs)
 
@@ -68,9 +71,9 @@ if __name__ == "__main__":
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=0.83)
-    parser.add_argument('-i',"--inj", type=float, default=None)
+    parser.add_argument('-i',"--inj", type=float, default=1.5)
     parser.add_argument('-np',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
-    parser.add_argument("-f","--flavor", type=str, default=None)
+    parser.add_argument("-f","--flavor", type=str, default="28:32")
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     args=parser.parse_args()
     
@@ -92,7 +95,6 @@ if __name__ == "__main__":
         for i in collist:
            for j in range(0,m.ROW_SIZE):
                pix.append([i,j])
-    
     else:
         pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
     local_configuration["pix"]=pix

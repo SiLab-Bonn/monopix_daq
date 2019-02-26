@@ -48,14 +48,13 @@ class ThScan(injection_scan.InjectionScan):
         ana.init_noise_dist()
         ana.run()
         
-
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'
         fraw = self.output_filename +'.h5'
         fpdf = self.output_filename +'.pdf'
 
         import monopix_daq.analysis.plotting_base as plotting_base
-        with plotting_base.PlottingBase(fpdf,save_png=True) as plotting:
+        with plotting_base.PlottingBase(fpdf,save_png=False) as plotting:
             with tb.open_file(fraw) as f:
                 firmware=yaml.load(f.root.meta_data.attrs.firmware)
                 inj_n=firmware["inj"]["REPEAT"]
@@ -77,7 +76,6 @@ class ThScan(injection_scan.InjectionScan):
                     title=["Preamp","Inj","Mon","TDAC"], 
                     z_min=[0,0,0,0], z_max=[1,1,1,15])
 
-                    
                 ## Scurve
                 for i in range(len(f.root.Scurve)):
                   dat=f.root.Scurve[i]["scurve"]

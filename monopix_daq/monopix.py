@@ -144,7 +144,7 @@ class Monopix():
                self.dut.PIXEL_CONF[pix_bit][p[0],p[1]]=1
                
 ###### power ##### 
-    def power_up(self,VDDD=1.8,VDDA=1.8,VDD_BCID_BUFF=1.7,VPC=1.5,BL=0.75,TH=1.5,VCascC=0.8,VCascN=0.4,
+    def power_up(self,VDDD=1.8,VDDA=1.8,VDD_BCID_BUFF=1.8,VPC=1.5,BL=0.75,TH=1.5,VCascC=0.8,VCascN=0.4,
                 PBias=0.5,NTC=5,INJ_HI=0.5,INJ_LO=0.1):
     
         #DACS
@@ -565,31 +565,48 @@ class Monopix():
             self.set_th(ret["th"])
             self.set_tdac(ret["tdac"])
             self.set_global(LSBdacL=ret["LSBdacL"])
-        else:
-            if fname[-3:] ==".h5":
-                with tables.open_file(fname) as f:
+        if fname[-3:] ==".h5":
+            with tables.open_file(fname) as f:
+                    ret=yaml.load(f.root.meta_data.attrs.power_status)
+                    power={}
+                    for k in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
+                            power[k]=ret[k+"set"]
+                    for k in  ['BL', 'TH', 'VCascC', 'VCascN',"INJ_HI","INJ_LO","PBias","NTC"]:
+                            power[k]=ret[k+"set"]
+                    self.power_up(**power)
+                    dac=yaml.load(f.root.meta_data.attrs.dac_status)
+                    self.set_global(**dac)
                     ret=yaml.load(f.root.meta_data.attrs.firmware)
-                    ret.update(yaml.load(f.root.meta_data.attrs.dac_status))
-                    ret.update(yaml.load(f.root.meta_data.attrs.power_status))
                     tmp=yaml.load(f.root.meta_data.attrs.pixel_conf)
-                    for k in tmp.keys():
-                        ret["pix_"+k]=np.array(tmp[k],int).tolist()
-            else:
-                with open(fname) as f:
+            self.set_mon_en(np.array(tmp["MONITOR_EN"],int).tolist())
+            self.set_inj_en(np.array(tmp["INJECT_EN"],int).tolist())
+            self.set_tdac(np.array(tmp["TRIM_EN"],int).tolist())
+            self.set_preamp_en(np.array(tmp["PREAMP_EN"],int).tolist(),
+                               ColRO_En=ret["CONF_SR"]["ColRO_En"][:])
+            for module in ["inj","gate_tdc","tlu","timestamp_inj","timestamp_tlu","timestamp_mon","data_rx"]:
+                        s="load_config: %s "%module
+                        for reg in ret[module]:
+                            self.dut[module][reg]=ret[module][reg]
+                            s=s+" %s=%d"%(reg,ret[module][reg])
+                        self.logger.info(s)
+            return tmp
+        else:
+            with open(fname) as f:
                     ret=yaml.load(f)
+                    ret["CONF_SR"]["ColRO_En"]=ret["CONF_SR"]["ColRO_En"][::-1] ##TODO check
             dac={}
             for k in ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']:
                     dac[k]=ret[k]
+            self.set_global(**dac)
+            
             power={}
             for k in ['VDDA', 'VDDD', 'VDD_BCID_BUFF', 'VPC']:
                     power[k]=ret[k+"set"]
             for k in  ['BL', 'TH', 'VCascC', 'VCascN',"INJ_HI","INJ_LO","PBias","NTC"]:
                     power[k]=ret[k+"set"]
-
-            self.set_global(**dac)
-            self.power_up(**power)
+            self.power_up(**power)     
             self.set_mon_en(ret["pix_MONITOR_EN"])
-            self.set_preamp_en(ret["pix_PREAMP_EN"],ColRO_En=ret["CONF_SR"]["ColRO_En"][::-1])
+            self.set_preamp_en(ret["pix_PREAMP_EN"],ColRO_En=ret["CONF_SR"]["ColRO_En"][:])
             self.set_inj_en(ret["pix_INJECT_EN"])
             self.set_tdac(ret["pix_TRIM_EN"])
             for module in ["inj","gate_tdc","tlu","timestamp_inj","timestamp_tlu","timestamp_mon","data_rx"]:

@@ -5,8 +5,6 @@ import os.path
 from os import remove
 from operator import itemgetter
 
-import tables as tb
-
 import zmq
 
 def init(socket_address="tcp://127.0.0.1:5500"):
@@ -45,7 +43,7 @@ def send_data(socket, data, scan_parameters={}, name='ReadoutData'):
         pass
 
 def close(socket):
-    if socket!=None:
+    if socket is not None:
         logging.info('Closing socket connection')
         socket.close()  # close here, do not wait for garbage collector
 

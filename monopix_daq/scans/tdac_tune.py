@@ -12,7 +12,7 @@ ROW_SIZE=129
 COL_SIZE=36
 
 import monopix_daq.scan_base as scan_base
-import monopix_daq.analysis.interpreter as interpreter
+import monopix_daq.analysis.interpreter_idx as interpreter
 import monopix_daq.online_monitor.sender
 
 local_configuration={"exp_time": 1.0,
@@ -20,18 +20,18 @@ local_configuration={"exp_time": 1.0,
                      #"cnt_repeat_th": 100,
                      "pix": [18,25],
                      "n_mask_pix": 30,
-                     #"mode": "active",
+                     "mode": "disable_noninjected_pixel",
 }
 
 class TdacTune(scan_base.ScanBase):
     scan_id = "tdac_tune"
     
     def scan(self,**kwargs):
-        cnt_th=kwargs.pop("cnt_th",1)
+        cnt_th=kwargs.pop("cnt_th",local_configuration["cnt_th"])
         #cnt_repeat_th=kwargs.pop("cnt_repeat_th",100)
-        exp_time=kwargs.pop("exp_time",1.0)
-        pix=kwargs.pop("pix",None)
-        #mode=kwargs.pop("mode","active")
+        exp_time=kwargs.pop("exp_time",local_configuration["exp_time"])
+        pix=kwargs.pop("pix",local_configuration["pix"])
+        mode=kwargs.pop("mode",local_configuration["mode"])
         if pix is None:
             pix=np.argwhere(self.dut.PIXEL_CONF["PREAMP_EN"])
         elif isinstance(pix[0],int):
@@ -54,6 +54,7 @@ class TdacTune(scan_base.ScanBase):
         fig,ax=plt.subplots(2,2)
 
         tdac=self.monopix.get_tdac_memory()
+        en=np.copy(self.dut.PIXEL_CONF["PREAMP_EN"])
         cnt=np.ones([16,COL_SIZE,ROW_SIZE])*100
 
         m=0
@@ -65,28 +66,31 @@ class TdacTune(scan_base.ScanBase):
           for t in range(15,-1,-1):
               flg=1
               while flg==1 and len(m_pix)>0:
-                #self.set_preamp_en(m_pix)
-                self.monopix.set_inj_en(m_pix)
-                self.monopix.set_mon_en(m_pix)
+                if mode=="disable_noninjected_pixels":
+                    self.monopix.set_preamp_en(m_pix)
+                else:
+                    self.monopix.set_preamp_en(en)
+                if exp_time<0:
+                    self.monopix.set_inj_en(m_pix)
+                #self.monopix.set_mon_en(m_pix)
                 for p in m_pix:
                     tdac[p[0],p[1]]=t
                 self.monopix.set_tdac(tdac)
-
                 ##########################
                 ## read data
+                self.monopix.set_monoread()
                 with self.readout(scan_param_id=scan_param_id,fill_buffer=True,clear_buffer=True,
                               readout_interval=0.005):
-                    self.monopix.set_monoread()
                     if exp_time < 0:
                         self.monopix.set_timestamp640("inj")
                         self.monopix.start_inj()
                         while self.dut["inj"].is_done()!=1:
                             time.sleep(0.001)
                         self.monopix.stop_timestamp640("inj")
+                        time.sleep(0.2)
                     else:
                         time.sleep(exp_time)
                     self.monopix.stop_monoread()
-                    time.sleep(0.2)
                 scan_param_id=scan_param_id+1
                 
                 ##########################
@@ -94,6 +98,9 @@ class TdacTune(scan_base.ScanBase):
                 buf = self.fifo_readout.data
                 if len(buf)==0:
                     self.logger.info("tdac_tune: mask=%d tdac=%d no data"%(t,m))
+                    flg=0
+                    for p_i,p in enumerate(m_pix):
+                        cnt[t,p[0],p[1]]=0
                     continue
                 data = np.concatenate([buf.popleft()[0] for i in range(len(buf))])
                 img=interpreter.raw2img(data,delete_noise=False)
@@ -102,42 +109,60 @@ class TdacTune(scan_base.ScanBase):
                 ax[0,0].hist(tdac[pix[:,0],pix[:,1]],bins=np.arange(-1,17,1))
                 ax[0,0].set_title("tdac=%d"%t)
                 ax[1,0].cla()
-                ax[1,0].imshow(img,origin="lower",vmax=100,aspect="auto")
+                ax[1,0].imshow(img,origin="lower",vmax=max(1,cnt_th)*3,aspect="auto")
                 ax[0,1].set_title("cnt=%d"%(np.sum(img)))
                 ax[0,1].cla()
                 for p in pix[m:len(pix):mask_n]:
                     ax[0,1].plot(cnt[:,p[0],p[1]],".-")
-                ax[0,1].set_title("mask=%d n_pix=%d"%(m,len(m_pix)))
+                ax[0,1].set_title("mask=%d/%d n_pix=%d"%(m,mask_n,len(m_pix)))
+                ax[0,1].set_ybound(0,max(1,cnt_th)*3)
                 ax[1,1].cla()
                 fig.tight_layout()
                 plt.pause(0.005)
                 
+                ##########################
+                ### set for next ittaration
                 m_pix_next=[]
                 flg=0
                 for p_i,p in enumerate(m_pix):
                     cnt[t,p[0],p[1]]=img[p[0],p[1]]
                     print "=====%d====="%t,p,img[p[0],p[1]]
-                    if img[p[0],p[1]] < cnt_th:
-                        m_pix_next.append(p)
-                    else:
+                    if img[p[0],p[1]] > cnt_th:
                         flg=1
+                        if tdac[p[0],p[1]]==15:
+                            en[p[0],p[1]]=False
                         tdac[p[0],p[1]]=min(tdac[p[0],p[1]]+1,15)
+                    else:
+                        m_pix_next.append(p)
+                    img[p[0],p[1]]=0
+                for p in np.argwhere(img>cnt_th):
+                    cnt[tdac[p[0],p[1]],p[0],p[1]]=img[p[0],p[1]]
+                    print "=====*%d*====="%tdac[p[0],p[1]],p,img[p[0],p[1]]
+                    if mode=="active":
+                        flg=1
+                        if tdac[p[0],p[1]]==15:
+                            en[p[0],p[1]]=False
+                        tdac[p[0],p[1]]=min(tdac[p[0],p[1]]+1,15)
+                    elif mode=="disable_noninjected_pixel":
+                        print "wrong pixel!!"
+                        print interpreter.raw2cnt(data,delete_noise=False)
+                        return
                 m_pix=m_pix_next
 
         self.h5_file.create_carray(self.h5_file.root, name='TDACCnts',
                         title='TDAC Cnts',
                         obj=cnt,
                         filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                
-        for i in range(0,len(pix)):
-            p=pix[i]
-            t=np.argmin(np.abs(cnt[:,p[0],p[1]]-50))
-            if t==0 and cnt[15,p[0],p[1]] >= 100 :
-               t= 15
-            elif t==15 and cnt[0,p[0],p[1]]==0 :
-               t=0
-            tdac[p[0],p[1]]=t
-        self.monopix.set_tdac(tdac)
+        if exp_time<0:
+            for i in range(0,len(pix)):
+                p=pix[i]
+                t=np.argmin(np.abs(cnt[:,p[0],p[1]]-cnt_th))
+                if t==0 and cnt[15,p[0],p[1]] >= cnt_th*2 :
+                   t= 15
+                elif t==15 and cnt[0,p[0],p[1]]==0 :
+                   t=0
+                tdac[p[0],p[1]]=t
+        self.monopix.set_tdac(en)
 
         ax[0,0].hist(tdac[pix[:,0],pix[:,1]],bins=np.arange(-1,17,1),histtype="step")
         plt.pause(0.005)

@@ -11,15 +11,13 @@ import matplotlib.pyplot as plt
 import monopix_daq.scan_base as scan_base
 import monopix_daq.analysis.interpreter as interpreter
 
-local_configuration={"exp_time": 1.0,   #Exposure time looking for noisy pixels [s] 
-                     "cnt_th": 1,       #Minimum number of counts defining that a pixel is noisy
-                     "n_pix": 512,      #Minimum number of enabled pixels
-                     "th_start": 0.85,  #Start point of the global threshold
-                     "th_stop": 0.5,    #Stop point of global threshold
-                     "th_step":[-0.01,-0.002,-0.0005]   #Array of step values for search (Always negative)   
+local_configuration={"exp_time": 1.0,
+                     "cnt_th": 1,
+                     "n_pix": 512,
+                     "th_start": 0.85,
+                     "th_stop": 0.5,
+                     "th_step":[-0.01,-0.002,-0.0005]
 }
-
-#Reach lower global threshold without modifyng local tuning. (Down to a minimum number of total enabled pixels.)
 
 class EnTune(scan_base.ScanBase):
     scan_id = "en_tune"
@@ -68,7 +66,7 @@ class EnTune(scan_base.ScanBase):
                 th_step_i=th_step_i+1
                 continue
             data = np.concatenate([buf.popleft()[0] for i in range(len(buf))])
-            img=interpreter.raw2img(data)
+            img=interpreter.raw2img(data,delete_noise=False)
             
             ##########################
             ## showing status
@@ -138,13 +136,13 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
 
-    parser = argparse.ArgumentParser(usage="analog_scan.py",
+    parser = argparse.ArgumentParser(usage="python en_tune.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-e',"--exp_time", type=float, default=local_configuration["exp_time"])
     parser.add_argument('-n',"--n_pix", type=float, default=local_configuration["n_pix"])
     parser.add_argument('-t',"--th_start", type=float, default=local_configuration["th_start"])
-    parser.add_argument("-f","--flavor", type=str, default="16:20")
+    parser.add_argument("-f","--flavor", type=str, default="28:32")
     parser.add_argument("--tdac", type=int, default=None)
     parser.add_argument("--LSBdacL", type=int, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset

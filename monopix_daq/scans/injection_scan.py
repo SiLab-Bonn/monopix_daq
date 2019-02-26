@@ -60,6 +60,7 @@ class InjectionScan(scan_base.ScanBase):
             print "++++++++ thlist",len(thlist),thlist
             print "++++++++ phaselist",len(phaselist),phaselist
             print "++++++++ with_mon",with_mon
+            print "++++++++ n_mask_pix, mask_n",n_mask_pix,mask_n
 
         param_dtype=[("scan_param_id","<i4"),("pix","<i2",(n_mask_pix,2))]
 
@@ -87,9 +88,6 @@ class InjectionScan(scan_base.ScanBase):
         self.kwargs.append(yaml.dump(with_mon)) 
         self.kwargs.append("disable_noninjected_pixel")
         self.kwargs.append(yaml.dump(disable_noninjected_pixel))
-        #self.meta_data_table.attrs.thlist = yaml.dump(inj_th_phase[:,1])
-        #self.meta_data_table.attrs.injlist = yaml.dump(inj_th_phase[:,0])
-        #self.meta_data_table.attrs.phaselist = yaml.dump(inj_th_phase[:,2])
         
         t0=time.time()
         scan_param_id=0
@@ -103,9 +101,9 @@ class InjectionScan(scan_base.ScanBase):
             for i in range(mask_i,len(pix),mask_n):
                 if en[pix[i][0],pix[i][1]]==1:
                     mask_pix.append(pix[i])
+            self.monopix.set_inj_en(mask_pix)
             if disable_noninjected_pixel:
                 self.monopix.set_preamp_en(mask_pix)
-            self.monopix.set_inj_en(mask_pix)
             if with_mon:
                 self.monopix.set_mon_en(mask_pix)
 
@@ -204,7 +202,7 @@ class InjectionScan(scan_base.ScanBase):
         fpdf = self.output_filename +'.pdf'
 
         import monopix_daq.analysis.plotting_base as plotting_base
-        with plotting_base.PlottingBase(fpdf,save_png=True) as plotting:
+        with plotting_base.PlottingBase(fpdf,save_png=False) as plotting:
             ### configuration 
             with tb.open_file(fraw) as f:
                 ###TODO!! format kwargs and firmware setting

@@ -595,7 +595,7 @@ class InterRaw():
         self.reset()
         self.buf=np.empty(chunk,dtype=hit_dtype)
         self.n=chunk
-        self.debug=0
+        self.debug=debug
     def reset(self):
         self.col=0xFF
         self.row=0xFF
@@ -632,7 +632,7 @@ class InterRaw():
 
         self.tlu=0
         self.tlu_timestamp=np.uint64(0x0)
-    def run(self,raw,data_format=0):
+    def run(self,raw):
         start=0
         end=len(raw)
         ret=np.empty(0,dtype=hit_dtype)
@@ -653,7 +653,7 @@ class InterRaw():
               self.ts2t_timestamp,self.ts2t_pre,self.ts2t_flg,self.ts2t_cnt,
               self.ts3_timestamp,self.ts3_pre,self.ts3_flg,self.ts3_cnt,
               self.ts4_timestamp,self.ts4_pre,self.ts4_flg,self.ts4_cnt,
-              data_format)
+              self.debug)
             if err!=0:
                self.reset()
             ret=np.append(ret,hit_dat)

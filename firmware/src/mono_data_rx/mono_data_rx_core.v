@@ -78,7 +78,7 @@ always @(posedge BUS_CLK) begin
           CONF_STOP_READ <= 7;
           CONF_STOP_FREEZE <= 15;
           CONF_STOP <= 45;
-          CONF_READ_SHIFT <=58; // (29<<1)
+          CONF_READ_SHIFT <=59; // (29<<2+1)
     end
     else if(BUS_WR) begin
         if(BUS_ADD == 2) begin
