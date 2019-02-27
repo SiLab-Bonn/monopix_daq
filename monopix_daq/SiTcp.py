@@ -190,6 +190,7 @@ class SiTcp(SiTransferLayer):
         except:
             pass
         self._sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connect_timeout = float(self._init.get('connect_timeout', 5.0))
         self._sock_tcp.settimeout(connect_timeout)
         self._sock_tcp.connect((self._init['ip'], self._init['tcp_port']))
         self._sock_tcp.settimeout(None)  # https://stackoverflow.com/questions/3432102/python-socket-connection-timeout
