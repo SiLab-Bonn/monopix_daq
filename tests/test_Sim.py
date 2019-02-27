@@ -44,7 +44,7 @@ class TestSim(unittest.TestCase):
         cnfg['transfer_layer'][0]['type'] = 'SiSim'
         cnfg['hw_drivers'][0]['init']['no_calibration'] = True
 
-        self.monopix = monopix.Monopix(conf=cnfg)
+        self.monopix = monopix.Monopix(dut=cnfg,no_power_reset=False)
         self.dut = self.monopix.dut
 
 

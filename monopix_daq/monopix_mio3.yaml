@@ -6,9 +6,9 @@ version : 0.0.1
 # MIO3
 transfer_layer:
   - name  : intf
-    type  : SiTcp
+    type  : monopix_daq.SiTcp
     init:
-        ip : "192.168.10.17"
+        ip : "192.168.10.19"
         udp_port : 4660
         tcp_port : 24
         tcp_connection : True

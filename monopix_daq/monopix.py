@@ -62,7 +62,7 @@ class Monopix():
                     conf["hw_drivers"][i]["init"]["no_power_reset"]=no_power_reset
                     break
             self.dut=basil.dut.Dut(conf=conf)
-        elif isinstance(dut,monopix.Monopix):
+        elif isinstance(dut,basil.dut.Dut):
             self.dut=dut
 
         self.dut.PIXEL_CONF = {'PREAMP_EN': np.full([36,129], True, dtype = np.bool),
