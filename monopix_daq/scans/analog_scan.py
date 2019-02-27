@@ -9,8 +9,8 @@ import yaml
 
 import monopix_daq.scans.injection_scan as injection_scan
 
-local_configuration={"pix": [16,20],
-                     "n_mask_pix": 25,
+local_configuration={"pix": [28,25],
+                     "n_mask_pix": 23,
 }
 
 #This scan injects a certain amount of times and returns a map of the chip response.
@@ -29,7 +29,12 @@ class AnalogScan(injection_scan.InjectionScan):
         kwargs["disable_noninjected_pixel"]=True
         ## run scan
         super(AnalogScan, self).scan(**kwargs)
-
+    def help(self):
+        print "pix: pixel or list of pixels ex:[28,25], [[31,81],[31,82]]"
+        print "n_mask_pix: n of pixels injected at once"
+        print "inj,th,phase: set before scan.start()"
+        print "with_mon: always False"
+        print "disable_noninjected_pixel: always True"
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'
         fraw = self.output_filename +'.h5'
