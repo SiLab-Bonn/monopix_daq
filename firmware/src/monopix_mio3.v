@@ -27,7 +27,6 @@
 
 ////SiTCP
 `include "SiTCP/WRAP_SiTCP_GMII_XC7K_32K.V"
-//`include "SiTCP_XC7K_32K_BBT_V80.v"
 `include "SiTCP/SiTCP_XC7K_32K_BBT_V110.V"
 
 `include "SiTCP/TIMER.v"
