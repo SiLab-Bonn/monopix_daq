@@ -113,7 +113,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
     
-    parser = argparse.ArgumentParser(usage="inj_time_scan.py",
+    parser = argparse.ArgumentParser(usage="python inj_time_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=None)

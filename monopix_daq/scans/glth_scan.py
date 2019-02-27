@@ -134,7 +134,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
     
-    parser = argparse.ArgumentParser(usage="glth_scan.py",
+    parser = argparse.ArgumentParser(usage="python glth_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-i',"--inj", type=float, default=None)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
          default=local_configuration["thlist"][-1])
     parser.add_argument('-ts',"--th_step", type=float, 
          default=local_configuration["thlist"][1]-local_configuration["thlist"][0])
-    parser.add_argument("-n","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
+    parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
 

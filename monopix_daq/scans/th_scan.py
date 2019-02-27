@@ -10,7 +10,10 @@ import monopix_daq.scans.injection_scan as injection_scan
 INJCAP=2.7E-15
 
 local_configuration={"injlist": np.arange(0.005,0.6,0.005),
-                     'pix': [18,25]
+                     'pix': [18,25],                     
+                     'n_mask_pix': 25,                             #A list of pixels to go through
+                     "disable_noninjected_pixel":True,
+                     "with_mon": False
 }
 
 class ThScan(injection_scan.InjectionScan):
@@ -29,8 +32,9 @@ class ThScan(injection_scan.InjectionScan):
         kwargs["injlist"]=kwargs.pop("injlist",local_configuration['injlist'])
         kwargs["phaselist"]=None
 
-        kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",23)
-        kwargs["with_mon"]=kwargs.pop("with_mon",False)
+        kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",local_configuration['n_mask_pix'])
+        kwargs["disable_noninjected_pixel"]=kwargs.pop("disable_noninjected_pixel",local_configuration['disable_noninjected_pixel'])
+        kwargs["with_mon"]=kwargs.pop("with_mon",local_configuration['with_mon'])
         super(ThScan, self).scan(**kwargs)
 
     def analyze(self):
@@ -112,7 +116,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
     
-    parser = argparse.ArgumentParser(usage="analog_scan.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="python th_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=None)
@@ -124,22 +128,35 @@ if __name__ == "__main__":
     parser.add_argument('-is',"--inj_step", type=float, 
          default=local_configuration["injlist"][1]-local_configuration["injlist"][0])
 
-    parser.add_argument("-n","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
+    parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
+    parser.add_argument("-f","--flavor", type=str, default=None)
+    parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
 
     args=parser.parse_args()
     local_configuration["injlist"]=np.arange(args.inj_start,args.inj_stop,args.inj_step)
     local_configuration["n_mask_pix"]=args.n_mask_pix
 
-    m=monopix.Monopix()
+    m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
     scan = ThScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
     
     if args.config_file is not None:
         m.load_config(args.config_file)
     if args.th is not None:
         m.set_th(args.th)
-
-    en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
-    local_configuration["pix"]=list(np.argwhere(en))    
+    if args.flavor is not None:
+        if args.flavor=="all":
+            collist=np.arange(0,m.COL_SIZE)
+        else:
+            tmp=args.flavor.split(":")
+            collist=np.arange(int(tmp[0]),int(tmp[1]))
+        pix=[]
+        for i in collist:
+           for j in range(0,m.ROW_SIZE):
+               pix.append([i,j])
+        m.set_preamp_en(pix)
+    else:
+        pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
+    local_configuration["pix"]=pix   
 
     scan.start(**local_configuration)
     scan.analyze()

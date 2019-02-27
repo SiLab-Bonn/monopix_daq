@@ -125,7 +125,7 @@ if __name__ == "__main__":
     import argparse
     import ast
     
-    parser = argparse.ArgumentParser(usage="glth_scan.py",
+    parser = argparse.ArgumentParser(usage="python glth1pix_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-i',"--inj", type=float, default=None)

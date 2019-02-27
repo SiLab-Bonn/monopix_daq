@@ -72,13 +72,13 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
     
-    parser = argparse.ArgumentParser(usage="analog_scan.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="python analog_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=0.83)
     parser.add_argument('-i',"--inj", type=float, default=1.5)
-    parser.add_argument('-np',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
-    parser.add_argument("-f","--flavor", type=str, default="28:32")
+    parser.add_argument('-nmp',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
+    parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     args=parser.parse_args()
     

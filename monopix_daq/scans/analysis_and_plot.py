@@ -44,7 +44,7 @@ if __name__ == "__main__":
     import inspect
     import argparse
     
-    parser = argparse.ArgumentParser(usage="analysis_and_plot.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="python analysis_and_plot.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("scan_module_name", metavar="scan_module_name", type=str)
     parser.add_argument("-p","--plot_only", action='store_const',const=True, default=False)

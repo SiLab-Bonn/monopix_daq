@@ -211,7 +211,7 @@ if __name__ == "__main__":
     from monopix_daq import monopix
     import argparse
     
-    parser = argparse.ArgumentParser(usage="tw_scan.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="python tw_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=None)

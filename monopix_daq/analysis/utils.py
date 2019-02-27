@@ -2,6 +2,7 @@ import numpy as np
 #import matplotlib.pyplot as plt
 from scipy.special import erf
 from scipy.optimize import curve_fit, leastsq
+import math
 
 def scurve(x, A, mu, sigma):
     return 0.5*A*erf((x-mu)/(np.sqrt(2)*sigma))+0.5*A
@@ -141,3 +142,28 @@ def scurve_from_fit(th, A_fit,mu_fit,sigma_fit,reverse=True,n=500):
         return x,scurve_rev(x,A_fit,mu_fit,sigma_fit)
     else:
         return x,scurve(x,A_fit,mu_fit,sigma_fit)
+
+def generate_mask(n_cols=36, n_rows=129, mask_steps=6, return_lists=True):
+    global_mask=[]
+    global_mask_lists=[]
+    for i in range(mask_steps):
+        global_mask.append(np.zeros([n_cols,n_rows], dtype = "u1")) 
+    
+    for step in range(mask_steps):
+        list_even=range(step,n_rows,mask_steps)
+        list_odd=range(step+int(math.ceil(mask_steps/2.0)),n_rows,mask_steps)
+        if step>=int(math.ceil(mask_steps/2)):
+            list_odd.append(step-int(math.ceil(mask_steps/2)))
+        for col in range(n_cols):
+            if col%2==0:
+                for row in list_even:
+                    global_mask[step][col,row] = 1 
+            else:
+                for row in list_odd:
+                    global_mask[step][col,row] = 1
+        global_mask_lists.append(np.argwhere(global_mask[step][:]==1))
+    if return_lists:
+        return global_mask_lists
+    else:
+        return global_mask
+            

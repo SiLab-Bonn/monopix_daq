@@ -66,7 +66,7 @@ class TdacTune(scan_base.ScanBase):
           for t in range(15,-1,-1):
               flg=1
               while flg==1 and len(m_pix)>0:
-                if mode=="disable_noninjected_pixels":
+                if mode=="disable_noninjected_pixel":
                     self.monopix.set_preamp_en(m_pix)
                 else:
                     self.monopix.set_preamp_en(en)
@@ -121,7 +121,7 @@ class TdacTune(scan_base.ScanBase):
                 plt.pause(0.005)
                 
                 ##########################
-                ### set for next ittaration
+                ### set for next iteration
                 m_pix_next=[]
                 flg=0
                 for p_i,p in enumerate(m_pix):
@@ -207,14 +207,19 @@ if __name__ == "__main__":
     
     #########################
     ##### set parameters 
-    parser = argparse.ArgumentParser(usage="analog_scan.py xxx_scan",
+    parser = argparse.ArgumentParser(usage="python tdac_tune.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-e',"--exp_time", type=float, default=local_configuration["exp_time"])
     parser.add_argument('-c',"--cnt_th", type=int, default=local_configuration["cnt_th"])
-    parser.add_argument('-n',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
-    parser.add_argument("-t","--th_offset", type=float, default=0.002)
+    parser.add_argument('-nmp',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
+    parser.add_argument("-to","--th_offset", type=float, default=None)
+    parser.add_argument("-t","--th", type=float, default=None)
+    parser.add_argument('-i',"--inj", type=float, default=None)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument("--mode", type=str, default=local_configuration["mode"])
+    parser.add_argument("-f","--flavor", type=str, default=None)
+    parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
+
     args=parser.parse_args()
     local_configuration["exp_time"]=args.exp_time
     local_configuration["n_mask_pix"]=args.n_mask_pix
@@ -223,19 +228,43 @@ if __name__ == "__main__":
 
     #########################
     ##### intialize DUT
-    m=monopix.Monopix()
+    m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
     scan = TdacTune(m,online_monitor_addr="tcp://127.0.0.1:6500")
     
-    if args.config_file==None:
+    if args.config_file is not None:
+        m.load_config(args.config_file)
+    else:
         flist=glob.glob(os.path.join(scan.working_dir,"*_th_tune.h5"))
         args.config_file= max(flist, key=os.path.getctime)
+	m.load_config(args.config_file)
     print args.config_file
-    m.load_config(args.config_file)
-    en=np.copy(m.dut.PIXEL_CONF["PREAMP_EN"][:,:])
-    en[16:20,:]=True
-    m.set_preamp_en(en)
-    m.set_th(m.dut.SET_VALUE["TH"]+args.th_offset)
-    local_configuration["pix"]=np.argwhere(en)
+
+    if args.th is not None:
+        m.set_th(args.th)
+    if args.th_offset is not None:
+        print "threshold was %.4fV but will be added offset of %.4f"%(m.dut.SET_VALUE["TH"],args.th_offset)        
+        m.set_th(m.dut.SET_VALUE["TH"]+args.th_offset)
+    if args.flavor is not None:
+        if args.flavor=="all":
+            collist=np.arange(0,m.COL_SIZE)
+        else:
+            tmp=args.flavor.split(":")
+            collist=np.arange(int(tmp[0]),int(tmp[1]))
+        pix=[]
+        for i in collist:
+           for j in range(0,m.ROW_SIZE):
+               pix.append([i,j])
+        m.set_preamp_en(pix)
+    else:
+        pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
+    local_configuration["pix"]=pix
+        
+    if args.inj is not None:
+        m.set_inj_high(args.inj+m.dut.SET_VALUE["INJ_LO"])
+        if local_configuration["exp_time"]>0 :
+            print "tdac will be tuned by injection!!!!!"
+        local_configuration["exp_time"]=-1
+
 
     scan.start(**local_configuration)
     #scan.analyze()

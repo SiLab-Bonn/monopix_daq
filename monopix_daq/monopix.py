@@ -267,7 +267,7 @@ class Monopix():
         self._write_global_conf()
 
         arg=np.argwhere(self.dut.PIXEL_CONF["INJECT_EN"][:,:])
-        self.logger.info("set_inj_en pix: %d%s"%(len(arg),str(arg).replace("\n"," ")))
+        self.logger.info("set_inj_en pix: %d %s"%(len(arg),str(arg).replace("\n"," ")))
         
     def set_tdac(self,tdac):
         if isinstance(tdac,int):
@@ -593,7 +593,7 @@ class Monopix():
         else:
             with open(fname) as f:
                     ret=yaml.load(f)
-                    ret["CONF_SR"]["ColRO_En"]=ret["CONF_SR"]["ColRO_En"][::-1] ##TODO check
+                    ret["CONF_SR"]["ColRO_En"]=ret["CONF_SR"]["ColRO_En"][:] ##TODO check
             dac={}
             for k in ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']:
                     dac[k]=ret[k]
@@ -609,6 +609,7 @@ class Monopix():
             self.set_preamp_en(ret["pix_PREAMP_EN"],ColRO_En=ret["CONF_SR"]["ColRO_En"][:])
             self.set_inj_en(ret["pix_INJECT_EN"])
             self.set_tdac(ret["pix_TRIM_EN"])
+            self.logger.info("===================loading===========================")
             for module in ["inj","gate_tdc","tlu","timestamp_inj","timestamp_tlu","timestamp_mon","data_rx"]:
                 s="load_config: %s "%module
                 for reg in ret[module]:
