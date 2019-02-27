@@ -3,6 +3,7 @@
 `default_nettype none
 
 `include "clk_gen.v"
+`include "monopix_core.v"
 
 `include "utils/bus_to_ip.v"
 
@@ -26,8 +27,8 @@
 `include "timestamp/timestamp.v"
 `include "timestamp/timestamp_core.v"
 
-`include "timestamp160/timestamp160.v"
-`include "timestamp160/timestamp160_core.v"
+`include "timestamp640/timestamp640.v"
+`include "timestamp640/timestamp640_core.v"
 
 `include "utils/fx2_to_bus.v"
 
@@ -225,7 +226,7 @@ sram_fifo #(
     .FIFO_READ_ERROR()
 );
 
-monopix_mio_core i_monopix_mio_core(
+monopix_core i_monopix_core(
 
     //local bus
     .BUS_CLK(BUS_CLK),
