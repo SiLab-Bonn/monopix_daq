@@ -40,7 +40,6 @@ class MonopixReceiver(Receiver):
         self.occupancy_image=pg.ImageItem(border='w')
         view.addItem(self.occupancy_image)
         self.occupancy_image.setLookupTable(lutt, update=True)
-        # make plot with axes
         self.plot=pg.PlotWidget(viewBox=view, labels={'bottom': 'Column', 'left': 'Row'})
         self.plot.addItem(self.occupancy_image)
         dock_occcupancy.addWidget(self.plot)
@@ -68,6 +67,16 @@ class MonopixReceiver(Receiver):
         self.spin_box = Qt.QSpinBox(value=0)
         self.spin_box.setMaximum(1000000)
         self.spin_box.setSuffix(" Readouts")
+        self.xpixel_label=QtGui.QLabel("Pixel column: (-1 for all)")
+        self.ypixel_label=QtGui.QLabel("Pixel row: (-1 for all)")
+        self.xpixel=Qt.QSpinBox(value=-1)
+        self.xpixel.setMaximum(35)
+        self.xpixel.setMinimum(-1)
+        self.xpixel.setSingleStep(1)
+        self.ypixel=Qt.QSpinBox(value=-1)
+        self.ypixel.setMaximum(128)
+        self.ypixel.setMinimum(-1)
+        self.ypixel.setSingleStep(1)
         self.reset_button = QtGui.QPushButton('Reset')
         self.noisy_checkbox = QtGui.QCheckBox('Mask noisy pixels')
         self.convert_checkbox = QtGui.QCheckBox('Axes in ' + u'\u03BC' + 'm')
@@ -80,12 +89,18 @@ class MonopixReceiver(Receiver):
         layout.addWidget(self.spin_box, 0, 6, 0, 1)
         layout.addWidget(self.noisy_checkbox, 0, 7, 0, 1)
         layout.addWidget(self.convert_checkbox, 0, 8, 0, 1)
-        layout.addWidget(self.reset_button, 0, 9, 0, 1)
+        layout.addWidget(self.xpixel_label, 0, 9, 1, 1)
+        layout.addWidget(self.xpixel, 1, 9, 1, 1)
+        layout.addWidget(self.ypixel_label, 0, 10, 1, 1)
+        layout.addWidget(self.ypixel, 1, 10, 1, 1)
+        layout.addWidget(self.reset_button, 0, 11, 0, 1)
         dock_status.addWidget(cw)
 
         # Connect widgets
         self.reset_button.clicked.connect(lambda: self.send_command('RESET'))
         self.spin_box.valueChanged.connect(lambda value: self.send_command(str(value)))
+        self.xpixel.valueChanged.connect(lambda value: self.send_command('PIX_X %d' % value))
+        self.ypixel.valueChanged.connect(lambda value: self.send_command('PIX_Y %d' % value))
         self.noisy_checkbox.stateChanged.connect(lambda value: self.send_command('MASK %d' % value))
 
         # Change axis scaling
@@ -102,7 +117,6 @@ class MonopixReceiver(Receiver):
                     self.plot.getAxis('left').setLabel('Rows / ' + u'\u03BC' + 'm')
 
         self.convert_checkbox.stateChanged.connect(lambda value: scale_axes(value))
-        self.plot_delay = 0
 
     def deserialze_data(self, data):
 
@@ -114,23 +128,24 @@ class MonopixReceiver(Receiver):
         # return jsonapi.loads(data, object_hook=utils.json_numpy_obj_hook)
 
     def handle_data(self, data):
-        def update_rate(fps, hps, recent_total_hits, eps, recent_total_events):
-            self.rate_label.setText("Readout Rate\n%d Hz" % fps)
-            if self.spin_box.value() == 0:  # show number of hits, all hits are integrated
-                self.hit_rate_label.setText("Total Hits\n%d" % int(recent_total_hits))
-            else:
-                self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(hps))
-            if self.spin_box.value() == 0:  # show number of events
-                self.event_rate_label.setText("Total Events\n%d" % int(recent_total_events))
-            else:
-                self.event_rate_label.setText("Event Rate\n%d Hz" % int(eps))
-        if 'meta_data' not in data:
-            self.occupancy_image.setImage(data['occupancies'], autoDownsample=True)
+        if 'occupancies' in data:
+            self.occupancy_image.setImage(data['occupancies'], autoDownsample=True, levelMode='mono')
             self.tot_plot.setData(x=np.linspace(-0.5, 255.5, 257), y=data['tot'], fillLevel=0, brush=(0, 0, 255, 150))
         else:
-            update_rate(data['meta_data']['fps'], data['meta_data']['hps'], data['meta_data']['total_hits'], data['meta_data']['eps'], data['meta_data']['total_events'])
-            self.timestamp_label.setText("Data Timestamp\n%s" % time.asctime(time.localtime(data['meta_data']['timestamp_stop'])))
-            self.scan_parameter_label.setText("Scan Parameters\n%s" % ', '.join('%s: %s' % (str(key), str(val)) for key, val in data['meta_data']['scan_parameters'].iteritems()))
+            meta_data=data["meta_data"]
+            self.rate_label.setText("Readout Rate\n-- Hz")
+            if self.spin_box.value() == 0:  # show number of hits, all hits are integrated
+                self.hit_rate_label.setText("Total Hits\n%d" % int(meta_data["total_hits"]))
+            else:
+                self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(meta_data["hps"]))
+            if self.spin_box.value() == 0:  # show number of events
+                self.event_rate_label.setText("Total Events\n%d" % int(meta_data["total_events"]))
+            else:
+                self.event_rate_label.setText("Event Rate\n%d Hz" % int(meta_data["eps"]))
+                
+            self.timestamp_label.setText("Data Timestamp\n%s" % time.asctime(time.localtime(meta_data['timestamp_stop'])))
+            self.scan_parameter_label.setText("Scan Parameters\n%s" % ', '.join('%s: %s' % (str(key), str(val)) for key, val in meta_data['scan_parameters'].iteritems()))
             now = ptime.time()
-            self.plot_delay = self.plot_delay * 0.9 + (now - data['meta_data']['timestamp_stop']) * 0.1
-            self.plot_delay_label.setText("Plot Delay\n%s" % 'not realtime' if abs(self.plot_delay) > 5 else "%1.2f ms" % (self.plot_delay * 1.e3))
+            plot_delay = ptime.time() - meta_data['timestamp_stop']
+            self.plot_delay_label.setText("Plot Delay\n%s" % ('not realtime' if abs(plot_delay) > 5 else \
+                                                              "%1.2f ms" % (plot_delay * 1.e3)))

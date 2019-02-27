@@ -7,14 +7,13 @@
 `timescale 1ps/1ps
 `default_nettype none
  
-//`include "mono_data_rx/mono_data_rx_core.v"
- 
-module mono_data_rx
+module timestamp640
 #(
     parameter BASEADDR = 16'h0000,
     parameter HIGHADDR = 16'h0000,
     parameter ABUSWIDTH = 16,
-    parameter IDENTYFIER = 2'b00
+    parameter IDENTIFIER = 4'b0001,
+    parameter CLKDV = 4
 )(
     input wire BUS_CLK,
     input wire [ABUSWIDTH-1:0] BUS_ADD,
@@ -23,18 +22,22 @@ module mono_data_rx
     input wire BUS_WR,
     input wire BUS_RD,
     
-    input wire [63:0] TIMESTAMP,
-	 
-    input wire CLK_BX,
-    input wire RX_TOKEN, RX_DATA, RX_CLK,
-    output wire RX_READ, RX_FREEZE, 
-    
+    input wire CLK320,
+    input wire CLK160,
+    input wire CLK40,
+    input wire DI,
+    input wire [63:0] EXT_TIMESTAMP,
+    output wire [63:0] TIMESTAMP_OUT,
+    input wire EXT_ENABLE,
+
     input wire FIFO_READ,
     output wire FIFO_EMPTY,
     output wire [31:0] FIFO_DATA,
     
-    output wire LOST_ERROR
-    
+    input wire FIFO_READ_TRAILING,
+    output wire FIFO_EMPTY_TRAILING,
+    output wire [31:0] FIFO_DATA_TRAILING
+ 
 ); 
 
 wire IP_RD, IP_WR;
@@ -56,11 +59,12 @@ bus_to_ip #( .BASEADDR(BASEADDR), .HIGHADDR(HIGHADDR), .ABUSWIDTH(ABUSWIDTH) ) i
     .IP_DATA_OUT(IP_DATA_OUT)
 );
 
-mono_data_rx_core
+timestamp640_core 
 #(
     .ABUSWIDTH(ABUSWIDTH),
-    .IDENTYFIER(IDENTYFIER)
-) mono_data_rx_core
+    .IDENTIFIER(IDENTIFIER),
+    .CLKDV(4)
+) i_timestamp640_core 
 (
     .BUS_CLK(BUS_CLK),                     
     .BUS_RST(BUS_RST),                  
@@ -69,20 +73,22 @@ mono_data_rx_core
     .BUS_RD(IP_RD),                    
     .BUS_WR(IP_WR),                    
     .BUS_DATA_OUT(IP_DATA_OUT),
+      
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .CLK40(CLK40),
+    .DI(DI),
+    .TIMESTAMP_OUT(TIMESTAMP_OUT),
+    .EXT_TIMESTAMP(EXT_TIMESTAMP),
+    .EXT_ENABLE(EXT_ENABLE),
 
-    .CLK_BX(CLK_BX),
-    .RX_TOKEN(RX_TOKEN), 
-    .RX_DATA(RX_DATA),
-    .RX_CLK(RX_CLK),
-    .RX_READ(RX_READ),
-    .RX_FREEZE(RX_FREEZE),
-    .TIMESTAMP(TIMESTAMP),
-    
     .FIFO_READ(FIFO_READ),
     .FIFO_EMPTY(FIFO_EMPTY),
     .FIFO_DATA(FIFO_DATA),
     
-    .LOST_ERROR(LOST_ERROR)
+    .FIFO_READ_TRAILING(FIFO_READ_TRAILING),
+    .FIFO_EMPTY_TRAILING(FIFO_EMPTY_TRAILING),
+    .FIFO_DATA_TRAILING(FIFO_DATA_TRAILING)
 );
 
 endmodule

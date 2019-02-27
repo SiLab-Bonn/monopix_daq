@@ -4,7 +4,9 @@ import time
 import os
 import tables as tb
 import yaml
-from monopix import monopix
+import numpy as np
+
+from monopix_daq import monopix
 from fifo_readout import FifoReadout
 from contextlib import contextmanager
 
@@ -20,160 +22,112 @@ class MetaTable(tb.IsDescription):
     scan_param_id = tb.UInt16Col(pos=5)
     error = tb.UInt32Col(pos=6)
 
-
 class ScanBase(object):
     '''Basic run meta class.
 
     Base class for scan- / tune- / analyse-class.
     '''
 
-    def __init__(self, dut_conf=None):
-        logging.info('Initializing %s', self.__class__.__name__)
-        self.dut_conf = dut_conf
-
-        self.working_dir = os.path.join(os.getcwd(), "output_data")
+    def __init__(self, monopix=None, fout=None, online_monitor_addr="tcp://127.0.0.1:6500"):
+        if isinstance(monopix,str) or (monopix is None):
+            self.monopix=monopix.Monopix(monopix)
+        else:
+            self.monopix = monopix ## todo better ???, self.dut.dut["CONF"].... :(
+        self.dut=self.monopix.dut
+        
+        ### set file path and name
+        if fout==None:
+            self.working_dir = os.path.join(os.getcwd(),"output_data")
+            self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
+        else:
+            self.working_dir = os.path.dirname(os.path.realpath(fout))
+            self.run_name = os.path.basename(os.path.realpath(fout))
         if not os.path.exists(self.working_dir):
-            os.makedirs(self.working_dir)
-
-        self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
+                os.makedirs(self.working_dir)
         self.output_filename = os.path.join(self.working_dir, self.run_name)
-
-        self.fh = logging.FileHandler(self.output_filename + '.log')
-        self.fh.setLevel(logging.DEBUG)
+        
+        ### set logger
         self.logger = logging.getLogger()
-        self.logger.addHandler(self.fh)
-
-        self.dut = monopix(self.dut_conf)
-        self.dut.init()
-
+        flg=0
+        for l in self.logger.handlers:
+            if isinstance(l, logging.FileHandler):
+               flg=1
+        if flg==0:
+            fh = logging.FileHandler(self.output_filename + '.log')
+            fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
+            fh.setLevel(logging.WARNING)
+            self.logger.addHandler(fh)
+        #self.monopix.logging.info('Initializing %s', self.__class__.__name__)
+        
+        ### set online monitor
+        self.socket=online_monitor_addr
+            
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-
-    def configure(self, injection=False, repeat=1000, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, **kwargs):
-        self.dut['data_rx'].reset()
-        self.dut['fifo'].reset()
-
-        self.dut['TH'].set_voltage(1.5, unit='V')
-        self.dut['VDDD'].set_voltage(1.7, unit='V')
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
-        # self.dut['VPC'].set_voltage(1.5, unit='V')
-
-        # If this is a scan with injection, initialize pulser and set needed values otherwise skip
-        if injection:
-            from basil.dut import Dut
-
-            self.INJ_LO = 0.2
-            try:
-                self.pulser = Dut('../agilent33250a_pyserial.yaml')  # should be absolute path
-                self.pulser.init()
-                logging.info('Connected to ' + str(self.pulser['Pulser'].get_info()))
-            except (RuntimeError, OSError):
-                self.pulser = None
-                logging.info('External injector not connected. Switch to internal one')
-
-                self.dut['INJ_LO'].set_voltage(self.INJ_LO, unit='V')
-
-            self.dut['inj'].set_delay(20 * 256 + 10)
-            self.dut['inj'].set_width(20 * 256 - 10)
-            self.dut['inj'].set_repeat(repeat)
-            self.dut['inj'].set_en(True)
-            self.dut['gate_tdc'].set_en(False)
-            self.dut['gate_tdc'].set_delay(10)
-            self.dut['gate_tdc'].set_width(2)
-            self.dut['gate_tdc'].set_repeat(1)
-            self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
-
-        self.dut["CONF_SR"]["PREAMP_EN"] = 1
-        self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 1
-        self.dut["CONF_SR"]["REGULATOR_EN"] = 1
-        self.dut["CONF_SR"]["BUFFER_EN"] = 1
-        self.dut["CONF_SR"]["LSBdacL"] = 45
-        self.dut["CONF_SR"]["VPFB"] = 32
-
-        self.dut.write_global_conf()
-
-        self.dut['CONF']['EN_OUT_CLK'] = 1
-        self.dut['CONF']['EN_BX_CLK'] = 1
-        self.dut['CONF']['EN_DRIVER'] = 1
-        self.dut['CONF']['EN_DATA_CMOS'] = 0
-
-        self.dut['CONF']['RESET_GRAY'] = 1
-        self.dut['CONF']['EN_TEST_PATTERN'] = 0
-        self.dut['CONF']['RESET'] = 1
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET'] = 0
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET_GRAY'] = 0  # Why do we enable and disable RESETs? (IDCS) ---Time while you write in between.
-        self.dut['CONF'].write()
-
-        self.dut['CONF_SR']['MON_EN'].setall(True)
-        self.dut['CONF_SR']['INJ_EN'].setall(False)
-        self.dut['CONF_SR']['ColRO_En'].setall(False)
-
-        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
-
+        
     def get_basil_dir(self):
         return str(os.path.dirname(os.path.dirname(basil.__file__)))
 
     def start(self, **kwargs):
-
-        # self.dut.init()
-
         self._first_read = False
         self.scan_param_id = 0
-
-        filename = self.output_filename + '.h5'
+        
+        #### open file
+        filename = self.output_filename +'.h5'
         self.h5_file = tb.open_file(filename, mode='w', title=self.scan_id)
         self.raw_data_earray = self.h5_file.create_earray(self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=self.filter_raw_data)
         self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=self.filter_tables)
-
-        self.meta_data_table.attrs.kwargs = yaml.dump(kwargs)
-
-        addr = "tcp://127.0.0.1:5500"  # TODO get from yaml conf file?
-        if (addr != ""):
+        self.kwargs = self.h5_file.create_vlarray(self.h5_file.root, 'kwargs', tb.VLStringAtom(), 'kwargs', filters=self.filter_tables)
+        
+        ### save args and chip configurations
+        self.kwargs.append("kwargs")
+        self.kwargs.append(yaml.dump(kwargs))
+        self.meta_data_table.attrs.power_status_before = yaml.dump(self.monopix.power_status())
+        self.meta_data_table.attrs.dac_status_before = yaml.dump(self.monopix.dac_status())
+        tmp={}
+        for k in self.monopix.dut.PIXEL_CONF.keys():
+            tmp[k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+        self.meta_data_table.attrs.pixel_conf_before=yaml.dump(tmp)
+        
+        ### open socket for monitor
+        if (self.socket==""): 
+            self.socket=None
+        else:
             try:
-                self.socket = online_monitor.sender.init(addr)
+                self.socket=online_monitor.sender.init(self.socket)
             except:
-                logging.info('error data_send.data_send_init %s' % addr)
-                self.socket = None
-
-        self.dut.power_up()
-
-        time.sleep(0.1)
-
+                self.logger.warn('ScanBase.start:sender.init failed addr=%s'%self.socket)
+                self.socket=None
+        
+        ### execute scan
         self.fifo_readout = FifoReadout(self.dut)
-
-        #
-        # some init
-        #
-
-        logging.info('Power Status: %s', str(self.dut.power_status()))
-
-        self.scan(**kwargs)
-
+        #self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        self.monopix.show("all")
+        self.scan(**kwargs) 
         self.fifo_readout.print_readout_status()
+        self.monopix.show("all")
+        self
+        #self.logger.info('DAC Status: %s', str(self.monopix.power_status()))
+        
+        ### save chip configurations
+        self.meta_data_table.attrs.power_status = yaml.dump(self.monopix.power_status())
+        self.meta_data_table.attrs.dac_status = yaml.dump(self.monopix.dac_status())
+        tmp={}
+        for k in self.monopix.dut.PIXEL_CONF.keys():  
+            tmp[k]=np.array(self.dut.PIXEL_CONF[k],int).tolist()
+        self.meta_data_table.attrs.pixel_conf=yaml.dump(tmp)
+        self.meta_data_table.attrs.firmware = yaml.dump(self.dut.get_configuration())
 
-        self.meta_data_table.attrs.power_status = yaml.dump(self.dut.power_status())
-        self.meta_data_table.attrs.dac_status = yaml.dump(self.dut.dac_status())
-
+        ### close file
         self.h5_file.close()
-        logging.info('Data Output Filename: %s', self.output_filename + '.h5')
+        self.logger.info('Data Output Filename: %s', self.output_filename + '.h5')
 
-        if self.socket is not None:
-            try:
-                online_monitor.sender.close(self.socket)
-            except:
-                pass
-
-        logging.info('Power Status: %s', str(self.dut.power_status()))
-        self.dut.power_down()
-        # self.logger.removeHandler(self.fh)
+        ### close socket
+        if self.socket!=None:
+           try:
+               online_monitor.sender.close(self.socket)
+           except:
+               pass
 
         return self.output_filename + '.h5'
 
@@ -226,12 +180,14 @@ class ScanBase(object):
 
     def scan(self, **kwargs):
         raise NotImplementedError('ScanBase.scan() not implemented')
+        
+    def plot(self, **kwargs):
+        raise NotImplementedError('ScanBase.scan() not implemented')
 
     @contextmanager
     def readout(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', 10.0)
-
-        # self.fifo_readout.readout_interval = 10
+        self.fifo_readout.readout_interval=kwargs.pop('readout_interval', 0.003)
         if not self._first_read:
             time.sleep(0.1)
             self.fifo_readout.print_readout_status()
@@ -250,13 +206,12 @@ class ScanBase(object):
         errback = kwargs.pop('errback', self.handle_err)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         self.scan_param_id = scan_param_id
-        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout)
+        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, 
+                                callback=callback, errback=errback, no_data_timeout=no_data_timeout)
 
     def handle_data(self, data_tuple):
         '''Handling of the data.
         '''
-        # print data_tuple[0].shape[0] #, data_tuple
-
         total_words = self.raw_data_earray.nrows
 
         self.raw_data_earray.append(data_tuple[0])
@@ -273,17 +228,27 @@ class ScanBase(object):
         self.meta_data_table.row['scan_param_id'] = self.scan_param_id
         self.meta_data_table.row.append()
         self.meta_data_table.flush()
-        # print len_raw_data
-
-        if self.socket is not None:
+        
+        if self.socket!=None:
             try:
-                online_monitor.sender.send_data(self.socket, data_tuple)
+                online_monitor.sender.send_data(self.socket,data_tuple,scan_parameters={'scan_param_id':self.scan_param_id})
             except:
-                logging.info("error: send_data")
+                self.logger.warn('ScanBase.handle_data:sender.send_data failed')
+                try:
+                    online_monitor.sender.close(self.socket)
+                except:
+                    pass
+                self.socket=None
 
     def handle_err(self, exc):
         msg = '%s' % exc[1]
         if msg:
-            logging.error('%s%s Aborting run...', msg, msg[-1])
+            self.logger.error('%s%s Aborting run...', msg, msg[-1] )
         else:
-            logging.error('Aborting run...')
+            self.logger.error('Aborting run...')
+            
+    def close(self):
+        try:
+            self.fifo_readout.stop(timeout=0)
+        except RuntimeError:
+            self.logger.info("fifo has been already closed")

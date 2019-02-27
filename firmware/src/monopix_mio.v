@@ -11,7 +11,6 @@
 `include "utils/cdc_pulse_sync.v"
 
 `include "utils/reset_gen.v"
-//`include "utils/pulse_gen_rising.v"
 `include "utils/CG_MOD_pos.v"
  
 `include "spi/spi_core.v"
@@ -20,14 +19,20 @@
 
 `include "gpio/gpio.v"
 
-//`include "utils/cdc_reset_sync.v"
+`include "tlu/tlu_controller.v"
+`include "tlu/tlu_controller_core.v"
+`include "tlu/tlu_controller_fsm.v"
+
+`include "timestamp/timestamp.v"
+`include "timestamp/timestamp_core.v"
+
+`include "timestamp160/timestamp160.v"
+`include "timestamp160/timestamp160_core.v"
+
 `include "utils/fx2_to_bus.v"
 
 `include "pulse_gen/pulse_gen.v"
 `include "pulse_gen/pulse_gen_core.v"
-
-`include "tdc_s3/tdc_s3.v"
-`include "tdc_s3/tdc_s3_core.v"
 
 `include "sram_fifo/sram_fifo_core.v"
 `include "sram_fifo/sram_fifo.v"
@@ -38,6 +43,7 @@
 `include "utils/flag_domain_crossing.v"
 
 `include "mono_data_rx/mono_data_rx.v"
+`include "mono_data_rx/mono_data_rx_core.v"
 `include "utils/cdc_reset_sync.v"
 
 `ifdef COCOTB_SIM //for simulation
@@ -48,9 +54,6 @@
     `include "utils/BUFG_sim.v"
 
     `include "utils/RAMB16_S1_S9_sim.v"
-    //`include "utils/IBUFDS_sim.v"
-    //`include "utils/IBUFGDS_sim.v"
-    //`include "utils/OBUFDS_sim.v"
 `else
     `include "utils/IDDR_s3.v"
     `include "utils/ODDR_s3.v"
@@ -88,30 +91,34 @@ module monopix_mio (
 
 
     input wire [2:0] LEMO_RX,
-    output wire [2:0] LEMO_TX, 
+    output wire [2:0] LEMO_TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+    input wire RJ45_RESET,
+    input wire RJ45_TRIGGER,
 
-    input wire SR_OUT,
-    output wire SR_IN,
-    output wire LDPIX,
-    output wire CKCONF,
-    output wire LDDAC,
-    output wire SR_EN,
-    output wire RESET,
+    input wire SR_OUT,    //DIN4
+    output wire SR_IN,    //DOUT11
+    output wire LDPIX,    //DOUT15
+    output wire CKCONF,   //DOUT10
+    output wire LDDAC,    //DOUT12
+    output wire SR_EN,    //DOUT13
+    output wire RESET,    //DOUT14
     output wire INJECTION,
-    input wire MONITOR,
+    input wire MONITOR,   //DIN1
     
-    output wire CLK_BX, 
-    output wire READ,
-    output wire FREEZE,
-    output wire nRST,
-    output wire EN_TEST_PATTERN,
-    output wire RST_GRAY,
-    output wire EN_DRIVER,
-    output wire EN_DATA_CMOS,
-    output wire CLK_OUT,
-    input wire TOKEN,
-    input wire DATA,
-    input wire DATA_LVDS,
+    output wire CLK_BX,   //DOUT1
+    output wire READ,     //DOUT2
+    output wire FREEZE,   //DOUT3
+    output wire nRST,     //DOUT4
+    output wire EN_TEST_PATTERN,  //DOUT5
+    output wire RST_GRAY,         //DOUT6
+    output wire EN_DRIVER,        //DOUT7
+    output wire EN_DATA_CMOS,     //DOUT8
+    output wire CLK_OUT,          //DOUT9
+    input wire TOKEN,             //DIN2
+    input wire DATA,              //DIN0
+    input wire DATA_LVDS,         //DIN8_LVDS0
+	 
+	output wire DEBUG, //DOUT0
     
     // I2C
     inout wire SDA,
@@ -155,24 +162,7 @@ clk_gen clk_gen(
 );
 
 // -------  MODULE ADREESSES  ------- //
-localparam GPIO_BASEADDR = 16'h0000;
-localparam GPIO_HIGHADDR = 16'h0100-1;
 
-localparam SPI_BASEADDR = 16'h1000;
-localparam SPI_HIGHADDR = 16'h2000-1;
-
-localparam PULSE_INJ_BASEADDR = 16'h0100;
-localparam PULSE_INJ_HIGHADDR = 16'h0200-1;
-    
-localparam TDC_BASEADDR = 16'h0300;
-localparam TDC_HIGHADDR = 16'h0400-1;
-    
-localparam PULSE_GATE_TDC_BASEADDR = 16'h0400;
-localparam PULSE_GATE_TDC_HIGHADDR = 16'h0500-1;
-
-localparam DATA_RX_BASEADDR = 16'h0500;
-localparam DATA_RX_HIGHADDR = 16'h0600-1;
-    
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-1;
 
@@ -194,224 +184,14 @@ fx2_to_bus fx2_to_bus (
 );
 
 // -------  USER MODULES  ------- //
-wire [15:0] GPIO_OUT;
-gpio 
-#( 
-    .BASEADDR(GPIO_BASEADDR), 
-    .HIGHADDR(GPIO_HIGHADDR),
-    .IO_WIDTH(16),
-    .IO_DIRECTION(16'hffff)
-) gpio
-(
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA[7:0]),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-    .IO(GPIO_OUT)
-    );    
 
-wire RESET_CONF, LDDAC_CONF, LDPIX_CONF, SREN_CONF, EN_BX_CLK_CONF, EN_OUT_CLK_CONF, RESET_GRAY_CONF;
-wire EN_TEST_PATTERN_CONF, EN_DRIVER_CONF, EN_DATA_CMOS_CONF, EN_GRAY_RESET_WITH_TDC_PULSE;
-assign RESET_CONF = GPIO_OUT[0];
-assign LDDAC_CONF = GPIO_OUT[1];
-assign LDPIX_CONF = GPIO_OUT[2];
-assign SREN_CONF = GPIO_OUT[3];
-
-assign EN_BX_CLK_CONF = GPIO_OUT[4];
-assign EN_OUT_CLK_CONF = GPIO_OUT[5];
-assign RESET_GRAY_CONF = GPIO_OUT[6];
-
-assign EN_TEST_PATTERN_CONF = GPIO_OUT[7];
-assign EN_DRIVER_CONF = GPIO_OUT[8];
-assign EN_DATA_CMOS_CONF = GPIO_OUT[9];
-assign EN_GRAY_RESET_WITH_TDC_PULSE = GPIO_OUT[10];
-
-wire CONF_CLK;
-assign CONF_CLK = CLK8;
-    
-wire SCLK, SDI, SDO, SEN, SLD;
-spi 
-#( 
-    .BASEADDR(SPI_BASEADDR), 
-    .HIGHADDR(SPI_HIGHADDR),
-    .MEM_BYTES(1024) 
-    )  spi_conf
-(
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA[7:0]),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-
-    .SPI_CLK(CONF_CLK),
-
-    .SCLK(SCLK),
-    .SDI(SDI),
-    .SDO(SDO),
-    .SEN(SEN),
-    .SLD(SLD)
-);
-
-assign CKCONF = SCLK;
-assign SR_IN = SDI;
-assign SDO = SR_OUT;    
-
-assign LDPIX = SLD & LDPIX_CONF;
-assign LDDAC = SLD & LDDAC_CONF;
-
-reg [3:0] delay_cnt;
-always@(posedge CONF_CLK)
-    if(BUS_RST)
-        delay_cnt <= 0;
-    else if(SEN)
-        delay_cnt <= 4'b1111;
-    else if(delay_cnt != 0)
-        delay_cnt <= delay_cnt - 1;
-        
-assign SR_EN = SREN_CONF ? !((SEN | (|delay_cnt))) : 0;
-
-wire GATE_TDC;
-    
-pulse_gen
-#( 
-    .BASEADDR(PULSE_INJ_BASEADDR), 
-    .HIGHADDR(PULSE_INJ_HIGHADDR)
-) pulse_gen_inj
-(
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA[7:0]),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-
-    .PULSE_CLK(CLK40), //~CLK40),
-    .EXT_START(SLD | GATE_TDC),
-    .PULSE(INJECTION) //DUT_INJ
-);
-
-    
-pulse_gen
-#( 
-    .BASEADDR(PULSE_GATE_TDC_BASEADDR), 
-    .HIGHADDR(PULSE_GATE_TDC_HIGHADDR)
-    ) pulse_gen_gate_tdc
-(
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA[7:0]),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-
-    .PULSE_CLK(CLK40),
-    .EXT_START(1'b0),
-    .PULSE(GATE_TDC) 
-);    
-
+wire FIFO_NEAR_FULL,FIFO_FULL;
+wire USB_READ;
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 
-wire FE_FIFO_READ;
-wire FE_FIFO_EMPTY;
-wire [31:0] FE_FIFO_DATA;
-    
-wire TDC_FIFO_READ;
-wire TDC_FIFO_EMPTY;
-wire [31:0] TDC_FIFO_DATA;
-
-wire SPI_FIFO_READ;
-wire SPI_FIFO_EMPTY;
-wire [31:0] SPI_FIFO_DATA;
-assign SPI_FIFO_EMPTY = 1;
-
-rrp_arbiter 
-#( 
-    .WIDTH(3)
-) rrp_arbiter
-(
-    .RST(BUS_RST),
-    .CLK(BUS_CLK),
-
-    .WRITE_REQ({~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~SPI_FIFO_EMPTY}),
-    .HOLD_REQ({3'b0}),
-    .DATA_IN({FE_FIFO_DATA, TDC_FIFO_DATA,SPI_FIFO_DATA}),
-    .READ_GRANT({FE_FIFO_READ, TDC_FIFO_READ, SPI_FIFO_READ}),
-
-    .READY_OUT(ARB_READY_OUT),
-    .WRITE_OUT(ARB_WRITE_OUT),
-    .DATA_OUT(ARB_DATA_OUT)
-    );
-    
-
-tdc_s3 #(
-    .BASEADDR(TDC_BASEADDR),
-    .HIGHADDR(TDC_HIGHADDR),
-    .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0100), 
-    .FAST_TDC(1),
-    .FAST_TRIGGER(1)
-) tdc (
-    .CLK320(CLK320),
-    .CLK160(CLK160),
-    .DV_CLK(CLK40),
-    .TDC_IN(MONITOR),
-    .TDC_OUT(LEMO_TX[0]),
-    .TRIG_IN(LEMO_RX[0]),
-    .TRIG_OUT(),
-
-    .FIFO_READ(TDC_FIFO_READ),
-    .FIFO_EMPTY(TDC_FIFO_EMPTY),
-    .FIFO_DATA(TDC_FIFO_DATA),
-
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-
-    .ARM_TDC(1'b0),
-    .EXT_EN(GATE_TDC),
-    
-    .TIMESTAMP(16'b0)
-);
- 
-
-mono_data_rx #(
-   .BASEADDR(DATA_RX_BASEADDR),
-   .HIGHADDR(DATA_RX_HIGHADDR),
-   .IDENTYFIER(2'b00)
-) mono_data_rx (
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-    
-    .CLK_BX(CLK40),
-    .RX_TOKEN(TOKEN), 
-    .RX_DATA(DATA_LVDS), 
-    .RX_CLK(CLK40),
-    .RX_READ(READ), 
-    .RX_FREEZE(FREEZE), 
-    
-    .FIFO_READ(FE_FIFO_READ),
-    .FIFO_EMPTY(FE_FIFO_EMPTY),
-    .FIFO_DATA(FE_FIFO_DATA),
-    
-    .LOST_ERROR()
-    
-); 
- 
-wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
     
-wire FIFO_FULL;
 sram_fifo #(
     .BASEADDR(FIFO_BASEADDR),
     .HIGHADDR(FIFO_HIGHADDR)
@@ -437,42 +217,69 @@ sram_fifo #(
     .FIFO_READ_NEXT_OUT(ARB_READY_OUT),
     .FIFO_EMPTY_IN(!ARB_WRITE_OUT),
     .FIFO_DATA(ARB_DATA_OUT),
-
+	 
     .FIFO_NOT_EMPTY(),
     .FIFO_FULL(FIFO_FULL),
-    .FIFO_NEAR_FULL(),
+    .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
     .FIFO_READ_ERROR()
 );
 
-ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_BX) );
-//ODDR clk_out_gate(.D1(EN_OUT_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(CLK_OUT) );
-assign CLK_OUT = EN_OUT_CLK_CONF ? CLK40 : 1'b0;
+monopix_mio_core i_monopix_mio_core(
 
-reg nRST_reg;
-assign nRST = nRST_reg;
-always@(negedge CLK40)
-    nRST_reg <= !RESET_CONF;
-   
-reg RST_GRAY_reg;
-assign RST_GRAY = RST_GRAY_reg;
-always@(negedge CLK40)
-    RST_GRAY_reg <= RESET_GRAY_CONF | (GATE_TDC & EN_GRAY_RESET_WITH_TDC_PULSE);
+    //local bus
+    .BUS_CLK(BUS_CLK),
+    .BUS_DATA(BUS_DATA),
+    .BUS_ADD(BUS_ADD),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .BUS_RST(BUS_RST),
+    
+    //clocks
+    .CLK8(CLK8),
+    .CLK40(CLK40),
+    .CLK16(CLK16),
+    .CLK160(CLK160),
+    .CLK320(CLK320),
+    
+    //fifo
+    .ARB_READY_OUT(ARB_READY_OUT),
+    .ARB_WRITE_OUT(ARB_WRITE_OUT),
+    .ARB_DATA_OUT(ARB_DATA_OUT),
+    .FIFO_FULL(FIFO_FULL),
+    .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
 
-assign EN_TEST_PATTERN = EN_TEST_PATTERN_CONF;
-assign EN_DRIVER = EN_DRIVER_CONF;
-assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
+    //LED
+    .LED(LED[4:0]),
+    
+    .LEMO_RX(LEMO_RX),
+    .LEMO_TX(LEMO_TX), // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+    .RJ45_RESET(RJ45_RESET),
+    .RJ45_TRIGGER(RJ45_TRIGGER),
 
-//TODO: readout
-assign RESET = 0;
-
-// LED assignments
-assign LED[0] = 0;
-assign LED[1] = 0;
-assign LED[2] = 0;
-assign LED[3] = 0;
-assign LED[4] = 0;
-
-assign LEMO_TX[1] = INJECTION;
-assign LEMO_TX[2] = 0;
+    .SR_OUT(SR_OUT),   //DIN4
+    .SR_IN(SR_IN),     //DOUT11
+    .LDPIX(LDPIX),     //DOUT15
+    .CKCONF(CKCONF),   //DOUT10
+    .LDDAC(LDDAC),     //DOUT12
+    .SR_EN(SR_EN),     //DOUT13
+    .RESET(RESET),     //DOUT14
+    .INJECTION(INJECTION),
+    .MONITOR(MONITOR), //DIN1
+    
+    .CLK_BX(CLK_BX),   //DOUT1
+    .READ(READ),       //DOUT2
+    .FREEZE(FREEZE),   //DOUT3
+    .nRST(nRST),       //DOUT4
+    .EN_TEST_PATTERN(EN_TEST_PATTERN),  //DOUT5
+    .RST_GRAY(RST_GRAY),                //DOUT6
+    .EN_DRIVER(EN_DRIVER),              //DOUT7
+    .EN_DATA_CMOS(EN_DATA_CMOS),        //DOUT8
+    .CLK_OUT(CLK_OUT), //DOUT9
+    .TOKEN(TOKEN),     //DIN2
+    .DATA(DATA),       //DIN0
+    .DATA_LVDS(DATA_LVDS),              //DIN8_LVDS0
+ 
+    .DEBUG(DEBUG)     //nc
+);
 
 endmodule
