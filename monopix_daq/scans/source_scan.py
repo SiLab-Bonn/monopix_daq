@@ -13,8 +13,6 @@ from basil.dut import Dut
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-
-
 local_configuration = {
     #'mask_filename': '',
     #'masknpy_filename': '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170710_FastTuning/21_cols25-27_target0,55_TH0,855_VPFB4/trim_values.npy',
@@ -28,74 +26,11 @@ class SourceScan(ScanBase):
 
     def scan(self, TH = 1.5, column_enable = [], mask_filename = '', masknpy_filename = '', threshold_overdrive = 0.001, columns = range(36), **kwargs):
 
-#        self.dut['fifo'].reset()
-#        self.dut.write_global_conf()
-
         self.dut['data_rx'].reset()
         self.dut['fifo'].reset()
-        
-        ###TEST control Firmware
-        #self.dut['FREEZE_S']['FRZ_s']=21
-        #self.dut['FREEZE_S'].write()
-        
-        print "BEFORE:"
-        print self.dut['data_rx'].CONF_START_FREEZE
-        print self.dut['data_rx'].CONF_START_READ
-        print self.dut['data_rx'].CONF_STOP_FREEZE
-        print self.dut['data_rx'].CONF_STOP_READ
-        print self.dut['data_rx'].CONF_STOP
-
-        self.dut['data_rx'].CONF_START_FREEZE = 88
-        self.dut['data_rx'].CONF_START_READ = 92
-        self.dut['data_rx'].CONF_STOP_FREEZE = 98
-        self.dut['data_rx'].CONF_STOP_READ = 94
-        self.dut['data_rx'].CONF_STOP = 110
-
-        self.dut['TH'].set_voltage(1.5, unit='V')
-        
-        self.dut['VDDD'].set_voltage(1.7, unit='V')        
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
-           
-
-        self.dut["CONF_SR"]["PREAMP_EN"] = 1
-        self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 0
-        self.dut["CONF_SR"]["REGULATOR_EN"] = 1
-        self.dut["CONF_SR"]["BUFFER_EN"] = 1
-        self.dut["CONF_SR"]["LSBdacL"] = 45
-        
-        #VPFB Feedback
-        self.dut["CONF_SR"]["VPFB"] = 4
-
-        self.dut.write_global_conf()
-
-        self.dut['CONF']['EN_OUT_CLK'] = 1
-        self.dut['CONF']['EN_BX_CLK'] = 1
-        self.dut['CONF']['EN_DRIVER'] = 1
-        self.dut['CONF']['EN_DATA_CMOS'] = 0
-
-        self.dut['CONF']['RESET_GRAY'] = 1
-        self.dut['CONF']['EN_TEST_PATTERN'] = 0
-        self.dut['CONF']['RESET'] = 1
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET'] = 0
-        self.dut['CONF'].write()
-        
-        self.dut['CONF']['RESET_GRAY'] = 0
-        self.dut['CONF'].write()
-
-        self.dut['CONF_SR']['MON_EN'].setall(True)
-        self.dut['CONF_SR']['INJ_EN'].setall(True)
-        self.dut['CONF_SR']['ColRO_En'].setall(False)
-        
-        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
 
         TRIM_EN = self.dut.PIXEL_CONF['TRIM_EN'].copy()
-                
+
         #LOAD PIXEL DAC
         if mask_filename:
             with tb.open_file(str(mask_filename), 'r') as in_file_h5:
@@ -235,5 +170,6 @@ class SourceScan(ScanBase):
 if __name__ == "__main__":
 
     scan = SourceScan()
+    scan.configure(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()

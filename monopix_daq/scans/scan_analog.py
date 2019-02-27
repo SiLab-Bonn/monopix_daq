@@ -8,9 +8,9 @@ import time
 import numpy as np
 import tables as tb
 import yaml
+import os
 
 from progressbar import ProgressBar
-from basil.dut import Dut
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -30,80 +30,6 @@ local_configuration = {
 
 class AnalogScan(ScanBase):
     scan_id = "scan_analog"
-
-    def get_filename(self):
-        return self.output_filename
-
-    def configure(self, repeat=100, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, **kwargs):
-        self.INJ_LO = 0.2
-        try:
-            self.pulser = Dut('../agilent33250a_pyserial.yaml')  # should be absolute path
-            self.pulser.init()
-            logging.info('Connected to ' + str(self.pulser['Pulser'].get_info()))
-        except (RuntimeError, OSError):
-            self.pulser = None
-            logging.info('External injector not connected. Switch to internal one')
-
-        self.dut['data_rx'].reset()
-        self.dut['fifo'].reset()
-
-        self.dut['data_rx'].CONF_START_FREEZE = 88
-        self.dut['data_rx'].CONF_START_READ = 92
-        self.dut['data_rx'].CONF_STOP_FREEZE = 98
-        self.dut['data_rx'].CONF_STOP_READ = 94
-        self.dut['data_rx'].CONF_STOP = 110
-
-        self.dut['INJ_LO'].set_voltage(self.INJ_LO, unit='V')
-
-        self.dut['TH'].set_voltage(1.5, unit='V')
-        self.dut['VDDD'].set_voltage(1.7, unit='V')
-        self.dut['VDD_BCID_BUFF'].set_voltage(1.7, unit='V')
-
-        self.dut['inj'].set_delay(20 * 256 + 10)
-        self.dut['inj'].set_width(20 * 256 - 10)
-        self.dut['inj'].set_repeat(repeat)
-        self.dut['inj'].set_en(True)
-        self.dut['gate_tdc'].set_en(False)
-        self.dut['gate_tdc'].set_delay(10)
-        self.dut['gate_tdc'].set_width(2)
-        self.dut['gate_tdc'].set_repeat(1)
-        self.dut['CONF']['EN_GRAY_RESET_WITH_TDC_PULSE'] = 1
-
-        self.dut["CONF_SR"]["PREAMP_EN"] = 1
-        self.dut["CONF_SR"]["INJECT_EN"] = 1
-        self.dut["CONF_SR"]["MONITOR_EN"] = 0
-        self.dut["CONF_SR"]["REGULATOR_EN"] = 1
-        self.dut["CONF_SR"]["BUFFER_EN"] = 1
-        self.dut["CONF_SR"]["LSBdacL"] = 45
-        
-        self.dut["CONF_SR"]["VPFB"] = 4
-
-        self.dut.write_global_conf()
-
-        self.dut['CONF']['EN_OUT_CLK'] = 1
-        self.dut['CONF']['EN_BX_CLK'] = 1
-        self.dut['CONF']['EN_DRIVER'] = 1
-        self.dut['CONF']['EN_DATA_CMOS'] = 0
-
-        self.dut['CONF']['RESET_GRAY'] = 1
-        self.dut['CONF']['EN_TEST_PATTERN'] = 0
-        self.dut['CONF']['RESET'] = 1
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET'] = 0
-        self.dut['CONF'].write()
-
-        self.dut['CONF']['RESET_GRAY'] = 0
-        self.dut['CONF'].write()
-
-        self.dut['CONF_SR']['MON_EN'].setall(True)
-        self.dut['CONF_SR']['INJ_EN'].setall(False)
-        self.dut['CONF_SR']['ColRO_En'].setall(False)
-
-        self.dut.PIXEL_CONF['PREAMP_EN'][:] = 0
-        self.dut.PIXEL_CONF['INJECT_EN'][:] = 0
-        self.dut.PIXEL_CONF['MONITOR_EN'][:] = 0
-#         self.dut.PIXEL_CONF['TRIM_EN'][:] = 15
 
     def scan(self, repeat=100, scan_range=[0, 0.2, 0.05], mask_filename='', TH=1.5, mask=16, columns=range(0, 36), threshold_overdrive=0.001, TRIM_EN=None, **kwargs):
         self.configure()
@@ -152,8 +78,8 @@ class AnalogScan(ScanBase):
             dcol = int(pix_col / 2)
             self.dut['CONF_SR']['ColRO_En'][35 - pix_col] = 1
 
-#         self.dut.PIXEL_CONF['TRIM_EN'][:] = 8
-        self.dut.PIXEL_CONF['TRIM_EN'][:] = np.load(file_path + '/trim_values_step4.npy')
+        self.dut.PIXEL_CONF['TRIM_EN'][:] = 8
+#         self.dut.PIXEL_CONF['TRIM_EN'][:] = np.load(file_path + '/trim_values_step4.npy')
         self.dut.write_global_conf()
         self.dut.write_pixel_conf()
 
@@ -295,11 +221,11 @@ class AnalogScan(ScanBase):
             time.sleep(5)
 
             logging.info("Analyze data of column %d" % pix_col)
-            TRIM_EN = self.calculate_pixel_threshold(hits, scan_range, TRIM_EN, repeat)
+            TRIM_EN = self.calculate_pixel_threshold(hits, scan_range, repeat)
 
         self.TRIM_EN = TRIM_EN
 
-    def calculate_pixel_threshold(self, hits, scan_range, TRIM_EN, repeat):
+    def calculate_pixel_threshold(self, hits, scan_range, repeat):
         hits['col'] = hits['col'] * 129 + hits['row']
 
         # TODO: ignore pixels that are not in mask
@@ -328,17 +254,21 @@ configuration = {
     "repeat": 100,
     "mask_filename": '',
     "scan_range": [0.01, 0.3, 0.025],
-    "mask": 8,
-    "TH": 0.769,
+    "mask": 4,
+    "TH": 0.766,
     "columns": range(24, 28),
     "threshold_overdrive": 0.006
 }
 
-file_path = '/home/idcs/STREAM/Devices/MONOPIX_01/Tests/20170720_FastTuning/22_cols24-27_target0,15_TH0,769_VPFB4'
+file_path = '/home/silab/Desktop/tuning/test_scan_analog'
+if not os.path.exists(file_path):
+    os.makedirs(file_path)
+    print "Created folder:"
+    print file_path
 
 # TODO make this a loop
 
-scan.configure(**configuration)
+scan.configure(injection=True, **configuration)
 
 scan.start(**configuration)
 TRIM_EN = scan.TRIM_EN
