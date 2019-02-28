@@ -145,7 +145,7 @@ class Monopix():
                
 ###### power ##### 
     def power_up(self,VDDD=1.8,VDDA=1.8,VDD_BCID_BUFF=1.8,VPC=1.5,BL=0.75,TH=1.5,VCascC=0.8,VCascN=0.4,
-                PBias=0.5,NTC=5,INJ_HI=0.5,INJ_LO=0.1):
+                PBias=0.5,NTC=5,INJ_HI=0.6,INJ_LO=0.2):
     
         #DACS
         self.dut['BL'].set_voltage(BL, unit='V')
@@ -353,7 +353,7 @@ class Monopix():
             time.sleep(0.1)
         self.dut.SET_VALUE["INJ_LO"]=inj_low
        
-    def set_inj_all(self,inj_high=0.5,inj_low=0.1,inj_n=100,inj_width=5000,delay=700,ext=False,inj_phase=0):
+    def set_inj_all(self,inj_high=0.6,inj_low=0.2,inj_n=100,inj_width=5000,delay=700,ext=False,inj_phase=0):
         self.set_inj_high(inj_high)
         self.set_inj_low(inj_low)
 
