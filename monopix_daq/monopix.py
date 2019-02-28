@@ -6,6 +6,7 @@ import yaml
 import bitarray
 import tables
 import yaml
+import socket
 
 sys.path = [os.path.dirname(os.path.abspath(__file__))] + sys.path 
 COL_SIZE = 36 ##TODO change hard coded values
@@ -102,8 +103,17 @@ class Monopix():
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
     def reconnect_fifo(self):
-        self.dut['intf'].reconnect_tcp()
-        
+        try:
+            self.dut['intf']._sock_tcp.close()
+        except:
+            pass
+        self.dut['intf']._sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connect_timeout = float(self.dut['intf']._init.get('connect_timeout', 5.0))
+        self.dut['intf']._sock_tcp.settimeout(connect_timeout)
+        self.dut['intf']._sock_tcp.connect((self.dut['intf']._init['ip'], self.dut['intf']._init['tcp_port']))
+        self.dut['intf']._sock_tcp.settimeout(None) 
+        self.dut['intf']._sock_tcp.setblocking(0)
+
     def _write_global_conf(self):        
         self.dut['CONF']['LDDAC'] = 1
         self.dut['CONF'].write()

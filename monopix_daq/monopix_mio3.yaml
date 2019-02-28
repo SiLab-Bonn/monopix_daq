@@ -6,7 +6,7 @@ version : 0.0.1
 # MIO3
 transfer_layer:
   - name  : intf
-    type  : monopix_daq.SiTcp
+    type  : SiTcp
     init:
         ip : "192.168.10.19"
         udp_port : 4660
@@ -209,7 +209,7 @@ registers:
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
     init        :
-            'DAC': {'offset': 0.0, 'gain': 0.49}
+        'DAC': {'offset': 0.0, 'gain': 0.49}
 
   - name        : CONF_SR
     type        : StdRegister
