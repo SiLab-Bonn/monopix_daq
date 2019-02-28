@@ -19,7 +19,7 @@ conda install --yes numpy bitarray pytest pyyaml numba mock matplotlib scipy pyt
 
 - Download and install [Basil](https://github.com/SiLab-Bonn/basil) for data acquisition and generic firmware modules (tested with v2.4.4):
 ```bash
-git clone -b v2.4.4 https://github.com/SiLab-Bonn/basil
+git clone -b v2.4.12_hcmos https://github.com/SiLab-Bonn/basil
 cd basil
 python setup.py develop 
 cd ..

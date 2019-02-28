@@ -62,7 +62,7 @@ class Monopix():
                     conf["hw_drivers"][i]["init"]["no_power_reset"]=no_power_reset
                     break
             self.dut=basil.dut.Dut(conf=conf)
-        elif isinstance(dut,basil.dut.Dut):
+        elif isinstance(dut,monopix.Monopix):
             self.dut=dut
 
         self.dut.PIXEL_CONF = {'PREAMP_EN': np.full([36,129], True, dtype = np.bool),
@@ -70,10 +70,17 @@ class Monopix():
                        'MONITOR_EN'   : np.full([36,129], False, dtype = np.bool),
                        'TRIM_EN'  : np.full([36,129], 7, dtype = np.uint8),
                        }
+         
         self.dut.SET_VALUE={}
         self.dut.init()
         fw_version = self.dut['intf'].read(0x0,1)[0]
         logging.info("Firmware version: %s" % (fw_version))
+        
+        for reg in self.dut._conf["registers"]:
+            if reg["name"] in ["INJ_HI", "INJ_LO"] and "init" in reg:
+                self.logger.info("modify %s: %s"%(reg["name"],str(reg["init"])))
+                self.dut[reg["name"]]._ch_cal[reg['arg_add']['channel']].update(reg["init"])
+
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF'].write()
         self.dut['CONF']['RESET'] = 0
@@ -94,6 +101,8 @@ class Monopix():
         
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
+    def reconnect_fifo(self):
+        self.dut['intf'].reconnect_tcp()
         
     def _write_global_conf(self):        
         self.dut['CONF']['LDDAC'] = 1
