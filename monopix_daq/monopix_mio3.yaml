@@ -8,7 +8,7 @@ transfer_layer:
   - name  : intf
     type  : SiTcp
     init:
-        ip : "192.168.10.19"
+        ip : "192.168.10.17"
         udp_port : 4660
         tcp_port : 24
         tcp_connection : True
@@ -202,6 +202,9 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ1'}
+    init        :
+        'DAC': {'offset': 0.0, 'gain': 0.49}
+ 
 
   - name        : INJ_HI
     type        : FunctionalRegister

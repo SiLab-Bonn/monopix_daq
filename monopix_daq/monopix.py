@@ -102,6 +102,7 @@ class Monopix():
         
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
+        
     def reconnect_fifo(self):
         try:
             self.dut['intf']._sock_tcp.close()
