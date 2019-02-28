@@ -14,7 +14,7 @@ def get_inj_high(e,inj_low=0.1,factor=1):
     return factor*e*1.602E-19/INJCAP+inj_low
 
 local_configuration={"thlist": np.arange(0.8,0.75,-0.0005),     #A list of values where the threshold will move
-                     'pix': [19,53],                         #A list of pixels to go through                          #A list of pixels to go through
+                     'pix': [30,25],                         #A list of pixels to go through
                      'disable_noninjected_pixel':True
 }
 
@@ -23,11 +23,6 @@ local_configuration={"thlist": np.arange(0.8,0.75,-0.0005),     #A list of value
 class Glth1pixScan(injection_scan.InjectionScan):
     scan_id = "glth_1pix_scan"
     def scan(self,**kwargs):
-        """
-           pix: [col,row]
-           thlist: array of threshold voltage
-           all other parameters should be configured before scan.start()
-        """
         kwargs["pix"]=kwargs.pop("pix",local_configuration['pix'])
         if not isinstance(kwargs["pix"][0],int):
             print "ERROR select one pixel!!"

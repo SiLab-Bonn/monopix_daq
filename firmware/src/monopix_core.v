@@ -481,8 +481,7 @@ mono_data_rx #(
     .CLK_BX(CLK40),
     .RX_TOKEN(TOKEN), 
     .RX_DATA(DATA_LVDS), 
-    .RX_CLK(~CLK40), //this works
-    //.RX_CLK(CLK40), //this does not
+    .RX_CLK(~CLK40),
     .RX_READ(READ), 
     .RX_FREEZE(FREEZE), 
     .TIMESTAMP(TIMESTAMP),

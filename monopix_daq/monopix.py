@@ -39,6 +39,7 @@ def mk_fname(ext="data.npy",dirname=None):
     return os.path.join(dirname,time.strftime("%Y%m%d_%H%M%S0_")+ext)
 
 class Monopix():
+    default_yaml=os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
     def __init__(self,dut=None,no_power_reset=True):
         ## set logger
         self.logger = logging.getLogger()
@@ -54,7 +55,7 @@ class Monopix():
         self.ROW_SIZE = 129
 
         if dut is None:
-            dut = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
+            dut = self.default_yaml
         if isinstance(dut,str):
             with open(dut) as f:
                 conf=yaml.load(f)
@@ -658,3 +659,27 @@ class Monopix():
             ret=self.dac_status()
             s=format_dac(ret)
             self.logger.info(s)
+
+class MonopixMio(Monopix):
+    default_yaml=os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix.yaml"
+    def set_inj_all(self,inj_high=0.5,inj_low=0.1,inj_n=100,inj_width=5000,delay=700,ext=False,inj_phase=None):
+        if inj_phase!=None and inj_phase!=0:
+            self.logger.error("injection phase cannot be changed with MIO")
+            return
+        self.set_inj_high(inj_high)
+        self.set_inj_low(inj_low)
+
+        self.dut["inj"].reset()
+        self.dut["inj"]["REPEAT"]=inj_n
+        self.dut["inj"]["DELAY"]=inj_width
+        self.dut["inj"]["WIDTH"]=inj_width
+        self.dut["inj"]["EN"]=0
+        
+        if self.dut["inj"].get_phase()!=inj_phase:
+            self.logger.error("inj:set_inj_phase=%d PHASE_DES=%x"%(inj_phase,self.dut["inj"]["PHASE_DES"]))
+
+        self.logger.info("inj:%.4f,%.4f inj_width:%d inj_phase:%x inj_n:%d delay:%d ext:%d"%(
+            inj_high,inj_low,inj_width,
+            self.dut["inj"]["PHASE_DES"],
+            self.dut["inj"]["REPEAT"],delay,
+            int(ext)))
