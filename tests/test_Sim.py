@@ -12,15 +12,19 @@ import sys
 import yaml
 import time
 
-from monopix_daq.monopix import monopix
+import monopix_daq.monopix as monopix
 
 class TestSim(unittest.TestCase):
 
     def setUp(self):
     
         extra_defines = []
+        #os.environ['SIM'] = 'questa'
+        os.environ['SIM'] = 'icarus'
         if os.environ['SIM']=='icarus':
             extra_defines = ['TEST_DC=1']
+        elif os.environ['SIM'] == 'questa':
+            extra_defines = ['TEST_DC=8']
             
             
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) #../
@@ -40,7 +44,9 @@ class TestSim(unittest.TestCase):
         cnfg['transfer_layer'][0]['type'] = 'SiSim'
         cnfg['hw_drivers'][0]['init']['no_calibration'] = True
 
-        self.dut = monopix(conf=cnfg)
+        self.monopix = monopix.Monopix(dut=cnfg,no_power_reset=False)
+        self.dut = self.monopix.dut
+
 
     def test(self):
         self.dut.init()

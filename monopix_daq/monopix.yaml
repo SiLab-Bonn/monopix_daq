@@ -1,7 +1,7 @@
 
 ---
 name    : monopix_daq
-version : 0.1.0
+version : 0.0.1
 
 transfer_layer:
     - name  : intf
@@ -31,16 +31,33 @@ hw_drivers:
     base_addr : 0x10010
     size      : 16
     
-  - name      : tlu
+  - name      : tlu     # 8,9,a,b,c,d,e,f
     type      : tlu
     interface : intf
     base_addr : 0x10600
     size      : 8
     
-  - name      : timestamp
-    type      : timestamp
+  - name      : timestamp_inj #5
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10900
+    size      : 8
+    
+  - name      : timestamp_rx1  #4
+    type      : timestamp640
     interface : intf
     base_addr : 0x10700
+    size      : 8
+    
+  - name      : timestamp_mon  #6
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10a00
+    
+  - name      : timestamp_tlu #7
+    type      : timestamp640
+    interface : intf
+    base_addr : 0x10800
     size      : 8
     
   - name      : spi
@@ -51,23 +68,18 @@ hw_drivers:
   - name      : inj
     type      : pulse_gen
     interface : intf
-    base_addr : 0x10100
+    base_addr : 0x14000
     
-  - name      : tdc
-    type      : tdc_s3
-    interface : intf
-    base_addr : 0x10300
-     
   - name      : gate_tdc
     type      : pulse_gen
     interface : intf
     base_addr : 0x10400
     
-  - name      : data_rx
+  - name      : data_rx       # 1,2,3,4
     type      : mono_data_rx
     interface : intf
     base_addr : 0x10500
-    
+
   - name        : NTC
     type        : NTCRegister
     NTC_type    : TDK_NTCG16H
@@ -81,13 +93,10 @@ registers:
     hw_driver   : gpio
     size        : 16
     fields :
-      - name    : INJ_OR_TLU
+      - name    : RST_GRAY_reg
         size    : 1
-        offset  : 12
-      - name    : RX1_OR_GATE
-        size    : 1
-        offset  : 11
-      - name    : EN_GRAY_RESET_WITH_TDC_PULSE
+        offset  : 15
+      - name    : EN_GRAY_RESET_WITH_TIMESTAMP
         size    : 1
         offset  : 10
       - name    : EN_DATA_CMOS
@@ -182,7 +191,7 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ1'}
-    
+
   - name        : INJ_HI
     type        : FunctionalRegister
     hw_driver   : GPAC
