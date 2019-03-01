@@ -9,7 +9,8 @@ import monopix_daq.scan_base as scan_base
 
 
 local_configuration={"with_tlu": True,
-                     "with_timestamp": True,
+                     "with_rx1": True,
+                     "with_mon": True,
                      "scan_time": 10, ## in second
                      "tlu_delay": 8,
                      "pix": [28,25],
@@ -20,7 +21,8 @@ class SourceScan(scan_base.ScanBase):
             
     def scan(self,**kwargs): 
         with_tlu = kwargs.pop('with_tlu', True)
-        with_timestamp = kwargs.pop('with_timestamp', True)
+        with_rx1 = kwargs.pop('with_rx1', True)
+        with_mon = kwargs.pop('with_mon', True)
         scan_time = kwargs.pop('scan_time', 10)
         ## start_freeze=50,start_read=52,stop_read=52+2,stop_freeze=52+37,stop=52+37+10,
         ## start_freeze=90
@@ -39,8 +41,10 @@ class SourceScan(scan_base.ScanBase):
         if with_tlu:
             tlu_delay = kwargs.pop('tlu_delay', 8)
             self.monopix.set_tlu(tlu_delay)
-        if with_timestamp:
-            self.monopix.set_timestamp640()
+        if with_rx1:
+            self.monopix.set_timestamp640(src="rx1")
+        if with_mon:
+            self.monopix.set_timestamp640(src="mon")
 
         ####################
         ## start read fifo        
@@ -64,14 +68,8 @@ class SourceScan(scan_base.ScanBase):
                   
             ####################
             ## stop readout
-            if with_timestamp:
-                for src in ("tlu", "inj", "rx1", "mon"):
-                    self.monopix.stop_timestamp640(src="%s"%src)
-                    setattr(self.monopix.meta_data_table.attrs, "timestamp_status_%s"%src, yaml.dump(self.dut["timestamp_%s"%src].get_configuration()))
-            if with_tlu:
-                self.monopix.stop_tlu()
-                self.meta_data_table.attrs.tlu_status = yaml.dump(self.dut["tlu"].get_configuration())
-            self.monopix.stop_monoread()
+            self.monopix.stop_all()
+
 
     def analyze(self, event="tlu",debug=3):
         fraw = self.output_filename +'.h5'
