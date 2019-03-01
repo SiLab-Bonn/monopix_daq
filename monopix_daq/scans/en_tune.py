@@ -140,7 +140,7 @@ if __name__ == "__main__":
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-e',"--exp_time", type=float, default=local_configuration["exp_time"])
-    parser.add_argument('-nmp',"--n_pix", type=float, default=local_configuration["n_pix"])
+    parser.add_argument('-npix',"--n_pix", type=float, default=local_configuration["n_pix"])
     parser.add_argument('-t',"--th_start", type=float, default=local_configuration["th_start"])
     parser.add_argument("-f","--flavor", type=str, default="28:32")
     parser.add_argument("--tdac", type=int, default=None)

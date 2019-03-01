@@ -12,6 +12,7 @@ local_configuration={"with_tlu": True,
                      "with_timestamp": True,
                      "scan_time": 10, ## in second
                      "tlu_delay": 8,
+                     "pix": [28,25],
 }
 
 class SourceScan(scan_base.ScanBase):
@@ -39,7 +40,7 @@ class SourceScan(scan_base.ScanBase):
             tlu_delay = kwargs.pop('tlu_delay', 8)
             self.monopix.set_tlu(tlu_delay)
         if with_timestamp:
-            self.monopix.set_timestamp()
+            self.monopix.set_timestamp640()
 
         ####################
         ## start read fifo        
@@ -64,8 +65,9 @@ class SourceScan(scan_base.ScanBase):
             ####################
             ## stop readout
             if with_timestamp:
-                self.monopix.stop_timestamp()
-                self.meta_data_table.attrs.timestamp_status = yaml.dump(self.dut["timestamp"].get_configuration())
+                for src in ("tlu", "inj", "rx1", "mon"):
+                    self.monopix.stop_timestamp640(src="%s"%src)
+                    setattr(self.monopix.meta_data_table.attrs, "timestamp_status_%s"%src, yaml.dump(self.dut["timestamp_%s"%src].get_configuration()))
             if with_tlu:
                 self.monopix.stop_tlu()
                 self.meta_data_table.attrs.tlu_status = yaml.dump(self.dut["tlu"].get_configuration())
@@ -117,9 +119,43 @@ class SourceScan(scan_base.ScanBase):
     
 if __name__ == "__main__":
     from monopix_daq import monopix
-    m=monopix.Monopix()
-    m.set_th(0.805)
-    scan = SourceScan(m,fout=None,online_monitor_addr="tcp://127.0.0.1:6500")
+    import argparse
+    
+    parser = argparse.ArgumentParser(usage="python source_scan.py",
+             formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--config_file", type=str, default=None)
+    parser.add_argument('-t',"--th", type=float, default=0.83)
+    parser.add_argument("-f","--flavor", type=str, default=None)
+    parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
+    parser.add_argument("-time",'--scan_time', type=int, default=None,
+                        help="Scan time in seconds.")
+    args=parser.parse_args()
+    
+    m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
+    if args.config_file is not None:
+        m.load_config(args.config_file)
+
+    if args.th is not None:
+        m.set_th(args.th)
+    if args.flavor is not None:
+        if args.flavor=="all":
+            collist=np.arange(0,m.COL_SIZE)
+        else:
+            tmp=args.flavor.split(":")
+            collist=np.arange(int(tmp[0]),int(tmp[1]))
+        pix=[]
+        for i in collist:
+           for j in range(0,m.ROW_SIZE):
+               pix.append([i,j])
+    else:
+        pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
+    local_configuration["pix"]=pix
+    
+    if args.scan_time is not None:
+        local_configuration["scan_time"]=args.scan_time
+    
+    
+    scan = SourceScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()
