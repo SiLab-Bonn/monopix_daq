@@ -68,7 +68,7 @@ class SourceScan(scan_base.ScanBase):
                   
             ####################
             ## stop readout
-            self.monopix.stop_all()
+            self.monopix.stop_all_data()
 
 
     def analyze(self, event="tlu",debug=3):
@@ -96,11 +96,15 @@ class SourceScan(scan_base.ScanBase):
             ### configuration 
             with tb.open_file(fraw) as f:
                 ###TODO!! format kwargs and firmware setting
-                dat=yaml.load(f.root.meta_data.attrs.kwargs)
-                dat=yaml.load(f.root.meta_data.attrs.firmware)
-
+                firmware=yaml.load(f.root.meta_data.attrs.firmware)
+                inj_n=firmware["inj"]["REPEAT"]
+                ## page 1
                 dat=yaml.load(f.root.meta_data.attrs.dac_status)
                 dat.update(yaml.load(f.root.meta_data.attrs.power_status))
+                print firmware["data_rx"]
+                for mod in ["data_rx","tlu","timestamp_tlu","timestamp_rx1","timestamp_mon"]:
+                    for k,v in firmware[mod].iteritems():
+                        dat['%s:%s'%(mod,k)]=v
                 plotting.table_1value(dat,page_title="Chip configuration")
 
                 dat=yaml.load(f.root.meta_data.attrs.pixel_conf)

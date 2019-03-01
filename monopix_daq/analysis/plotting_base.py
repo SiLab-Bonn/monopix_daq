@@ -72,14 +72,14 @@ class PlottingBase(object):
         #fig.text(0.1, y_coord, text, fontsize=12, color=OVERTEXT_COLOR, transform=fig.transFigure)
         fig.suptitle(text, fontsize=12,color=OVERTEXT_COLOR)
 
-    def table_1value(self,dat,n_row=20,n_col=3,
+    def table_1value(self,dat,n_row=30,n_col=3,
                      page_title="Chip configurations"):
         keys=np.sort(np.array(dat.keys()))
         ##fill table
         cellText=[["" for i in range(n_col*2)] for j in range(n_row)]
         for i,k in enumerate(keys):
-            cellText[i%20][i/20*2]=k
-            cellText[i%20][i/20*2+1]=dat[k]
+            cellText[i%n_row][i/n_row*2]=k
+            cellText[i%n_row][i/n_row*2+1]=dat[k]
         colLabels=[]
         colWidths=[]
         for i in range(n_col):
@@ -99,12 +99,12 @@ class PlottingBase(object):
                  colLabels=colLabels,
                  colWidths = colWidths,
                  loc='upper center')
-        tab.set_fontsize(10)
+        tab.set_fontsize(20)
         for key, cell in tab.get_celld().items():
            cell.set_linewidth(0.1)
         if page_title is not None and len(page_title)>0:
             self._add_title(page_title,fig)
-        tab.scale(1,0.5)
+        tab.scale(1,0.7)
         self.out_file.savefig(fig)
         #self._save_plots(fig, suffix=None, tight=True)
         

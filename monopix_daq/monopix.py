@@ -537,7 +537,7 @@ class Monopix():
             self.dut["timestamp_tlu"]["INVERT"]=0
             self.dut["timestamp_inj"]["ENABLE_EXTERN"]=0 ## connected to 1'b1
             self.dut["timestamp_inj"]["ENABLE_TRAILING"]=0
-            self.dut["timestamp"]["ENABLE"]=1
+            self.dut["timestamp_inj"]["ENABLE"]=1
        else: #"mon"
             self.dut["timestamp_mon"]["INVERT"]=1
             self.dut["timestamp_mon"]["ENABLE_TRAILING"]=1
