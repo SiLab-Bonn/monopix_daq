@@ -33,7 +33,7 @@ class SourceScan(scan_base.ScanBase):
         stop_rx = kwargs.pop('stop', stop_freeze+10)
         cnt=0
         scanned=0
-
+        
         ####################
         ## start readout
         self.monopix.set_monoread(start_freeze=start_freeze,start_read=start_read,
@@ -104,8 +104,11 @@ class SourceScan(scan_base.ScanBase):
                 print firmware["data_rx"]
                 for mod in ["data_rx","tlu","timestamp_tlu","timestamp_rx1","timestamp_mon"]:
                     for k,v in firmware[mod].iteritems():
-                        dat['%s:%s'%(mod,k)]=v
-                plotting.table_1value(dat,page_title="Chip configuration")
+                        if len(k)>25:
+                            dat['%s:\n%s\n%s'%(mod,k[:len(k)/2],k[len(k)/2:-1])]=v
+                        else:
+                            dat['%s:\n%s'%(mod,k)]=v
+                plotting.table_1value(dat,page_title="Chip configuration",n_row=32,n_col=3)
 
                 dat=yaml.load(f.root.meta_data.attrs.pixel_conf)
                 plotting.plot_2d_pixel_4(

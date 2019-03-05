@@ -13,7 +13,7 @@ class MonopixConverter(Transceiver):
         self.inter=InterRaw()
         self.meta_data={}
 
-    def deserialze_data(self, data):
+    def deserialize_data(self, data):
         ## meta data
         try:
             data=jsonapi.loads(data)
@@ -44,7 +44,7 @@ class MonopixConverter(Transceiver):
                 self.meta_data.update({'n_hits': self.n_hits, 'n_events': self.n_events})
                 return [{"meta_data":self.meta_data}]
         ### raw data
-        hits=self.inter.run(data[0][1],data_format=3)
+        hits=self.inter.run(data[0][1])
         self.n_hits = hits.shape[0]
         if self.n_hits==0:
             self.n_events=0
@@ -52,7 +52,7 @@ class MonopixConverter(Transceiver):
             self.n_events=len(np.where(hits["col"]==0xFF))
         return [{'hits': hits}]
 
-    def serialze_data(self, data):
+    def serialize_data(self, data):
         if 'hits' in data:
             hits_data = data['hits']
             data['hits'] = None

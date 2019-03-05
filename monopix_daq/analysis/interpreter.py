@@ -602,7 +602,7 @@ class InterRaw():
         self.le=0xFF
         self.te=0xFF
         self.noise=0
-        self.timestamp=np.int64(0x0)
+        self.timestamp=np.uint64(0x0)
         self.rx_flg=0
         
         self.ts_timestamp=np.uint64(0x0)

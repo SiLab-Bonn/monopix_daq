@@ -83,8 +83,8 @@ class PlottingBase(object):
         colLabels=[]
         colWidths=[]
         for i in range(n_col):
-            colLabels.append("Param")
-            colWidths.append(0.15) ## width for param name
+            colLabels.append("Parameter")
+            colWidths.append(0.2) ## width for param name
             colLabels.append("Value")
             colWidths.append(0.15) ## width for value
         fig = Figure()
@@ -99,7 +99,8 @@ class PlottingBase(object):
                  colLabels=colLabels,
                  colWidths = colWidths,
                  loc='upper center')
-        tab.set_fontsize(20)
+        tab.auto_set_font_size(False)
+        tab.set_fontsize(4)
         for key, cell in tab.get_celld().items():
            cell.set_linewidth(0.1)
         if page_title is not None and len(page_title)>0:
@@ -108,10 +109,10 @@ class PlottingBase(object):
         self.out_file.savefig(fig)
         #self._save_plots(fig, suffix=None, tight=True)
         
-        fig = Figure()
-        FigureCanvas(fig)
-        ax = fig.add_subplot(111)
-        ax.set_adjustable('box')
+        #fig = Figure()
+        #FigureCanvas(fig)
+        #ax = fig.add_subplot(111)
+        #ax.set_adjustable('box')
 
     def plot_2d_pixel_4(self, dat, page_title="Pixel configurations",
                         title=["Preamp","Inj","Mon","TDAC"], 

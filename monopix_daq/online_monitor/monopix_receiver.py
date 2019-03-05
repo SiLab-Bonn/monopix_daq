@@ -118,7 +118,7 @@ class MonopixReceiver(Receiver):
 
         self.convert_checkbox.stateChanged.connect(lambda value: scale_axes(value))
 
-    def deserialze_data(self, data):
+    def deserialize_data(self, data):
 
         datar, meta = utils.simple_dec(data)
         if 'occupancies' in meta:
