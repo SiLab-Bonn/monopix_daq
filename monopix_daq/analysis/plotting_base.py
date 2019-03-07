@@ -19,6 +19,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import colors, cm
 from matplotlib import gridspec
 from matplotlib.backends.backend_pdf import PdfPages
+from decimal import Decimal
 import matplotlib.ticker as ticker
 
 COL_SIZE = 36 ##TODO change hard coded values
@@ -197,14 +198,14 @@ class PlottingBase(object):
                            z_axis_title=None, 
                            z_min=0, z_max=None):
         if z_max == 'median':
-            z_max = 2 * np.ma.median(hist2d)
+            z_max = 2.0 * np.ma.median(hist2d[hist2d>0])
         elif z_max == 'maximum':
             z_max = np.ma.max(hist2d)
         elif z_max is None:
             z_max = np.percentile(hist2d, q=90)
             if np.any(hist2d > z_max):
                 z_max = 1.1 * z_max
-        if z_max < 1 or hist2d.all() is np.ma.masked:
+        if hist2d.all() is np.ma.masked:
             z_max = 1.0
 
         if z_min is None:
@@ -220,7 +221,7 @@ class PlottingBase(object):
         ax = fig.add_subplot(111)
         ax.set_adjustable('box')
         #extent = [0.5, 400.5, 192.5, 0.5]
-        bounds = np.linspace(start=z_min, stop=z_max + 1, num=255, endpoint=True)
+        bounds = np.linspace(start=z_min, stop=z_max, num=255, endpoint=True)
         cmap = cm.get_cmap('viridis')
         cmap.set_bad('k')
         cmap.set_over('r')  # Make noisy pixels red
@@ -228,7 +229,7 @@ class PlottingBase(object):
         #norm = colors.BoundaryNorm(bounds, cmap.N)
 
         im = ax.imshow(np.transpose(hist2d), interpolation='none', aspect='auto', 
-                       vmax=z_max+1,vmin=z_min,
+                       vmax=z_max,vmin=z_min,
                        cmap=cmap, # norm=norm,
                        origin='lower')  # TODO: use pcolor or pcolormesh
         ax.set_ylim((-0.5, ROW_SIZE-0.5))
@@ -391,3 +392,60 @@ class PlottingBase(object):
         if page_title is not None and len(page_title)>0:
             self._add_title(page_title,fig)
         self._save_plots(fig)
+        
+    def plot_1d_pixel_hists_gauss(self,hist2d_array, mask=None, bins=100,
+                           top_axis_factor=None,
+                           top_axis_title="Threshold [e]",
+                           x_axis_title="Test pulse injection [V]",
+                           y_axis_title="# of pixel",
+                           dat_title=["TH=0.81V"],
+                           page_title=None,
+                           title="Threshold dispersion"):
+        if mask is None:
+            mask=np.ones([COL_SIZE, ROW_SIZE],dtype=int)
+        elif isinstance(mask,list):
+            mask=np.array(mask)
+
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.set_adjustable('box')
+
+        for hist2d in hist2d_array:
+            hist2d=hist2d[mask==1]
+            hist_median=np.median(hist2d)
+            print hist_median
+            hist_std=np.std(hist2d)
+            hist_min=hist_median-2*hist_std
+            hist_max=hist_median+2*hist_std
+            print hist_std
+            hist=ax.hist(hist2d.reshape([-1]), range=(hist_min,hist_max),
+            bins=bins, histtype="step")
+            bin_center = (hist[1][1:] + hist[1][:-1]) / 2.0 #####
+            gauss_func=monopix_daq.analysis.utils.gauss_func #####
+            signal_params=monopix_daq.analysis.utils.fit_gauss(bin_center, hist[0]) #####
+            
+        ax.set_xbound(hist[1][0],hist[1][-1])
+
+        ax.set_xlabel(x_axis_title)
+        ax.set_ylabel(y_axis_title)
+        
+        if top_axis_factor is None:
+            ax.set_title(title,color=TITLE_COLOR)
+            str_fit="Amp= "+ str('%.2E' %Decimal(signal_params[0]))+"\nMean= "+ str("%.2f" %signal_params[1])+"\nSigma= "+ str("%.2f" %signal_params[2])+")"
+        else:
+            ax2=ax.twiny()
+            ax2.set_xbound(hist[1][0]*top_axis_factor,hist[1][-1]*top_axis_factor)
+            ax2.set_xlabel(top_axis_title)
+            pad=40
+            ax.set_title(title,pad=40,color=TITLE_COLOR)
+            str_fit="Amp= "+ str('%.2E' %Decimal(signal_params[0]))+"\nMean= "+ str("%.2f" %signal_params[1])+ str(' (%.2E' %Decimal(signal_params[1]*top_axis_factor))+")\nSigma= "+ str("%.2f" %signal_params[2])+ str(' (%.2E' %Decimal(signal_params[2]*top_axis_factor))+")"
+            
+
+        ax.plot(bin_center, gauss_func(bin_center, *signal_params[0:3]), 'g-', label=str_fit)   
+        ax.legend()
+        
+        if page_title is not None and len(page_title)>0:
+            self._add_title(page_title,fig)
+        self._save_plots(fig)
+ 

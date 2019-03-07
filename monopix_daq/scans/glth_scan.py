@@ -7,6 +7,7 @@ import logging
 import yaml
 
 import monopix_daq.scans.injection_scan as injection_scan
+import monopix_daq.analysis.utils 
 INJCAP=2.7E-15
 
 def get_inj_high(e,inj_low=0.1,factor=1):
@@ -91,44 +92,19 @@ class GlthScan(injection_scan.InjectionScan):
                         page_title="Pixel configuration",
                         title=["Preamp","Inj","Mon","TDAC"], 
                         z_min=[0,0,0,0], z_max=[1,1,1,15])
-
+                
                 if pixel_scurve:
-                    res=get_scurve(f.root,injected)
                     for p_i,p in enumerate(np.argwhere(injected)):
-                        plotting.plot_scurve([res[p_i]],
-                                dat_title=["mu=%.4f sigma=%.4f"%(res[0]["mu"],res[0]["sigma"])],
+                        res=monopix_daq.analysis.utils.get_scurve(f_event=f, pixel=p, type="th")
+                        plotting.plot_scurve([res],
+                        dat_title=["mu=%.4f sigma=%.4f"%(res["mu"],res["sigma"])],
                                 title="Pixel [%d %d], Inj=%.4f"%(p[0],p[1],inj),
                                 y_min=0,
                                 y_max=inj_n*1.5,
                                 reverse=True)
+
                 else:
                     pass #TODO make superimpose plot
-                                
-def get_scurve(fhit_root,injected):
-    x=fhit_root.ScurveFit.attrs.thlist
-    res=np.empty(len(np.argwhere(injected)),dtype=[("x","<f4",(len(x),)),("y","<f4",(len(x),)),
-                                      ("A","<f4"),("mu","<f4"),("sigma","<f4")])
-    dat=fhit_root.Cnts[:]
-    fit=fhit_root.ScurveFit[:]
-    for p_i,p in enumerate(np.argwhere(injected)):
-        tmp=dat[np.bitwise_and(dat["col"]==p[0],dat["row"]==p[1])]
-        cnt=np.zeros(len(x))
-        for d in tmp:
-            a=np.argwhere(np.isclose(x,d["th"]))
-            cnt[a[0][0]]=d["cnt"]
-        res[p_i]["x"]=x
-        res[p_i]["y"]=np.copy(cnt)
-        tmp=fit[np.bitwise_and(fit["col"]==p[0],fit["row"]==p[1])]
-        if len(tmp)!=1:
-            print "onepix_scan.get_scurve() 1error!! pix=[%d %d]"%(p[0],p[1])
-            res[p_i]["A"]=float("nan")
-            res[p_i]["mu"]=float("nan")
-            res[p_i]["sigma"]=float("nan")
-        else:
-            res[p_i]["A"]=tmp[0]["A"]
-            res[p_i]["mu"]=tmp[0]["mu"]
-            res[p_i]["sigma"]=tmp[0]["sigma"]
-    return res
 
 if __name__ == "__main__":
     from monopix_daq import monopix

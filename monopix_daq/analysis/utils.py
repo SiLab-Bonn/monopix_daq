@@ -3,6 +3,7 @@ import numpy as np
 from scipy.special import erf
 from scipy.optimize import curve_fit, leastsq
 import math
+import logging
 
 def scurve(x, A, mu, sigma):
     return 0.5*A*erf((x-mu)/(np.sqrt(2)*sigma))+0.5*A
@@ -10,8 +11,11 @@ def scurve(x, A, mu, sigma):
 def scurve_rev(x, A, mu, sigma):
     return 0.5*A*erf((mu-x)/(np.sqrt(2)*sigma))+0.5*A
 
-    
-    
+def gauss_func(x_data, *parameters):
+    """Gauss function"""
+    A_gauss, mu_gauss, sigma_gauss = parameters
+    return A_gauss*np.exp(-(x_data-mu_gauss)**2/(2.*sigma_gauss**2))
+
 def fit_scurve1(xarray,yarray,A=None,cut_ratio=0.05,reverse=True,debug=0):
     if A is None:
         A=np.max(yarray)
@@ -137,6 +141,7 @@ def fit_scurve(xarray,yarray,A=None,cut_ratio=0.05,reverse=True,debug=0):
 def scurve_from_fit(th, A_fit,mu_fit,sigma_fit,reverse=True,n=500):
     th_min=np.min(th)
     th_max=np.max(th)
+    
     x=np.arange(th_min,th_max,(th_max-th_min)/float(n))
     if reverse:
         return x,scurve_rev(x,A_fit,mu_fit,sigma_fit)
@@ -166,4 +171,54 @@ def generate_mask(n_cols=36, n_rows=129, mask_steps=6, return_lists=True):
         return global_mask_lists
     else:
         return global_mask
-            
+    
+def get_scurve(f_event,pixel,type="inj"):
+    res={}
+    dat=f_event.root.Cnts[:]
+    fit=f_event.root.ScurveFit[:]
+    
+    if type=="inj":
+        x=f_event.root.ScurveFit.attrs.injlist
+    elif type=="th":
+        x=f_event.root.ScurveFit.attrs.thlist
+    else:
+        print "Unknown type of variable specified for pix=[%d %d]"%(pixel[0],pixel[1])
+    
+    tmp=dat[np.bitwise_and(dat["col"]==pixel[0],dat["row"]==pixel[1])]
+    cnt=np.zeros(len(x))
+    for d in tmp:
+        a=np.argwhere(np.isclose(x,d[type]))
+        cnt[a[0][0]]=d["cnt"]
+        res["x"]=x
+        res["y"]=np.copy(cnt)
+    tmp=fit[np.bitwise_and(fit["col"]==pixel[0],fit["row"]==pixel[1])]
+    if len(tmp)==0:
+        print "onepix_scan.get_scurve() pix=[%d %d] has no fitted parameters"%(pixel[0],pixel[1])
+        res["x"]=x
+        res["y"]=np.copy(cnt)
+        res["A"]=float("nan")
+        res["mu"]=float("nan")
+        res["sigma"]=float("nan")
+    else:
+        res["A"]=tmp[0]["A"]
+        res["mu"]=tmp[0]["mu"]
+        res["sigma"]=tmp[0]["sigma"]
+        if len(tmp)>1:
+            print "onepix_scan.get_scurve():error!! pix=[%d %d] has multiple fitting"%(p[0],p[1])
+    return res
+
+def fit_gauss(x_data, y_data):
+    """Fit gauss"""
+    x_data = np.array(x_data)
+    y_data = np.array(y_data)
+    y_maxima=x_data[np.where(y_data[:]==np.max(y_data))[0]]    
+    params_guess = np.array([np.max(y_data), y_maxima[0], np.std(x_data)])
+    try:
+        params_from_fit = curve_fit(gauss_func, x_data, y_data, p0=params_guess, maxfev=1000)
+    except RuntimeError:
+        logging.warning('Fit did not work (gauss): %s %s %s', str(np.max(y_data)), str(x_data[np.where(y_data[:] == np.max(y_data))[0]][0]), str(np.std(x_data)))
+        return params_guess[0],params_guess[1],params_guess[2]
+    A_fit = params_from_fit[0][0]
+    mu_fit = params_from_fit[0][1]
+    sigma_fit = np.abs(params_from_fit[0][2])
+    return A_fit, mu_fit, sigma_fit

@@ -7,6 +7,7 @@ import logging
 import yaml
 
 import monopix_daq.scans.injection_scan as injection_scan
+import monopix_daq.analysis.utils 
 INJCAP=2.7E-15
 
 local_configuration={"injlist": np.arange(0.005,0.6,0.005),
@@ -52,13 +53,13 @@ class ThScan(injection_scan.InjectionScan):
         ana.init_noise_dist()
         ana.run()
         
-    def plot(self):
+    def plot(self, save_png=False, pixel_scurve=False):
         fev=self.output_filename[:-4]+'ev.h5'
         fraw = self.output_filename +'.h5'
         fpdf = self.output_filename +'.pdf'
 
         import monopix_daq.analysis.plotting_base as plotting_base
-        with plotting_base.PlottingBase(fpdf,save_png=False) as plotting:
+        with plotting_base.PlottingBase(fpdf,save_png=save_png) as plotting:
             with tb.open_file(fraw) as f:
                 firmware=yaml.load(f.root.meta_data.attrs.firmware)
                 inj_n=firmware["inj"]["REPEAT"]
@@ -68,6 +69,7 @@ class ThScan(injection_scan.InjectionScan):
                 dat["inj_n"]=inj_n
                 dat["inj_delay"]=firmware["inj"]["DELAY"]
                 dat["inj_width"]=firmware["inj"]["WIDTH"]
+                global_th =  dat["TH[V]"]
                 plotting.table_1value(dat,page_title="Chip configuration")
 
                 dat=yaml.load(f.root.meta_data.attrs.pixel_conf)
@@ -93,24 +95,39 @@ class ThScan(injection_scan.InjectionScan):
                 ## Threshold distribution
                 for i in range(len(f.root.ThDist)):
                     dat=f.root.ThDist[i]
-                    plotting.plot_2d_pixel_hist(dat["mu"],title=f.root.ThDist.title,
+                    plotting.plot_2d_pixel_hist(dat["mu"],title=str(f.root.ThDist.title)+" (TH = %.3f V)"%global_th,
                                                 z_min=0.0,
-                                                z_max=0.5)
-                    plotting.plot_1d_pixel_hists([dat["mu"]],mask=injected,
+                                                z_max='median',
+                                                z_axis_title='Threshold')
+                    plotting.plot_1d_pixel_hists_gauss([dat["mu"]],mask=injected,
                                              top_axis_factor=INJCAP/1.602E-19,
                                              top_axis_title="Threshold [e]",
                                              x_axis_title="Testpulse injection [V]",
-                                             title=f.root.ThDist.title)
-                ## Threshold distribution
+                                             title=str(f.root.ThDist.title)+" (TH = %.3f V)"%global_th)
+                ## Noise distribution
                 for i in range(len(f.root.NoiseDist)):
                     dat=f.root.NoiseDist[i]
                     plotting.plot_2d_pixel_hist(dat["sigma"],title=f.root.NoiseDist.title,
-                                                z_min=0.0)
-                    plotting.plot_1d_pixel_hists([dat["sigma"]],mask=injected,
+                                                z_min=0.0, 
+                                                z_max='median',
+                                                z_axis_title='Noise')
+                    plotting.plot_1d_pixel_hists_gauss([dat["sigma"]],mask=injected,
                                              top_axis_factor=INJCAP/1.602E-19,
                                              top_axis_title="Noise [e]",
                                              x_axis_title="S-curve Sigma [V]",
-                                             title=f.root.ThDist.title)
+                                             title=f.root.NoiseDist.title)
+                    
+                if pixel_scurve:
+                    for p_i,p in enumerate(np.argwhere(injected)):
+                        res=monopix_daq.analysis.utils.get_scurve(f_event=f, pixel=p, type="inj")
+                        plotting.plot_scurve([res],
+                        dat_title=["mu=%.4f sigma=%.4f"%(res["mu"],res["sigma"])],
+                                title="Pixel [%d %d], Threshold = %.4f"%(p[0],p[1],global_th),
+                                y_min=0,
+                                y_max=inj_n*1.5,
+                                reverse=False)
+                else:
+                    pass
 
 if __name__ == "__main__":
     from monopix_daq import monopix
