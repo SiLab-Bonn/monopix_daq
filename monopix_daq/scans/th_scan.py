@@ -10,7 +10,8 @@ import monopix_daq.scans.injection_scan as injection_scan
 INJCAP=2.7E-15
 
 local_configuration={"injlist": np.arange(0.005,0.6,0.005),
-                     'pix': [18,25]
+                     'pix': [18,25],
+                     'n_mask_pix':23
 }
 
 class ThScan(injection_scan.InjectionScan):
@@ -29,7 +30,7 @@ class ThScan(injection_scan.InjectionScan):
         kwargs["injlist"]=kwargs.pop("injlist",local_configuration['injlist'])
         kwargs["phaselist"]=None
 
-        kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",23)
+        kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",local_configuration['n_mask_pix'])
         kwargs["with_mon"]=kwargs.pop("with_mon",False)
         super(ThScan, self).scan(**kwargs)
 
@@ -97,7 +98,6 @@ class ThScan(injection_scan.InjectionScan):
                                              top_axis_title="Threshold [e]",
                                              x_axis_title="Testpulse injection [V]",
                                              title=f.root.ThDist.title)
-                ## Threshold distribution
                 for i in range(len(f.root.NoiseDist)):
                     dat=f.root.NoiseDist[i]
                     plotting.plot_2d_pixel_hist(dat["sigma"],title=f.root.NoiseDist.title,
@@ -107,6 +107,40 @@ class ThScan(injection_scan.InjectionScan):
                                              top_axis_title="Noise [e]",
                                              x_axis_title="S-curve Sigma [V]",
                                              title=f.root.ThDist.title)
+                ## S-curve
+                x=f.root.ScurveFit.attrs.injlist
+                cnts=f.root.Cnts[:]
+                fit=f.root.ScurveFit[:]
+                for p in np.argwhere(injected):
+                    res=get_scurve(cnts,x,fit,p[0],p[1])
+                    plotting.plot_scurve(res,
+                            dat_title=["mu=%.4f sigma=%.4f"%(res[0]["mu"],res[0]["sigma"])],
+                            title="Pixel [%d %d]"%(p[0],p[1]),
+                            y_min=0,
+                            y_max=inj_n*1.5,
+                            reverse=False)
+def get_scurve(cnts,x,fit,col,row):
+    cnts=cnts[np.bitwise_and(cnts["col"]==col,cnts["row"]==row)]
+    cnt=np.zeros(len(x))
+    for d in cnts:
+        a=np.argwhere(np.isclose(x,d["inj"]))
+        cnt[a[0][0]]=d["cnt"]
+    res=[{}]
+    fit=fit[np.bitwise_and(fit["col"]==col,fit["row"]==row)]
+    if len(fit)==0:
+        print "th_scan.get_scurve() no fit data",col,row
+        res[0]["A"]=float("nan")
+        res[0]["mu"]=float("nan")
+        res[0]["sigma"]=float("nan")
+    else:
+        if len(fit)!=1:
+            print "th_scan.get_scurve() too many fit data ",len(fit),col,row,fit
+        res[0]["A"]=fit[0]["A"]
+        res[0]["mu"]=fit[0]["mu"]
+        res[0]["sigma"]=fit[0]["sigma"]
+    res[0]["x"]=x
+    res[0]["y"]=cnt
+    return res
 
 if __name__ == "__main__":
     from monopix_daq import monopix

@@ -88,7 +88,6 @@ class AnalyzeHits():
     def init_delete_noninjected(self):
         with tb.open_file(self.fraw) as f: 
             self.res["delete_noninjected"]=f.root.scan_parameters[:][["scan_param_id","pix"]]
-            
     def run_delete_noninjected(self, hits):
         len0=len(hits)
         uni,idx,cnt=np.unique(hits["scan_param_id"],return_index=True,return_counts=True)
@@ -238,7 +237,6 @@ class AnalyzeHits():
                        hits['col'],
                        hits['row'],
                        bins=[np.arange(0,COL_SIZE+1),np.arange(0,ROW_SIZE+1)])[0]
-                       
 ######### analyze delay
     def init_le_hist(self):
         with tb.open_file(self.fraw) as f:
