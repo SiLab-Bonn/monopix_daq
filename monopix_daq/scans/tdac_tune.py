@@ -162,7 +162,8 @@ class TdacTune(scan_base.ScanBase):
                 elif t==15 and cnt[0,p[0],p[1]]==0 :
                    t=0
                 tdac[p[0],p[1]]=t
-        self.monopix.set_tdac(en)
+            self.monopix.set_tdac(tdac)
+        self.monopix.set_preamp_en(en)
 
         ax[0,0].hist(tdac[pix[:,0],pix[:,1]],bins=np.arange(-1,17,1),histtype="step")
         plt.pause(0.005)
@@ -269,4 +270,3 @@ if __name__ == "__main__":
     scan.start(**local_configuration)
     #scan.analyze()
     scan.plot()
-    #plt.plot(np.arange(10))

@@ -12,7 +12,7 @@ INJCAP=2.7E-15
 
 local_configuration={"injlist": np.arange(0.005,0.6,0.005),
                      'pix': [18,25],                     
-                     'n_mask_pix': 25,                             #A list of pixels to go through
+                     'n_mask_pix': 23,                             #A list of pixels to go through
                      "disable_noninjected_pixel":True,
                      "with_mon": False
 }
