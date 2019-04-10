@@ -40,7 +40,7 @@ class ScanBase(object):
             self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
         else:
             self.working_dir = os.path.dirname(os.path.realpath(fout))
-            self.run_name = os.path.basename(os.path.realpath(fout))
+            self.run_name = os.path.basename(os.path.realpath(fout)) + self.scan_id
         if not os.path.exists(self.working_dir):
                 os.makedirs(self.working_dir)
         self.output_filename = os.path.join(self.working_dir, self.run_name)

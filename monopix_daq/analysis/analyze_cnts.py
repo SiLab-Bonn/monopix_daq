@@ -80,7 +80,7 @@ class AnalyzeCnts():
             xbins=np.arange(np.min(self.injlist)-0.5*s,np.max(self.injlist)+0.5*s,s)
             ybins=np.arange(0.5,self.inj_n+9.5,1.0)
             
-            self.res["scurve"]=list(np.empty(0,dtype=dat_dtype).dtype.names)
+            self.res["scurve"]={"cols":list(np.empty(0,dtype=dat_dtype).dtype.names)}
             dat_dtype=dat_dtype+[("scurve","<i4",(len(xbins)-1,len(ybins)-1))]
             buf=np.zeros(1,dtype=dat_dtype)
             try:
@@ -90,19 +90,19 @@ class AnalyzeCnts():
             t=f.create_table(f.root,name="Scurve",
                                description=buf.dtype,
                                title='Superimposed scurve')
-            t.attrs.xbins=yaml.dump(list(xbins))
-            t.attrs.ybins=yaml.dump(list(ybins))
+            t.attrs.xbins=xbins
+            t.attrs.ybins=ybins
 
     def run_scurve(self,dat,fdat_root):
-        xbins=yaml.load(fdat_root.Scurve.attrs.xbins)
-        ybins=yaml.load(fdat_root.Scurve.attrs.ybins)
-        uni=np.unique(dat[self.res["scurve"]])
+        xbins=fdat_root.Scurve.attrs.xbins
+        ybins=fdat_root.Scurve.attrs.ybins
+        uni=np.unique(dat[self.res["scurve"]['cols']])
         buf=np.zeros(len(uni),dtype=fdat_root.Scurve.dtype)
         for u_i,u in enumerate(uni):
-            tmp=dat[dat[self.res["scurve"]]==u]
+            tmp=dat[dat[self.res["scurve"]['cols']]==u]
             
             buf[u_i]["scurve"]=np.histogram2d(tmp["inj"],tmp["cnt"],bins=[xbins,ybins])[0]
-            for c in self.res["scurve"]:
+            for c in self.res["scurve"]["cols"]:
                 buf[u_i][c]=u[c]
         fdat_root.Scurve.append(buf)
         fdat_root.Scurve.flush()

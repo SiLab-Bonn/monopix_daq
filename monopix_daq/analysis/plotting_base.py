@@ -414,11 +414,20 @@ class PlottingBase(object):
         for hist2d in hist2d_array:
             hist2d=hist2d[mask==1]
             hist_median=np.median(hist2d)
-            print hist_median
+
+            if np.isnan(hist_median)==True:
+                hist_median=0
+            
+            d = np.abs(hist2d - np.median(hist2d))
+            mdev = np.median(d)
+            
+            if np.isnan(mdev)==True:
+                mdev=0
+            
             hist_std=np.std(hist2d)
-            hist_min=hist_median-2*hist_std
-            hist_max=hist_median+2*hist_std
-            print hist_std
+            hist_min=hist_median-10*mdev
+            hist_max=hist_median+10*mdev
+            
             hist=ax.hist(hist2d.reshape([-1]), range=(hist_min,hist_max),
             bins=bins, histtype="step")
             bin_center = (hist[1][1:] + hist[1][:-1]) / 2.0 #####
@@ -432,14 +441,14 @@ class PlottingBase(object):
         
         if top_axis_factor is None:
             ax.set_title(title,color=TITLE_COLOR)
-            str_fit="Amp= "+ str('%.2E' %Decimal(signal_params[0]))+"\nMean= "+ str("%.2f" %signal_params[1])+"\nSigma= "+ str("%.2f" %signal_params[2])+")"
+            str_fit="Amp= "+ str('%.2E' %Decimal(signal_params[0]))+"\nMean= "+ str("%.4f" %signal_params[1])+"\nSigma= "+ str("%.4f" %signal_params[2])+")"
         else:
             ax2=ax.twiny()
             ax2.set_xbound(hist[1][0]*top_axis_factor,hist[1][-1]*top_axis_factor)
             ax2.set_xlabel(top_axis_title)
             pad=40
             ax.set_title(title,pad=40,color=TITLE_COLOR)
-            str_fit="Amp= "+ str('%.2E' %Decimal(signal_params[0]))+"\nMean= "+ str("%.2f" %signal_params[1])+ str(' (%.2E' %Decimal(signal_params[1]*top_axis_factor))+")\nSigma= "+ str("%.2f" %signal_params[2])+ str(' (%.2E' %Decimal(signal_params[2]*top_axis_factor))+")"
+            str_fit="Amp= "+ str('%.2E' %Decimal(signal_params[0]))+"\nMean= "+ str("%.4f" %signal_params[1])+ str(' (%.2E' %Decimal(signal_params[1]*top_axis_factor))+")\nSigma= "+ str("%.4f" %signal_params[2])+ str(' (%.2E' %Decimal(signal_params[2]*top_axis_factor))+")"
             
 
         ax.plot(bin_center, gauss_func(bin_center, *signal_params[0:3]), 'g-', label=str_fit)   
