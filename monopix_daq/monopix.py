@@ -6,7 +6,6 @@ import yaml
 import bitarray
 import tables
 import yaml
-import socket
 
 sys.path = [os.path.dirname(os.path.abspath(__file__))] + sys.path 
 COL_SIZE = 36 ##TODO change hard coded values
@@ -39,7 +38,6 @@ def mk_fname(ext="data.npy",dirname=None):
     return os.path.join(dirname,time.strftime("%Y%m%d_%H%M%S0_")+ext)
 
 class Monopix():
-    default_yaml=os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
     def __init__(self,dut=None,no_power_reset=True):
         ## set logger
         self.logger = logging.getLogger()
@@ -55,7 +53,7 @@ class Monopix():
         self.ROW_SIZE = 129
 
         if dut is None:
-            dut = self.default_yaml
+            dut = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
         if isinstance(dut,str):
             with open(dut) as f:
                 conf=yaml.load(f)
@@ -72,17 +70,10 @@ class Monopix():
                        'MONITOR_EN'   : np.full([36,129], False, dtype = np.bool),
                        'TRIM_EN'  : np.full([36,129], 7, dtype = np.uint8),
                        }
-         
         self.dut.SET_VALUE={}
         self.dut.init()
         fw_version = self.dut['intf'].read(0x0,1)[0]
         logging.info("Firmware version: %s" % (fw_version))
-        
-        for reg in self.dut._conf["registers"]:
-            if reg["name"] in ["INJ_HI", "INJ_LO"] and "init" in reg:
-                self.logger.info("modify %s: %s"%(reg["name"],str(reg["init"])))
-                self.dut[reg["name"]]._ch_cal[reg['arg_add']['channel']].update(reg["init"])
-
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF'].write()
         self.dut['CONF']['RESET'] = 0
@@ -103,18 +94,7 @@ class Monopix():
         
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
-    def reconnect_fifo(self):
-        try:
-            self.dut['intf']._sock_tcp.close()
-        except:
-            pass
-        self.dut['intf']._sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connect_timeout = float(self.dut['intf']._init.get('connect_timeout', 5.0))
-        self.dut['intf']._sock_tcp.settimeout(connect_timeout)
-        self.dut['intf']._sock_tcp.connect((self.dut['intf']._init['ip'], self.dut['intf']._init['tcp_port']))
-        self.dut['intf']._sock_tcp.settimeout(None) 
-        self.dut['intf']._sock_tcp.setblocking(0)
-
+        
     def _write_global_conf(self):        
         self.dut['CONF']['LDDAC'] = 1
         self.dut['CONF'].write()
@@ -287,7 +267,7 @@ class Monopix():
         self._write_global_conf()
 
         arg=np.argwhere(self.dut.PIXEL_CONF["INJECT_EN"][:,:])
-        self.logger.info("set_inj_en pix: %d%s"%(len(arg),str(arg).replace("\n"," ")))
+        self.logger.info("set_inj_en pix: %d %s"%(len(arg),str(arg).replace("\n"," ")))
         
     def set_tdac(self,tdac):
         if isinstance(tdac,int):
@@ -327,6 +307,28 @@ class Monopix():
         for k in kwarg.keys():
             s=s+"%s=%d "%(k,kwarg[k])
         self.logger.info(s)
+
+    def get_conf_sr(self,mode='mwr'):
+        """ mode:'w' get values in FPGA write register (output to SI_CONF)
+                 'r' get values in FPGA read register (input from SO_CONF)
+                 'm' get values in cpu memory (data in self['CONF_SR'])
+                 'mrw' get all
+        """
+        size=self['CONF_SR'].get_size()
+        r=size%8
+        byte_size=size/8
+        if r!=0:
+            r=8-r
+            byte_size=byte_size+1
+        data={"size":size}
+        if "w" in mode:
+           data["write_reg"]=self["CONF_SR"].get_data(addr=0,size=byte_size).tostring()
+        if "r" in mode:
+           data["read_reg"]=self["CONF_SR"].get_data(size=byte_size).tostring()
+        if "m" in mode:
+           a=bitarray("0000000")[0:r]+self["CONF_SR"][:]
+           data["memory"]=a[::-1].tobytes()
+        return data 
             
     def set_th(self,th):
         self.dut['TH'].set_voltage(th, unit='V')
@@ -613,7 +615,7 @@ class Monopix():
         else:
             with open(fname) as f:
                     ret=yaml.load(f)
-                    ret["CONF_SR"]["ColRO_En"]=ret["CONF_SR"]["ColRO_En"][::-1] ##TODO check
+                    ret["CONF_SR"]["ColRO_En"]=ret["CONF_SR"]["ColRO_En"][:] ##TODO check
             dac={}
             for k in ['BLRes', 'VAmp', 'VPFB', 'VPFoll', 'VPLoad', 'IComp', 'Vbias_CS', 'IBOTA', 'ILVDS', 'Vfs', 'LSBdacL', 'Vsf_dis1', 'Vsf_dis2','Vsf_dis3']:
                     dac[k]=ret[k]
@@ -629,6 +631,7 @@ class Monopix():
             self.set_preamp_en(ret["pix_PREAMP_EN"],ColRO_En=ret["CONF_SR"]["ColRO_En"][:])
             self.set_inj_en(ret["pix_INJECT_EN"])
             self.set_tdac(ret["pix_TRIM_EN"])
+            self.logger.info("===================loading===========================")
             for module in ["inj","gate_tdc","tlu","timestamp_inj","timestamp_tlu","timestamp_mon","data_rx"]:
                 s="load_config: %s "%module
                 for reg in ret[module]:
@@ -659,27 +662,3 @@ class Monopix():
             ret=self.dac_status()
             s=format_dac(ret)
             self.logger.info(s)
-
-class MonopixMio(Monopix):
-    default_yaml=os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix.yaml"
-    def set_inj_all(self,inj_high=0.5,inj_low=0.1,inj_n=100,inj_width=5000,delay=700,ext=False,inj_phase=None):
-        if inj_phase!=None and inj_phase!=0:
-            self.logger.error("injection phase cannot be changed with MIO")
-            return
-        self.set_inj_high(inj_high)
-        self.set_inj_low(inj_low)
-
-        self.dut["inj"].reset()
-        self.dut["inj"]["REPEAT"]=inj_n
-        self.dut["inj"]["DELAY"]=inj_width
-        self.dut["inj"]["WIDTH"]=inj_width
-        self.dut["inj"]["EN"]=0
-        
-        if self.dut["inj"].get_phase()!=inj_phase:
-            self.logger.error("inj:set_inj_phase=%d PHASE_DES=%x"%(inj_phase,self.dut["inj"]["PHASE_DES"]))
-
-        self.logger.info("inj:%.4f,%.4f inj_width:%d inj_phase:%x inj_n:%d delay:%d ext:%d"%(
-            inj_high,inj_low,inj_width,
-            self.dut["inj"]["PHASE_DES"],
-            self.dut["inj"]["REPEAT"],delay,
-            int(ext)))
