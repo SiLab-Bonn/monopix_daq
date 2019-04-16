@@ -53,7 +53,7 @@ class ThScan(injection_scan.InjectionScan):
         ana.init_noise_dist()
         ana.run()
         
-    def plot(self, save_png=False, pixel_scurve=False):
+    def plot(self, save_png=False, pixel_scurve=False, perflavour=True):
         fev=self.output_filename[:-4]+'ev.h5'
         fraw = self.output_filename +'.h5'
         fpdf = self.output_filename +'.pdf'
@@ -85,8 +85,8 @@ class ThScan(injection_scan.InjectionScan):
                 ## Scurve
                 for i in range(len(f.root.Scurve)):
                   dat=f.root.Scurve[i]["scurve"]
-                  xbins=yaml.load(f.root.Scurve.attrs.xbins)
-                  ybins=yaml.load(f.root.Scurve.attrs.ybins)
+                  xbins=f.root.Scurve.attrs.xbins
+                  ybins=f.root.Scurve.attrs.ybins
                   plotting.plot_2d_hist(dat,
                        bins=[xbins,ybins],
                        title=f.root.Scurve.title,
@@ -107,7 +107,7 @@ class ThScan(injection_scan.InjectionScan):
                 ## Noise distribution
                 for i in range(len(f.root.NoiseDist)):
                     dat=f.root.NoiseDist[i]
-                    plotting.plot_2d_pixel_hist(dat["sigma"],title=f.root.NoiseDist.title,
+                    plotting.plot_2d_pixel_hist(dat["sigma"],title=str(f.root.NoiseDist.title),
                                                 z_min=0.0, 
                                                 z_max='median',
                                                 z_axis_title='Noise')
@@ -115,7 +115,7 @@ class ThScan(injection_scan.InjectionScan):
                                              top_axis_factor=INJCAP/1.602E-19,
                                              top_axis_title="Noise [e]",
                                              x_axis_title="S-curve Sigma [V]",
-                                             title=f.root.NoiseDist.title)
+                                             title=str(f.root.NoiseDist.title))
                     
                 if pixel_scurve:
                     for p_i,p in enumerate(np.argwhere(injected)):
@@ -128,6 +128,36 @@ class ThScan(injection_scan.InjectionScan):
                                 reverse=False)
                 else:
                     pass
+                if perflavour:
+                    for col in range(0,36,4):
+                        ## Threshold distribution
+                        for i in range(len(f.root.ThDist)):
+                            dat=f.root.ThDist[i]
+                            dat_flav=np.zeros_like(dat["mu"])
+                            dat_flav[col:col+4,:]=dat["mu"][col:col+4,:]
+                            plotting.plot_2d_pixel_hist(dat_flav,title=str(f.root.ThDist.title)+" (Flavour %.1d)"%(col/4)+" (TH = %.3f V)"%global_th,
+                                                        z_min=0.0,
+                                                        z_max='median',
+                                                        z_axis_title='Threshold')
+                            plotting.plot_1d_pixel_hists_gauss([dat["mu"][col:col+4,:]],mask=injected[col:col+4,:],
+                                                     top_axis_factor=INJCAP/1.602E-19,
+                                                     top_axis_title="Threshold [e]",
+                                                     x_axis_title="Testpulse injection [V]",
+                                                     title=str(f.root.ThDist.title)+" (Flavour %.1d)"%((col/4)+1)+" (TH = %.3f V)"%global_th)
+                        ## Noise distribution
+                        for i in range(len(f.root.NoiseDist)):
+                            dat=f.root.NoiseDist[i]
+                            dat_flav=np.zeros_like(dat["sigma"])
+                            dat_flav[col:col+4,:]=dat["sigma"][col:col+4,:]
+                            plotting.plot_2d_pixel_hist(dat_flav,title=str(f.root.NoiseDist.title)+" (Flavour %.1d)"%(col/4),
+                                                        z_min=0.0, 
+                                                        z_max='median',
+                                                        z_axis_title='Noise')
+                            plotting.plot_1d_pixel_hists_gauss([dat["sigma"][col:col+4,:]],mask=injected[col:col+4,:],
+                                                     top_axis_factor=INJCAP/1.602E-19,
+                                                     top_axis_title="Noise [e]",
+                                                     x_axis_title="S-curve Sigma [V]",
+                                                     title=str(f.root.NoiseDist.title)+" (Flavour %.1d)"%((col/4)+1))
 
 if __name__ == "__main__":
     from monopix_daq import monopix

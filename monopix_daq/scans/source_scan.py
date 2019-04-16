@@ -129,7 +129,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage="python source_scan.py",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
-    parser.add_argument('-t',"--th", type=float, default=0.83)
+    parser.add_argument('-t',"--th", type=float, default=None)
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     parser.add_argument("-time",'--scan_time', type=int, default=None,

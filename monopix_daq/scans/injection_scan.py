@@ -170,7 +170,7 @@ class InjectionScan(scan_base.ScanBase):
             self.logger.info('mask=%d pix=%s dat=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             scan_param_id=scan_param_id+1
 
-    def analyze(self):
+    def analyze(self,remove_HitFile=True):
         fraw = self.output_filename +'.h5'
         fhit=fraw[:-7]+'hit.h5'
         fev=fraw[:-7]+'ev.h5'
@@ -194,7 +194,10 @@ class InjectionScan(scan_base.ScanBase):
         ana.init_cnts()
         ana.run()
         
-        os.remove(fhit)
+        if remove_HitFile==True:
+            os.remove(fhit)
+        else:
+            pass
         
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'
