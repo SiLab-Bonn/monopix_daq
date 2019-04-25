@@ -76,7 +76,7 @@ hw_drivers:
   - name      : spi
     type      : spi
     interface : intf
-    base_addr : 0x11000
+    base_addr : 0x15000
     
   - name      : inj
     type      : pulse_gen640
@@ -154,6 +154,8 @@ registers:
     hw_driver   : GPAC
     arg_names   : [value]
     arg_add     : {'channel': 'PWR1'}
+    init        : 
+        value : 1.8
 
   - name        : VDD_BCID_BUFF
     type        : FunctionalRegister

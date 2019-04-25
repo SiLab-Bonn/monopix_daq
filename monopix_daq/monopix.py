@@ -103,7 +103,7 @@ class Monopix():
         
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
-        
+
     def reconnect_fifo(self):
         try:
             self.dut['intf']._sock_tcp.close()
@@ -328,6 +328,28 @@ class Monopix():
         for k in kwarg.keys():
             s=s+"%s=%d "%(k,kwarg[k])
         self.logger.info(s)
+
+    def get_conf_sr(self,mode='mwr'):
+        """ mode:'w' get values in FPGA write register (output to SI_CONF)
+                 'r' get values in FPGA read register (input from SO_CONF)
+                 'm' get values in cpu memory (data in self['CONF_SR'])
+                 'mrw' get all
+        """
+        size=self['CONF_SR'].get_size()
+        r=size%8
+        byte_size=size/8
+        if r!=0:
+            r=8-r
+            byte_size=byte_size+1
+        data={"size":size}
+        if "w" in mode:
+           data["write_reg"]=self["CONF_SR"].get_data(addr=0,size=byte_size).tostring()
+        if "r" in mode:
+           data["read_reg"]=self["CONF_SR"].get_data(size=byte_size).tostring()
+        if "m" in mode:
+           a=bitarray("0000000")[0:r]+self["CONF_SR"][:]
+           data["memory"]=a[::-1].tobytes()
+        return data 
             
     def set_th(self,th):
         self.dut['TH'].set_voltage(th, unit='V')

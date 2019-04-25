@@ -91,8 +91,8 @@ localparam TS_INJ_HIGHADDR = 16'h0a00-1;
 localparam TS_MON_BASEADDR = 16'h0a00;
 localparam TS_MON_HIGHADDR = 16'h0b00-1;
 
-localparam SPI_BASEADDR = 16'h1000;
-localparam SPI_HIGHADDR = 16'h2000-1;
+localparam SPI_BASEADDR = 16'h5000;
+localparam SPI_HIGHADDR = 16'h8000-1;
 
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-2;
