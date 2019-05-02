@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps
 `default_nettype none
+`define CODE_FOR_MIO3
 
 `include "utils/bus_to_ip.v"
 `include "utils/clock_divider.v"
@@ -55,8 +56,6 @@
 
 `include "mono_data_rx/mono_data_rx.v"
 `include "mono_data_rx/mono_data_rx_core.v"
-
-`define CODE_FOR_MIO3
 
 module monopix_mio3(
 
