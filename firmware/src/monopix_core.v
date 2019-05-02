@@ -203,7 +203,6 @@ assign SR_EN = SREN_CONF ? !((SEN | (|delay_cnt))) : 0;
 wire GATE_TDC;
 wire INJECTION_MON;
 
-`ifdef CODE_FOR_MIO3
 pulse_gen640
 #( 
     .BASEADDR(PULSE_INJ_BASEADDR), 
@@ -226,26 +225,6 @@ pulse_gen640
     .PULSE({INJECTION_MON,INJECTION}),
     .DEBUG(DEBUG)
 );
-`else    
-pulse_gen
-#( 
-    .BASEADDR(PULSE_INJ_BASEADDR), 
-    .HIGHADDR(PULSE_INJ_HIGHADDR)
-)     pulse_gen_inj(
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA[7:0]),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-
-    .PULSE_CLK(CLK40),
-    .EXT_START(GATE_TDC),
-    .PULSE(INJECTION)
-);
-assign INJECTION_MON = INJECTION;
-`endif   
-
 
 pulse_gen
 #( 
