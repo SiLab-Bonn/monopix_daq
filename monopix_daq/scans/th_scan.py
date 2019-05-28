@@ -5,6 +5,7 @@ import bitarray
 import tables as tb
 import logging
 import yaml
+import matplotlib.pyplot as plt
 
 import monopix_daq.scans.injection_scan as injection_scan
 import monopix_daq.analysis.utils 
@@ -13,8 +14,9 @@ INJCAP=2.7E-15
 local_configuration={"injlist": np.arange(0.005,0.6,0.005),
                      'pix': [18,25],                     
                      'n_mask_pix': 23,                             #A list of pixels to go through
-                     "disable_noninjected_pixel":True,
-                     "with_mon": False
+                     "mask_step": None,
+                     "disable_noninjected_pixel":False,
+                     "with_mon": True
 }
 
 class ThScan(injection_scan.InjectionScan):
@@ -28,7 +30,7 @@ class ThScan(injection_scan.InjectionScan):
         Other configuration must be configured before scan.start()
         """
         kwargs["pix"]=kwargs.pop("pix",local_configuration['pix'])
-
+        list_pixels_all=np.copy(kwargs["pix"])
         kwargs["thlist"]=None
         kwargs["injlist"]=kwargs.pop("injlist",local_configuration['injlist'])
         kwargs["phaselist"]=None
@@ -36,7 +38,32 @@ class ThScan(injection_scan.InjectionScan):
         kwargs["n_mask_pix"]=kwargs.pop("n_mask_pix",local_configuration['n_mask_pix'])
         kwargs["disable_noninjected_pixel"]=kwargs.pop("disable_noninjected_pixel",local_configuration['disable_noninjected_pixel'])
         kwargs["with_mon"]=kwargs.pop("with_mon",local_configuration['with_mon'])
-        super(ThScan, self).scan(**kwargs)
+        kwargs["mask_step"]=kwargs.pop("mask_step",local_configuration["mask_step"])
+
+        kwargs["online_fig"], kwargs["online_ax"]=plt.subplots(2,2)
+        plt.ion()
+
+        if kwargs["mask_step"] is None:
+            super(ThScan, self).scan(**kwargs)
+            
+        else:
+            flavour_ids=np.arange(0,36,4)
+            
+            for flav_id in flavour_ids:
+                 
+                list_pixels_all_np=np.array(list_pixels_all)
+                pixels_perflav=list_pixels_all_np[:][np.bitwise_and(list_pixels_all_np[:,0]>=flav_id, list_pixels_all_np[:,0]<flav_id+4)]
+
+                kwargs["pix"]=pixels_perflav.tolist()
+         
+                if kwargs["pix"]!=[]:
+                    #self.monopix.set_preamp_en(list_pixels_all)
+                    self.monopix.set_preamp_en(pixels_perflav.tolist())
+                    super(ThScan, self).scan(**kwargs)
+                else:
+                    pass
+                
+        self.monopix.set_preamp_en(list_pixels_all)
 
     def analyze(self):
         fraw = self.output_filename +'.h5'
@@ -176,15 +203,18 @@ if __name__ == "__main__":
          default=local_configuration["injlist"][1]-local_configuration["injlist"][0])
 
     parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
+    parser.add_argument('-ms',"--mask_step", type=int, default=None)
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
+    parser.add_argument("-fout","--output_file", type=str, default=None)
 
     args=parser.parse_args()
     local_configuration["injlist"]=np.arange(args.inj_start,args.inj_stop,args.inj_step)
     local_configuration["n_mask_pix"]=args.n_mask_pix
+    local_configuration["mask_step"]=args.mask_step
 
     m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
-    scan = ThScan(m,online_monitor_addr="tcp://127.0.0.1:6500")
+    scan = ThScan(m,fout=args.output_file,online_monitor_addr="tcp://127.0.0.1:6500")
     
     if args.config_file is not None:
         m.load_config(args.config_file)
@@ -193,17 +223,29 @@ if __name__ == "__main__":
     if args.flavor is not None:
         if args.flavor=="all":
             collist=np.arange(0,m.COL_SIZE)
+        elif args.flavor[0:4]=="only":
+            flavarg_str=str(args.flavor)
+            all_column_steps=np.arange(0,36,4)
+            collist=[]
+            for flav_str in flavarg_str[4:]:
+                flav_int=int(flav_str)-1
+                flav_i=all_column_steps[flav_int]
+                this_flav=np.arange(flav_i,flav_i+4,1)
+                collist.extend(this_flav)
         else:
             tmp=args.flavor.split(":")
             collist=np.arange(int(tmp[0]),int(tmp[1]))
         pix=[]
         for i in collist:
            for j in range(0,m.ROW_SIZE):
-               pix.append([i,j])
-        m.set_preamp_en(pix)
+               if m.dut.PIXEL_CONF["PREAMP_EN"][i,j]!=0:
+                   pix.append([i,j])
+               else:
+                   pass
+        #m.set_preamp_en(pix)
     else:
         pix=list(np.argwhere(m.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
-    local_configuration["pix"]=pix   
+    local_configuration["pix"]=pix
 
     scan.start(**local_configuration)
     scan.analyze()

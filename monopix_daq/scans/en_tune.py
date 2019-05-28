@@ -146,13 +146,15 @@ if __name__ == "__main__":
     parser.add_argument("--tdac", type=int, default=None)
     parser.add_argument("--LSBdacL", type=int, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
+    parser.add_argument("-fout","--output_file", type=str, default=None)
     args=parser.parse_args()
     local_configuration["exp_time"]=args.exp_time
     local_configuration["n_pix"]=args.n_pix
     local_configuration["th_start"]=args.th_start
     
     m=monopix.Monopix(no_power_reset=not bool(args.power_reset))
-
+    scan = EnTune(m, fout=args.output_file, online_monitor_addr="tcp://127.0.0.1:6500")
+    
     if args.config_file is not None:
         m.load_config(args.config_file) 
     if args.flavor is not None:
@@ -170,8 +172,7 @@ if __name__ == "__main__":
         m.set_tdac(args.tdac)
     if args.LSBdacL is not None:
         m.set_global(LSBdacL=args.LSBdacL)
-    
-    scan = EnTune(m,online_monitor_addr="tcp://127.0.0.1:6500")
+        
     scan.start(**local_configuration)
     #scan.analyze()
     scan.plot()
