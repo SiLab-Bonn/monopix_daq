@@ -148,7 +148,7 @@ class FifoReadout(object):
 
     def print_readout_status(self):
         ret = self.get_discard_count()
-        logging.info('Recived words: %d', self._record_count)
+        logging.info('Received words: %d', self._record_count)
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['fifo']['FIFO_SIZE'])
         logging.info('Channel:                     %s', " | ".join(['MONO','T_INJ',"T_MON","T_TLU","T_RX1","TLU"]))

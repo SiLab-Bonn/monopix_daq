@@ -75,7 +75,8 @@ class AnalyzeHits():
         if inj_window is None:
             with tb.open_file(self.fraw) as f:
                 firmware=yaml.load(f.root.meta_data.attrs.firmware)
-                inj_window=int(firmware["inj"]["WIDTH"]/2)
+                inj_window=int(firmware["inj"]["WIDTH"]*0.85)
+                print "Using an injection timestamp window cut of %i (25ns clocks)"%inj_window
         self.res["apply_ts_inj_window"]=inj_window
 
     def run_apply_ts_inj_window(self, hits):

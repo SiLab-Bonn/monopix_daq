@@ -28,6 +28,7 @@ class ScanBase(object):
     '''
 
     def __init__(self, monopix=None, fout=None, online_monitor_addr="tcp://127.0.0.1:6500"):
+        ### set dut
         if isinstance(monopix,str) or (monopix is None):
             self.monopix=monopix.Monopix(monopix)
         else:
@@ -54,10 +55,14 @@ class ScanBase(object):
         if flg==0:
             fh = logging.FileHandler(self.output_filename + '.log')
             fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
-            fh.setLevel(logging.WARNING)
+            #fh.setLevel(logging.WARNING)
             self.logger.addHandler(fh)
         #self.monopix.logging.info('Initializing %s', self.__class__.__name__)
         
+	    self.logger.info('Initializing %s', self.__class__.__name__)
+        self.logger.info("Scan start time: "+time.strftime("%Y-%m-%d_%H:%M:%S"))
+        self.scan_start_time=time.localtime()
+                
         ### set online monitor
         self.socket=online_monitor_addr
             
@@ -100,13 +105,14 @@ class ScanBase(object):
         
         ### execute scan
         self.fifo_readout = FifoReadout(self.dut)
-        #self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        self.logger.info('DAC Status: %s', str(self.monopix.dac_status()))
         self.monopix.show("all")
         self.scan(**kwargs) 
         self.fifo_readout.print_readout_status()
         self.monopix.show("all")
-        self
-        #self.logger.info('DAC Status: %s', str(self.monopix.power_status()))
+        self.logger.info('Power Status: %s', str(self.monopix.power_status()))
+        self.logger.info('DAC Status: %s', str(self.monopix.dac_status()))
         
         ### save chip configurations
         self.meta_data_table.attrs.power_status = yaml.dump(self.monopix.power_status())
@@ -119,6 +125,10 @@ class ScanBase(object):
 
         ### close file
         self.h5_file.close()
+        self.logger.info("Scan end time: "+time.strftime("%Y-%m-%d_%H:%M:%S"))
+        self.scan_end_time=time.localtime()
+        self.scan_total_time=time.mktime(self.scan_end_time) - time.mktime(self.scan_start_time)
+        self.logger.info("Total scan time: %i seconds", self.scan_total_time)
         self.logger.info('Data Output Filename: %s', self.output_filename + '.h5')
 
         ### close socket

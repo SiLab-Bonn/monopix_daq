@@ -57,11 +57,11 @@ class EnTune(scan_base.ScanBase):
             ### get data from buffer
             buf = self.fifo_readout.data
             if len(buf)==0:
-                self.logger.info("th_tune:th=%.4f pix=%d, no data"%(th,len(np.argwhere(en))))
+                self.logger.info("en_tune:th=%.4f pix=%d, no data"%(th,len(np.argwhere(en))))
                 th=th+th_step[th_step_i]
                 continue
             elif th_step_i!=(len(th_step)-1):
-                self.logger.info("th_tune:th=%.4f step=%.4f "%(th,th_step[th_step_i]))
+                self.logger.info("en_tune:th=%.4f step=%.4f "%(th,th_step[th_step_i]))
                 th=th-th_step[th_step_i]
                 th_step_i=th_step_i+1
                 continue
@@ -70,7 +70,7 @@ class EnTune(scan_base.ScanBase):
             
             ##########################
             ## showing status
-            self.logger.info("th_tune:==== %.4f===data %d=====cnt %d======en %d====="%(
+            self.logger.info("en_tune:==== %.4f===data %d=====cnt %d======en %d====="%(
                 th,len(data),np.sum(img), len(en[en])))
             ax[0,0].cla()
             ax[0,0].imshow(np.transpose(img),vmax=min(np.max(img),100),origin="low",aspect="auto")
@@ -87,11 +87,11 @@ class EnTune(scan_base.ScanBase):
             ##########################
             ### find noisy
             arg=np.argwhere(img>cnt_th)
-            s="th_tune:noisy pixel %d"%len(arg)
+            s="en_tune:noisy pixel %d"%len(arg)
             for a in arg:
                 s="[%d,%d]=%d"%(a[0],a[1],img[a[0],a[1]]),
             self.logger.info(s)
-            self.logger.info("th_tune:th=%.4f en=%d"%(th,len(np.argwhere(en))))
+            self.logger.info("en_tune:th=%.4f en=%d"%(th,len(np.argwhere(en))))
             en=np.bitwise_and(en,img<=cnt_th)
             if n_pix >= len(np.argwhere(en)):
                 self.monopix.set_th(th-th_step[th_step_i])
@@ -99,7 +99,7 @@ class EnTune(scan_base.ScanBase):
             else:
                 th=th+th_step[th_step_i]
                 self.monopix.set_preamp_en(en)
-        self.logger.info("th_tune:th=%.4f en=%d"%(
+        self.logger.info("en_tune:th=%.4f en=%d"%(
                          self.dut.SET_VALUE["TH"],
                          len(np.argwhere(self.dut.PIXEL_CONF["PREAMP_EN"][:,:]))
                          ))

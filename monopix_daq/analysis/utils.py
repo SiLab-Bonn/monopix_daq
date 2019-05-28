@@ -204,7 +204,7 @@ def get_scurve(f_event,pixel,type="inj"):
         res["mu"]=tmp[0]["mu"]
         res["sigma"]=tmp[0]["sigma"]
         if len(tmp)>1:
-            print "onepix_scan.get_scurve():error!! pix=[%d %d] has multiple fitting"%(p[0],p[1])
+            print "onepix_scan.get_scurve():error!! pix=[%d %d] has multiple fitting"%(pixel[0],pixel[1])
     return res
 
 def fit_gauss(x_data, y_data):

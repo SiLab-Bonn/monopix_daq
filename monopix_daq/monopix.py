@@ -36,7 +36,7 @@ def mk_fname(ext="data.npy",dirname=None):
         dirname=os.path.join(OUTPUT_DIR,prefix)
     if not os.path.exists(dirname):
         os.system("mkdir -p %s"%dirname)
-    return os.path.join(dirname,time.strftime("%Y%m%d_%H%M%S0_")+ext)
+    return os.path.join(dirname,time.strftime("%Y%m%d_%H%M%S_")+ext)
 
 class Monopix():
     default_yaml=os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix_mio3.yaml"
@@ -48,7 +48,9 @@ class Monopix():
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
-
+        
+        self.logger.info("LF-Monopix initialized at "+time.strftime("%Y-%m-%d_%H:%M:%S"))
+        
         self.debug=0
         self.inj_device="gpac"
         self.COL_SIZE = 36  ##TODO this will be used in scans... maybe not here
@@ -91,10 +93,7 @@ class Monopix():
         self.dut['CONF_SR'].set_size(4841)
 
         self.power_up()
-
-        status=self.power_status()
-        s=format_power(status)
-        self.logger.info(s)
+        
         self._write_global_conf()
         self.set_preamp_en("all")
         self.set_inj_en([18,25])
@@ -103,6 +102,9 @@ class Monopix():
         
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
+        status=self.power_status()
+        s=format_power(status)
+        self.logger.info(s)
 
     def reconnect_fifo(self):
         try:
@@ -274,7 +276,7 @@ class Monopix():
         self._write_global_conf()
       
         arg=np.argwhere(self.dut.PIXEL_CONF["MONITOR_EN"][:,:])
-        self.logger.info("set_mon_en pix: %d%s"%(len(arg),str(arg).replace("\n"," ")))
+        self.logger.info("set_mon_en pix: %d %s"%(len(arg),str(arg).replace("\n"," ")))
 
     def set_inj_en(self,pix="none"):
         pixlist=self._cal_pix("INJECT_EN",pix)
