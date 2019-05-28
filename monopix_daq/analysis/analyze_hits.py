@@ -3,6 +3,7 @@ import numpy as np
 import tables as tb
 import yaml
 import logging
+import matplotlib.pyplot as plt
 
 COL_SIZE = 36 
 ROW_SIZE = 129
@@ -12,6 +13,10 @@ class AnalyzeHits():
         self.fhit=fhit
         self.fraw=fraw
         self.res={}
+        
+        ### set logger
+        self.logger = logging.getLogger()
+        self.logger.info('Initializing %s', self.__class__.__name__)
 
     def run(self,n=10000000):
         with tb.open_file(self.fhit,"a") as f:
@@ -29,7 +34,7 @@ class AnalyzeHits():
                             hits=hits[:len(hits)-i-1]
                             break
                     if last["scan_param_id"]==h["scan_param_id"]:
-                        print "ERROR data chunck is too small increase n"
+                        self.logger.info("ERROR data chunck is too small increase n")
                 self.analyze(hits,f.root)
                 start=start+len(hits)
         self.save()
@@ -68,7 +73,7 @@ class AnalyzeHits():
     def run_delete_noise(self, hits):
         len0=len(hits)
         hits=hits[hits["flg"]==0]
-        print "delete_noise from %d to %d %.3f percent"%(len0,len(hits),100.0*len(hits)/len0)
+        self.logger.info( "delete_noise from %d to %d %.3f percent"%(len0,len(hits),100.0*len(hits)/len0) )
         return hits
         
     def init_apply_ts_inj_window(self,inj_window=None):
@@ -76,14 +81,14 @@ class AnalyzeHits():
             with tb.open_file(self.fraw) as f:
                 firmware=yaml.load(f.root.meta_data.attrs.firmware)
                 inj_window=int(firmware["inj"]["WIDTH"]*0.85)
-                print "Using an injection timestamp window cut of %i (25ns clocks)"%inj_window
+                self.logger.info( "Using an injection timestamp window cut of %i (25ns clocks)"%inj_window)
         self.res["apply_ts_inj_window"]=inj_window
 
     def run_apply_ts_inj_window(self, hits):
         len0=len(hits)
         ts_inj40=((np.int64(hits["ts_token"])>>4) - np.int64(hits["tot"]) - (np.int64(hits["ts_inj"])>>4))
         hits=hits[ts_inj40 < self.res["apply_ts_inj_window"]]
-        print "apply_ts_inj_window from %d to %d %.3f percent"%(len0,len(hits),100.0*len(hits)/len0)
+        self.logger.info( "apply_ts_inj_window from %d to %d %.3f percent"%(len0,len(hits),100.0*len(hits)/len0) )
         return hits
         
     def init_delete_noninjected(self):
@@ -94,19 +99,20 @@ class AnalyzeHits():
         uni,idx,cnt=np.unique(hits["scan_param_id"],return_index=True,return_counts=True)
         buf=np.empty(0,dtype=hits.dtype)
         for u_i,u in enumerate(uni):
-            #print "scan_param_id",u
-            tmp=hits[idx[u_i]:idx[u_i]+cnt[u_i]]
-            injected_pix=self.res["delete_noninjected"][self.res["delete_noninjected"]["scan_param_id"]==u]['pix'][0]
+            tmp=hits[hits["scan_param_id"]==u_i]
+            injected_pix=list() 
+            for injmask_part in range(len(self.res["delete_noninjected"][self.res["delete_noninjected"]["scan_param_id"]==u]['pix'])): #Takes into account different measurements with same scan_param_id
+                curr_injmask_part=self.res["delete_noninjected"][self.res["delete_noninjected"]["scan_param_id"]==u]['pix'][injmask_part]
+                injected_pix.extend(curr_injmask_part)
             detected_pix=np.transpose(np.array([tmp["col"],tmp["row"]]))
             mask=np.zeros(len(detected_pix),dtype=bool)
             #print injected_pix
             for ip in injected_pix:
-               #print "ip",ip
-               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["col"]==ip[0])
-               #print len(np.argwhere(tmp_mask))
+               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["row"]==ip[1])
+               #print np.argwhere(tmp_mask)
                mask=np.bitwise_or(tmp_mask,mask)
             buf=np.append(buf,tmp[mask])
-        print "delete_noninjected from %d to %d %.3f percent"%(len0,len(buf),100.0*len(buf)/len0)
+        self.logger.info( "delete_noninjected from %d to %d %.3f percent"%(len0,len(buf),100.0*len(buf)/len0) )
         return buf
         
         
@@ -133,7 +139,7 @@ class AnalyzeHits():
             f.create_table(f.root,name="LECnts",
                            description=np.zeros(0,dtype=cnt_dtype+[('cnt',"<i4")]).dtype,
              title='le_cnt_data')
-        print "AnalyzeHits: le_cnts will be analyzed"
+        self.logger.info( "AnalyzeHits: le_cnts will be analyzed" )
 
     def run_le_cnts(self,hits,fhit_root):
         hits["tof"] = hits["tof"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
@@ -300,7 +306,7 @@ class AnalyzeHits():
                 plt.xlabel("Injection delay [%.3fns]"%(25/16.))
                 plt.ylabel("Monopix timestamp")
                 plt.savefig("LE_inj%.4f_th%.4f.png"%(buf[0]["inj"],buf[0]["th"]),fmt="png",dpi=300)
-                print "LE_inj%.4f_th%.4f.png"%(buf[0]["inj"],buf[0]["th"])
+                self.logger.info( "LE_inj%.4f_th%.4f.png"%(buf[0]["inj"],buf[0]["th"]) )
                 plt.clf()
 
 if "__main__"==__name__:

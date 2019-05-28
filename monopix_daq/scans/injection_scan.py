@@ -5,8 +5,11 @@ import bitarray
 import tables as tb
 import logging
 import yaml
+import matplotlib.pyplot as plt
+import math
 
 import monopix_daq.scan_base as scan_base
+import monopix_daq.analysis.utils as mono_utils
 
 local_configuration={"injlist": None, #np.arange(0.1,0.6,0.05),
                      "thlist": None, # None, [0.82], np.arange(),
@@ -40,6 +43,13 @@ class InjectionScan(scan_base.ScanBase):
         en=np.copy(self.dut.PIXEL_CONF["PREAMP_EN"])
         
         injlist=kwargs.pop("injlist")
+        
+        if kwargs["online_fig"]==None and kwargs["online_ax"]==None:
+            fig, ax=plt.subplots(2,2)
+            plt.ion()
+        else:
+            fig, ax=kwargs.pop("online_fig"), kwargs.pop("online_ax")
+        
         if injlist is None or len(injlist)==0:
             injlist=[self.dut.SET_VALUE["INJ_HI"]-self.dut.SET_VALUE["INJ_LO"]]
         thlist=kwargs.pop("thlist")
@@ -55,14 +65,25 @@ class InjectionScan(scan_base.ScanBase):
         
         debug=kwargs.pop("debug",0)
         
+        mask_step=kwargs.pop("mask_step",None)
+        
+        if mask_step is not None:    
+            list_of_masks=mono_utils.generate_mask(n_cols=self.monopix.COL_SIZE, n_rows=self.monopix.ROW_SIZE, mask_steps=mask_step, return_lists=False)
+            mask_n=len(list_of_masks)
+            #n_mask_pix=int(math.ceil(len(pix)/(mask_step*1.0)))+2
+            n_mask_pix=int( math.ceil(self.monopix.ROW_SIZE/(mask_step*1.0)) * len(np.unique([coln[0] for coln in pix], axis=0)) )
+            param_dtype=[("scan_param_id","<i4"),("pix","<i2",(n_mask_pix,2))]
+        else:
+            param_dtype=[("scan_param_id","<i4"),("pix","<i2",(n_mask_pix,2))]
+            pass
+        
         if (debug & 0x1)==1:
             print "++++++++ injlist",len(injlist),injlist
             print "++++++++ thlist",len(thlist),thlist
             print "++++++++ phaselist",len(phaselist),phaselist
             print "++++++++ with_mon",with_mon
             print "++++++++ n_mask_pix, mask_n",n_mask_pix,mask_n
-
-        param_dtype=[("scan_param_id","<i4"),("pix","<i2",(n_mask_pix,2))]
+            print "++++++++ mask_step, mask_n",mask_step,mask_n
 
         glist=[]
         #for k,v in kwargs.iteritems():
@@ -75,9 +96,13 @@ class InjectionScan(scan_base.ScanBase):
         ####################
         ## create a table for scan_params
         description=np.zeros((1,),dtype=param_dtype).dtype
-        self.scan_param_table = self.h5_file.create_table(self.h5_file.root, 
-                      name='scan_parameters', title='scan_parameters',
-                      description=description, filters=self.filter_tables)
+        try:
+            self.scan_param_table = self.h5_file.create_table(self.h5_file.root, 
+                          name='scan_parameters', title='scan_parameters',
+                          description=description, filters=self.filter_tables)
+        except tb.exceptions.NodeError:
+            self.scan_param_table = self.h5_file.root.scan_parameters
+            pass
         self.kwargs.append("thlist")
         self.kwargs.append(yaml.dump(inj_th_phase[:,1]))
         self.kwargs.append("injlist")
@@ -98,9 +123,17 @@ class InjectionScan(scan_base.ScanBase):
               self.monopix.set_global(**g)
           for mask_i in range(mask_n):
             mask_pix=[]
-            for i in range(mask_i,len(pix),mask_n):
-                if en[pix[i][0],pix[i][1]]==1:
-                    mask_pix.append(pix[i])
+            
+            if mask_step is not None:  
+                pix_frommask=list_of_masks[mask_i]
+                for i in range(len(pix)):
+                    if pix_frommask[pix[i][0], pix[i][1]]==1:
+                        mask_pix.append(pix[i])
+            else:           
+                for i in range(mask_i,len(pix),mask_n):
+                    if en[pix[i][0],pix[i][1]]==1:
+                        mask_pix.append(pix[i])
+                    
             self.monopix.set_inj_en(mask_pix)
             if disable_noninjected_pixel:
                 self.monopix.set_preamp_en(mask_pix)
@@ -132,6 +165,7 @@ class InjectionScan(scan_base.ScanBase):
             cnt=0
             with self.readout(scan_param_id=scan_param_id,fill_buffer=False,clear_buffer=True,
                               readout_interval=0.001):
+                self.logger.info('Injecting: mask=%d, from %.3f to %.3f V'%(scan_param_id,injlist[0], injlist[-1]))
                 for inj,th,phase in inj_th_phase:
                   if th>0 and self.dut.SET_VALUE["TH"]!=th:
                     self.dut["TH"].set_voltage(th,unit="V")
@@ -169,6 +203,20 @@ class InjectionScan(scan_base.ScanBase):
                 
             self.logger.info('mask=%d pix=%s dat=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             scan_param_id=scan_param_id+1
+
+            ax[0,0].cla()
+            ax[0,0].imshow(np.transpose(np.copy(self.dut.PIXEL_CONF["TRIM_EN"][:])),vmax=16,vmin=0,origin="low",aspect="auto")
+            ax[0,0].set_title("TRIM_EN")
+            ax[1,0].cla()
+            ax[1,0].imshow(np.transpose(np.copy(self.dut.PIXEL_CONF["PREAMP_EN"][:])),vmax=1,vmin=0,origin="low",aspect="auto")
+            ax[1,0].set_title("PREAMP_EN")
+            ax[0,1].cla()
+            ax[0,1].imshow(np.transpose(np.copy(self.dut.PIXEL_CONF["INJECT_EN"][:])),vmax=1,vmin=0,origin="low",aspect="auto")
+            ax[0,1].set_title("INJ_EN")
+            ax[1,1].cla()
+            ax[1,1].imshow(np.transpose(np.copy(self.dut.PIXEL_CONF["MONITOR_EN"][:])),vmax=1,vmin=0,origin="low",aspect="auto")
+            fig.tight_layout()
+            plt.pause(0.03)
 
     def analyze(self,remove_HitFile=True):
         fraw = self.output_filename +'.h5'

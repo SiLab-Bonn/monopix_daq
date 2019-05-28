@@ -34,7 +34,7 @@ class ScanBase(object):
         else:
             self.monopix = monopix ## todo better ???, self.dut.dut["CONF"].... :(
         self.dut=self.monopix.dut
-        
+
         ### set file path and name
         if fout==None:
             self.working_dir = os.path.join(os.getcwd(),"output_data")
@@ -48,18 +48,15 @@ class ScanBase(object):
         
         ### set logger
         self.logger = logging.getLogger()
-        flg=0
         for l in self.logger.handlers:
             if isinstance(l, logging.FileHandler):
-               flg=1
-        if flg==0:
-            fh = logging.FileHandler(self.output_filename + '.log')
-            fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] %(message)s"))
-            #fh.setLevel(logging.WARNING)
-            self.logger.addHandler(fh)
-        #self.monopix.logging.info('Initializing %s', self.__class__.__name__)
-        
-	    self.logger.info('Initializing %s', self.__class__.__name__)
+               dut_logger_filename=l.baseFilename
+               self.logger.removeHandler(l)
+        fh = logging.FileHandler(self.output_filename + '.log')
+        fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-20s] [%(funcName)-20s] %(message)s"))
+        self.logger.addHandler(fh)
+        open(fh.baseFilename, "w").writelines([l for l in open(dut_logger_filename).readlines()])
+        self.logger.info('Initializing %s', self.__class__.__name__)
         self.logger.info("Scan start time: "+time.strftime("%Y-%m-%d_%H:%M:%S"))
         self.scan_start_time=time.localtime()
                 

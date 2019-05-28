@@ -43,11 +43,14 @@ class Monopix():
     def __init__(self,dut=None,no_power_reset=True):
         ## set logger
         self.logger = logging.getLogger()
-        logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] (%(threadName)-10s) %(message)s")
+        logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-20s] [%(funcName)-20s] %(message)s")
         fname=mk_fname(ext="log.log")
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
+        for l in self.logger.handlers:
+            if isinstance(l, logging.StreamHandler):
+                l.setFormatter(logFormatter)
         
         self.logger.info("LF-Monopix initialized at "+time.strftime("%Y-%m-%d_%H:%M:%S"))
         
