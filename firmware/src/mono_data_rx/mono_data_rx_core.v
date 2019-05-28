@@ -33,6 +33,7 @@ module mono_data_rx_core
     input wire CLK_BX,
     input wire RX_TOKEN, RX_DATA, RX_CLK,
     output reg RX_READ, RX_FREEZE,
+    output reg RX_nRST,
     output wire READY,
     input wire [63:0] TIMESTAMP,
     
@@ -51,7 +52,7 @@ module mono_data_rx_core
     output wire LOST_ERROR
 );
 
-localparam VERSION = 2;
+localparam VERSION = 3;
 
 wire SOFT_RST;
 assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
@@ -61,6 +62,7 @@ assign RST = BUS_RST | SOFT_RST;
 
 reg CONF_EN;
 reg CONF_DISSABLE_GRAY_DEC;
+reg CONF_FORCE_RST;
 
 reg [7:0] CONF_START_FREEZE;
 reg [7:0] CONF_STOP_FREEZE;
@@ -68,35 +70,45 @@ reg [7:0] CONF_START_READ;
 reg [7:0] CONF_STOP_READ;
 reg [7:0] CONF_STOP;
 reg [7:0] CONF_READ_SHIFT;
+reg [7:0] CONF_START_RST;
+reg [7:0] CONF_STOP_RST;
 
 always @(posedge BUS_CLK) begin
     if(RST) begin
         CONF_EN <= 0;
         CONF_DISSABLE_GRAY_DEC <= 0;
+        CONF_FORCE_RST <= 0;
           CONF_START_FREEZE <= 3;
           CONF_START_READ <= 6;
           CONF_STOP_READ <= 7;
           CONF_STOP_FREEZE <= 15;
           CONF_STOP <= 45;
-          CONF_READ_SHIFT <=59; // (29<<2+1)
+          CONF_READ_SHIFT <=58; // (29<<1)
+          CONF_START_RST<= 0;
+          CONF_START_RST<= 0;
     end
     else if(BUS_WR) begin
         if(BUS_ADD == 2) begin
             CONF_EN <= BUS_DATA_IN[0];
             CONF_DISSABLE_GRAY_DEC <= BUS_DATA_IN[1];
+            CONF_FORCE_RST <= BUS_DATA_IN[2];
           end
           else if(BUS_ADD == 4)
-            CONF_START_FREEZE <= BUS_DATA_IN;
+              CONF_START_FREEZE <= BUS_DATA_IN;
           else if(BUS_ADD == 5)
-            CONF_STOP_FREEZE <= BUS_DATA_IN;
+              CONF_STOP_FREEZE <= BUS_DATA_IN;
           else if(BUS_ADD == 6)
-            CONF_START_READ <= BUS_DATA_IN;
+              CONF_START_READ <= BUS_DATA_IN;
           else if(BUS_ADD == 7)
-            CONF_STOP_READ <= BUS_DATA_IN;
+              CONF_STOP_READ <= BUS_DATA_IN;
           else if(BUS_ADD == 8)
-            CONF_STOP <= BUS_DATA_IN;
+              CONF_STOP <= BUS_DATA_IN;
           else if(BUS_ADD == 9)
-            CONF_READ_SHIFT <= BUS_DATA_IN;
+              CONF_READ_SHIFT <= BUS_DATA_IN;
+          else if(BUS_ADD == 10)
+              CONF_START_RST <= BUS_DATA_IN;
+            else if(BUS_ADD == 11)
+              CONF_STOP_RST <= BUS_DATA_IN;
     end
 end
 
@@ -108,7 +120,7 @@ always @(posedge BUS_CLK) begin
         if(BUS_ADD == 0)
             BUS_DATA_OUT <= VERSION;
         else if(BUS_ADD == 2)
-            BUS_DATA_OUT <= {6'b0, CONF_DISSABLE_GRAY_DEC, CONF_EN};
+            BUS_DATA_OUT <= {5'b0, CONF_FORCE_RST,CONF_DISSABLE_GRAY_DEC, CONF_EN};
         else if(BUS_ADD == 3)
             BUS_DATA_OUT <= LOST_DATA_CNT;
         else if(BUS_ADD == 4)
@@ -123,6 +135,10 @@ always @(posedge BUS_CLK) begin
             BUS_DATA_OUT <= CONF_STOP;
 		else if(BUS_ADD == 9)
             BUS_DATA_OUT <= CONF_READ_SHIFT[7:0];
+        else if(BUS_ADD == 10)
+                BUS_DATA_OUT <= CONF_START_RST;
+            else if(BUS_ADD == 11)
+                BUS_DATA_OUT <= CONF_STOP_RST;
          else if(BUS_ADD == 17)
             BUS_DATA_OUT <= {7'b0,READY};
          else if (BUS_ADD ==18)  ///debug
@@ -162,8 +178,9 @@ always@(posedge RX_CLK)
 	     token_cnt <= token_cnt+1;
 	 end
 
-parameter NOP=5'd0, WAIT_ONE = 5'd1, NOP_NEXT=5'd2, WAIT_NEXT = 5'd3, WAIT_TWO = 5'd4, WAIT_TWO_NEXT = 5'd5;
-reg [4:0] state, next_state;
+parameter NOP=4'd0, WAIT_ONE = 4'd1, NOP_NEXT=4'd2, WAIT_NEXT = 4'd3, 
+          WAIT_TWO = 4'd4, WAIT_TWO_NEXT = 4'd5;
+reg [3:0] state, next_state;
 
 always@(posedge CLK_BX)
  if(RST_SYNC)
@@ -180,8 +197,8 @@ always@(*) begin : set_next_state
             if(TOKEN_FF[0] & CONF_EN)
                 next_state = WAIT_ONE;   
         WAIT_ONE:
-		      if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0])
-				        next_state = WAIT_TWO;
+		    if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0]) 
+				next_state = WAIT_TWO;
             else if (DelayCnt == CONF_STOP) begin
                 if(!RX_FREEZE & TOKEN_FF[0])
                     next_state = NOP_NEXT;
@@ -195,11 +212,11 @@ always@(*) begin : set_next_state
                 next_state = WAIT_NEXT;        
         WAIT_NEXT:
             if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0])
-				        next_state = WAIT_TWO_NEXT;
+				next_state = WAIT_TWO_NEXT;
             else if(DelayCnt == CONF_STOP) begin
                 if(TOKEN_FF[0])
                     next_state = NOP_NEXT;
-                else
+            else
                     next_state = NOP;
             end
         WAIT_TWO_NEXT:
@@ -234,6 +251,17 @@ always@(posedge CLK_BX) begin
     else if(DelayCnt == CONF_STOP_FREEZE && !TOKEN_FF[0])
         RX_FREEZE <= 1'b0;
 end         
+    
+always@(posedge CLK_BX) begin
+    if(RST_SYNC)
+        RX_nRST <= 1'b1;
+    else if (CONF_START_RST==0)
+        RX_nRST <= 1'b1;
+    else if( (DelayCnt==CONF_START_RST) && (!TOKEN_FF[0] | CONF_FORCE_RST) )
+        RX_nRST <= 1'b0;
+    else if(DelayCnt == CONF_STOP_RST)
+        RX_nRST <= 1'b1;
+end            
     
 reg [1:0] read_dly;
 always@(posedge CLK_BX)

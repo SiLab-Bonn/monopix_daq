@@ -13,8 +13,6 @@ local_configuration={"pix": [28,25],
                      "n_mask_pix": 23,
 }
 
-#This scan injects a certain amount of times and returns a map of the chip response.
-
 class AnalogScan(injection_scan.InjectionScan):
     scan_id = "analog_scan"
     
@@ -29,12 +27,7 @@ class AnalogScan(injection_scan.InjectionScan):
         kwargs["disable_noninjected_pixel"]=True
         ## run scan
         super(AnalogScan, self).scan(**kwargs)
-    def help(self):
-        print "pix: pixel or list of pixels ex:[28,25], [[31,81],[31,82]]"
-        print "n_mask_pix: n of pixels injected at once"
-        print "inj,th,phase: set before scan.start()"
-        print "with_mon: always False"
-        print "disable_noninjected_pixel: always True"
+
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'
         fraw = self.output_filename +'.h5'
@@ -77,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-t',"--th", type=float, default=0.83)
     parser.add_argument('-i',"--inj", type=float, default=1.5)
-    parser.add_argument('-nmp',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
+    parser.add_argument('-n',"--n_mask_pix", type=int, default=local_configuration["n_mask_pix"])
     parser.add_argument("-f","--flavor", type=str, default="28:32")
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) ## defualt=True: skip power reset
     args=parser.parse_args()

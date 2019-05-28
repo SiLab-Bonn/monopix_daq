@@ -101,7 +101,7 @@ class AnalyzeHits():
             #print injected_pix
             for ip in injected_pix:
                #print "ip",ip
-               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["col"]==ip[0])
+               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["row"]==ip[1])
                #print len(np.argwhere(tmp_mask))
                mask=np.bitwise_or(tmp_mask,mask)
             buf=np.append(buf,tmp[mask])
@@ -120,7 +120,7 @@ class AnalyzeHits():
                 cnt_dtype.pop(i)
                 break
         cnt_dtype = cnt_dtype + [
-                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),('tof', "<u1"),
+                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),('toa', "<u1"),
                     ('th', "<f4"),('phase', "<i4")]
 
         self.res["le_cnts"]=list(np.zeros(0,dtype=cnt_dtype).dtype.names)
@@ -135,7 +135,7 @@ class AnalyzeHits():
         print "AnalyzeHits: le_cnts will be analyzed"
 
     def run_le_cnts(self,hits,fhit_root):
-        hits["tof"] = hits["tof"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
+        hits["toa"] = hits["toa"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
         uni,cnt=np.unique(hits[self.res["le_cnts"]],return_counts=True)
         buf=np.empty(len(uni),dtype=fhit_root.LECnts.dtype)
         for c in self.res["le_cnts"]:

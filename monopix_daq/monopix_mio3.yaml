@@ -51,24 +51,24 @@ hw_drivers:
     size      : 8
     
   - name      : timestamp_inj #5
-    type      : timestamp640
+    type      : monopix_daq.timestamp640
     interface : intf
     base_addr : 0x10900
     size      : 8
     
   - name      : timestamp_rx1  #4
-    type      : timestamp640
+    type      : monopix_daq.timestamp640
     interface : intf
     base_addr : 0x10700
     size      : 8
     
   - name      : timestamp_mon  #6
-    type      : timestamp640
+    type      : monopix_daq.timestamp640
     interface : intf
     base_addr : 0x10a00
     
   - name      : timestamp_tlu #7
-    type      : timestamp640
+    type      : monopix_daq.timestamp640
     interface : intf
     base_addr : 0x10800
     size      : 8
@@ -79,7 +79,7 @@ hw_drivers:
     base_addr : 0x15000
     
   - name      : inj
-    type      : pulse_gen640
+    type      : monopix_daq.pulse_gen640
     interface : intf
     base_addr : 0x14000
     
@@ -154,8 +154,6 @@ registers:
     hw_driver   : GPAC
     arg_names   : [value]
     arg_add     : {'channel': 'PWR1'}
-    init        : 
-        value : 1.8
 
   - name        : VDD_BCID_BUFF
     type        : FunctionalRegister
@@ -210,6 +208,8 @@ registers:
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
+    init        :
+        'DAC': {'offset': 0.0, 'gain': 0.5}
 
   - name        : CONF_SR
     type        : StdRegister

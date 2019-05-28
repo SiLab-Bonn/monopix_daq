@@ -6,6 +6,7 @@ import yaml
 import bitarray
 import tables
 import yaml
+import socket
 
 sys.path = [os.path.dirname(os.path.abspath(__file__))] + sys.path 
 COL_SIZE = 36 ##TODO change hard coded values
@@ -74,6 +75,12 @@ class Monopix():
         self.dut.init()
         fw_version = self.dut['intf'].read(0x0,1)[0]
         logging.info("Firmware version: %s" % (fw_version))
+        
+        for reg in self.dut._conf["registers"]:
+            if reg["name"] in ["INJ_HI", "INJ_LO"] and "init" in reg:
+                self.logger.info("modify %s: %s"%(reg["name"],str(reg["init"])))
+                self.dut[reg["name"]]._ch_cal[reg['arg_add']['channel']].update(reg["init"])
+
         self.dut['CONF']['RESET'] = 1
         self.dut['CONF'].write()
         self.dut['CONF']['RESET'] = 0
@@ -94,7 +101,18 @@ class Monopix():
         
         self.dut["gate_tdc"].reset()
         self.set_inj_all()
-        
+    def reconnect_fifo(self):
+        try:
+            self.dut['intf']._sock_tcp.close()
+        except:
+            pass
+        self.dut['intf']._sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connect_timeout = float(self.dut['intf']._init.get('connect_timeout', 5.0))
+        self.dut['intf']._sock_tcp.settimeout(connect_timeout)
+        self.dut['intf']._sock_tcp.connect((self.dut['intf']._init['ip'], self.dut['intf']._init['tcp_port']))
+        self.dut['intf']._sock_tcp.settimeout(None) 
+        self.dut['intf']._sock_tcp.setblocking(0)
+
     def _write_global_conf(self):        
         self.dut['CONF']['LDDAC'] = 1
         self.dut['CONF'].write()
@@ -267,7 +285,7 @@ class Monopix():
         self._write_global_conf()
 
         arg=np.argwhere(self.dut.PIXEL_CONF["INJECT_EN"][:,:])
-        self.logger.info("set_inj_en pix: %d %s"%(len(arg),str(arg).replace("\n"," ")))
+        self.logger.info("set_inj_en pix: %d%s"%(len(arg),str(arg).replace("\n"," ")))
         
     def set_tdac(self,tdac):
         if isinstance(tdac,int):
@@ -631,7 +649,6 @@ class Monopix():
             self.set_preamp_en(ret["pix_PREAMP_EN"],ColRO_En=ret["CONF_SR"]["ColRO_En"][:])
             self.set_inj_en(ret["pix_INJECT_EN"])
             self.set_tdac(ret["pix_TRIM_EN"])
-            self.logger.info("===================loading===========================")
             for module in ["inj","gate_tdc","tlu","timestamp_inj","timestamp_tlu","timestamp_mon","data_rx"]:
                 s="load_config: %s "%module
                 for reg in ret[module]:
@@ -662,3 +679,27 @@ class Monopix():
             ret=self.dac_status()
             s=format_dac(ret)
             self.logger.info(s)
+
+class MonopixMio(Monopix):
+    default_yaml=os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix.yaml"
+    def set_inj_all(self,inj_high=0.5,inj_low=0.1,inj_n=100,inj_width=5000,delay=700,ext=False,inj_phase=None):
+        if inj_phase!=None and inj_phase!=0:
+            self.logger.error("injection phase cannot be changed with MIO")
+            return
+        self.set_inj_high(inj_high)
+        self.set_inj_low(inj_low)
+
+        self.dut["inj"].reset()
+        self.dut["inj"]["REPEAT"]=inj_n
+        self.dut["inj"]["DELAY"]=inj_width
+        self.dut["inj"]["WIDTH"]=inj_width
+        self.dut["inj"]["EN"]=0
+        
+        if self.dut["inj"].get_phase()!=inj_phase:
+            self.logger.error("inj:set_inj_phase=%d PHASE_DES=%x"%(inj_phase,self.dut["inj"]["PHASE_DES"]))
+
+        self.logger.info("inj:%.4f,%.4f inj_width:%d inj_phase:%x inj_n:%d delay:%d ext:%d"%(
+            inj_high,inj_low,inj_width,
+            self.dut["inj"]["PHASE_DES"],
+            self.dut["inj"]["REPEAT"],delay,
+            int(ext)))

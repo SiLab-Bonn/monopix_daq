@@ -13,8 +13,7 @@ local_configuration={"injlist": None, #np.arange(0.1,0.6,0.05),
                      "phaselist": None, # np.arange(0,16,1),
                      "pix":[18,25],
                      "n_mask_pix":12,
-                     "with_mon": False,
-                     "disable_noninjected_pixel": False
+                     "with_mon": False
 }
 
 class InjectionScan(scan_base.ScanBase):
@@ -193,8 +192,6 @@ class InjectionScan(scan_base.ScanBase):
         ana.init_injected()
         ana.init_cnts()
         ana.run()
-        
-        os.remove(fhit)
         
     def plot(self):
         fev=self.output_filename[:-4]+'ev.h5'

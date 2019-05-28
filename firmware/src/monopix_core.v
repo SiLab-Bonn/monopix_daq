@@ -2,14 +2,13 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-module monopix_mio_core (
+module monopix_core (
     
     //local bus
     input wire BUS_CLK,
     inout wire [7:0] BUS_DATA,
     input wire [15:0] BUS_ADD,
     input wire BUS_RD,
-pix_mio3.yaml
     input wire BUS_WR,
     input wire BUS_RST,
     
@@ -203,7 +202,8 @@ assign SR_EN = SREN_CONF ? !((SEN | (|delay_cnt))) : 0;
 
 wire GATE_TDC;
 wire INJECTION_MON;
-    
+
+`ifdef CODE_FOR_MIO3
 pulse_gen640
 #( 
     .BASEADDR(PULSE_INJ_BASEADDR), 
@@ -226,6 +226,25 @@ pulse_gen640
     .PULSE({INJECTION_MON,INJECTION}),
     .DEBUG(DEBUG)
 );
+`else    
+pulse_gen
+#( 
+    .BASEADDR(PULSE_INJ_BASEADDR), 
+    .HIGHADDR(PULSE_INJ_HIGHADDR)
+)     pulse_gen_inj(
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .PULSE_CLK(CLK40),
+    .EXT_START(GATE_TDC),
+    .PULSE(INJECTION)
+);
+assign INJECTION_MON = INJECTION;
+`endif   
 
 
 pulse_gen
@@ -447,6 +466,7 @@ timestamp640
     .FIFO_DATA(TS_TLU_FIFO_DATA)
 );
 
+wire RX_nRST;
 mono_data_rx #(
    .BASEADDR(DATA_RX_BASEADDR),
    .HIGHADDR(DATA_RX_HIGHADDR),
@@ -462,9 +482,11 @@ mono_data_rx #(
     .CLK_BX(CLK40),
     .RX_TOKEN(TOKEN), 
     .RX_DATA(DATA_LVDS), 
-    .RX_CLK(~CLK40),
+    .RX_CLK(~CLK40), //this works
+    //.RX_CLK(CLK40), //this does not
     .RX_READ(READ), 
-    .RX_FREEZE(FREEZE), 
+    .RX_FREEZE(FREEZE),
+    .RX_nRST(RX_nRST), 
     .TIMESTAMP(TIMESTAMP),
     
     .FIFO_READ(FE_FIFO_READ),
@@ -479,7 +501,7 @@ ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0),
 assign CLK_OUT = EN_OUT_CLK_CONF ? CLK40 : 1'b0;
 
 reg nRST_reg;
-assign nRST = nRST_reg;
+assign nRST = nRST_reg & RX_nRST;
 always@(negedge CLK40)
     nRST_reg <= !RESET_CONF;
 
@@ -499,7 +521,7 @@ assign EN_DATA_CMOS = EN_DATA_CMOS_CONF;
 assign RESET = 0;
 
 // LED assignments
-assign LED[0] = 0;
+assign LED[0] = 1;
 assign LED[1] = 0;
 assign LED[2] = 1;
 assign LED[3] = 0;
