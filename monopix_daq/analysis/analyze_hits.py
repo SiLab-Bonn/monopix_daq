@@ -102,7 +102,7 @@ class AnalyzeHits():
             #print injected_pix
             for ip in injected_pix:
                #print "ip",ip
-               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["col"]==ip[0])
+               tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["row"]==ip[1])
                #print len(np.argwhere(tmp_mask))
                mask=np.bitwise_or(tmp_mask,mask)
             buf=np.append(buf,tmp[mask])
