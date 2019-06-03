@@ -99,17 +99,15 @@ class AnalyzeHits():
         uni,idx,cnt=np.unique(hits["scan_param_id"],return_index=True,return_counts=True)
         buf=np.empty(0,dtype=hits.dtype)
         for u_i,u in enumerate(uni):
-            tmp=hits[hits["scan_param_id"]==u_i]
+            tmp=hits[hits["scan_param_id"]==u]
             injected_pix=list() 
             for injmask_part in range(len(self.res["delete_noninjected"][self.res["delete_noninjected"]["scan_param_id"]==u]['pix'])): #Takes into account different measurements with same scan_param_id
                 curr_injmask_part=self.res["delete_noninjected"][self.res["delete_noninjected"]["scan_param_id"]==u]['pix'][injmask_part]
                 injected_pix.extend(curr_injmask_part)
             detected_pix=np.transpose(np.array([tmp["col"],tmp["row"]]))
             mask=np.zeros(len(detected_pix),dtype=bool)
-            #print injected_pix
             for ip in injected_pix:
                tmp_mask=np.bitwise_and(tmp["col"]==ip[0],tmp["row"]==ip[1])
-               #print np.argwhere(tmp_mask)
                mask=np.bitwise_or(tmp_mask,mask)
             buf=np.append(buf,tmp[mask])
         self.logger.info( "delete_noninjected from %d to %d %.3f percent"%(len0,len(buf),100.0*len(buf)/len0) )
