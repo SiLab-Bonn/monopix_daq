@@ -34,7 +34,7 @@ class ScanBase(object):
         else:
             self.monopix = monopix ## todo better ???, self.dut.dut["CONF"].... :(
         self.dut=self.monopix.dut
-
+        
         ### set file path and name
         if fout==None:
             self.working_dir = os.path.join(os.getcwd(),"output_data")

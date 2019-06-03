@@ -125,7 +125,7 @@ class AnalyzeHits():
                 cnt_dtype.pop(i)
                 break
         cnt_dtype = cnt_dtype + [
-                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),('tof', "<u1"),
+                    ('col', "<i2"),('row', "<i2"),('inj', "<f4"),('toa', "<u1"),
                     ('th', "<f4"),('phase', "<i4")]
 
         self.res["le_cnts"]=list(np.zeros(0,dtype=cnt_dtype).dtype.names)
@@ -140,7 +140,7 @@ class AnalyzeHits():
         self.logger.info( "AnalyzeHits: le_cnts will be analyzed" )
 
     def run_le_cnts(self,hits,fhit_root):
-        hits["tof"] = hits["tof"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
+        hits["toa"] = hits["toa"] - np.uint8( np.uint64(hits["ts_inj"]-hits["phase"])>>np.uint(4) )
         uni,cnt=np.unique(hits[self.res["le_cnts"]],return_counts=True)
         buf=np.empty(len(uni),dtype=fhit_root.LECnts.dtype)
         for c in self.res["le_cnts"]:

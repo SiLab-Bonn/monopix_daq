@@ -127,7 +127,7 @@ class TdacTune(scan_base.ScanBase):
                 for p_i,p in enumerate(m_pix):
                     cnt[t,p[0],p[1]]=img[p[0],p[1]]
                     print "=====%d====="%t,p,img[p[0],p[1]]
-                    if img[p[0],p[1]] > cnt_th:
+                    if img[p[0],p[1]] >= cnt_th:
                         flg=1
                         if tdac[p[0],p[1]]==15:
                             en[p[0],p[1]]=False
@@ -135,7 +135,7 @@ class TdacTune(scan_base.ScanBase):
                     else:
                         m_pix_next.append(p)
                     img[p[0],p[1]]=0
-                for p in np.argwhere(img>cnt_th):
+                for p in np.argwhere(img>=cnt_th):
                     cnt[tdac[p[0],p[1]],p[0],p[1]]=img[p[0],p[1]]
                     print "=====*%d*====="%tdac[p[0],p[1]],p,img[p[0],p[1]]
                     if mode=="active":

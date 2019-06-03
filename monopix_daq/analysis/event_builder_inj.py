@@ -86,7 +86,7 @@ def _build_inj(dat,param,injlist,thlist,phaselist,inj_period,inj_n,mode,buf,sid,
                         buf[b_i]["ts_inj"]= ts_inj
                         buf[b_i]["ts_token"]= ts_token 
                         buf[b_i]["tot"]= (dat[d_ii]["te"]-dat[d_ii]["le"])&0xFF
-                        buf[b_i]["tof"]= dat[d_ii]["le"]
+                        buf[b_i]["toa"]= dat[d_ii]["le"]
                         buf[b_i]["tot_mon"]= ts_mon_t-ts_mon
                         buf[b_i]["flg"]= dat[d_ii]["cnt"]
                         b_i=b_i+1
@@ -98,7 +98,7 @@ def _build_inj(dat,param,injlist,thlist,phaselist,inj_period,inj_n,mode,buf,sid,
 
 buf_type=[#("event_number","<i8"),
           ("scan_param_id","<i4"),("inj_id","<i4"),  ### this is redundant. can be deleted later..
-          ("col","<u1"),("row","<u1"),("tot","<u1"),("tof","<u1"),("flg","<u1"),
+          ("col","<u1"),("row","<u1"),("tot","<u1"),("toa","<u1"),("flg","<u1"),
           ("ts_inj","<u8"),("ts_mon","<u8"),("ts_token","<u8"),("tot_mon","<u8"),
           ("inj","<f4"),("th","<f4"),("phase","<u1")]
 
