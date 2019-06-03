@@ -132,6 +132,7 @@ class InjectionScan(scan_base.ScanBase):
             cnt=0
             with self.readout(scan_param_id=scan_param_id,fill_buffer=False,clear_buffer=True,
                               readout_interval=0.001):
+                self.logger.info('Injecting: mask=%d, from %.3f to %.3f V'%(scan_param_id,injlist[0], injlist[-1]))
                 for inj,th,phase in inj_th_phase:
                   if th>0 and self.dut.SET_VALUE["TH"]!=th:
                     self.dut["TH"].set_voltage(th,unit="V")
