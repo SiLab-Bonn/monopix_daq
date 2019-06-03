@@ -137,7 +137,6 @@ class ScanBase(object):
                online_monitor.sender.close(self.socket)
            except:
                pass
-
         return self.output_filename + '.h5'
         
     def analyze(self):

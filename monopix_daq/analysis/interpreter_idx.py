@@ -47,8 +47,8 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
               rx_flg=0x1
            else:
                err=err+1
-               buf[buf_i]["row"]=0xE1
-               buf[buf_i]["col"]=0
+               buf[buf_i]["col"]=0xE1
+               buf[buf_i]["row"]=0
                buf[buf_i]["le"]=rx_flg
                buf[buf_i]["te"]=0
                buf[buf_i]["timestamp"]= 0
@@ -69,8 +69,8 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
               rx_flg=0x2
            else:
                err=err+1
-               buf[buf_i]["row"]=0xE1
-               buf[buf_i]["col"]=1
+               buf[buf_i]["col"]=0xE1
+               buf[buf_i]["row"]=1
                buf[buf_i]["le"]=rx_flg
                buf[buf_i]["te"]=0
                buf[buf_i]["timestamp"]= 0
@@ -96,8 +96,8 @@ def _interpret_idx(raw,buf,start,col,row,le,te,noise,timestamp,rx_flg,
                rx_flg=0
            else:
                err=err+1
-               buf[buf_i]["row"]=0xE1
-               buf[buf_i]["col"]=2
+               buf[buf_i]["col"]=0xE1
+               buf[buf_i]["row"]=2
                buf[buf_i]["le"]=rx_flg
                buf[buf_i]["te"]=0
                buf[buf_i]["timestamp"]= 0
@@ -625,8 +625,7 @@ def list2cnt(dat,delete_noise=True):
     return ret
     
 def without_noise(dat):
-    return dat[np.bitwise_or(dat["cnt"]==0,dat["col"]>=36)]
-    
+    return dat[np.bitwise_or(dat["cnt"]==0, dat["col"]>=36)]
 
 class InterRawIdx():
     def __init__(self,chunk=100000000,debug=0):
@@ -708,7 +707,7 @@ class InterRawIdx():
         return list2cnt(dat,delete_noise=True)
         
 def raw2list(raw,delete_noise=True):
-    inter=InterRawIdx()
+    inter=InterRawIdx(chunk=len(raw))
     dat=inter.run(raw)
     if delete_noise==True:
         dat=without_noise(dat)
@@ -716,11 +715,11 @@ def raw2list(raw,delete_noise=True):
 
 def raw2img(raw,delete_noise=True):
     inter=InterRawIdx(chunk=len(raw))
-    return list2img(inter.run(raw),delete_noise=delete_noise)
+    return list2img(inter.run(raw), delete_noise=delete_noise)
 
 def raw2cnt(raw,delete_noise=True):
     inter=InterRawIdx(chunk=len(raw))
-    return list2cnt(inter.run(raw),delete_noise=delete_noise)
+    return list2cnt(inter.run(raw), delete_noise=delete_noise)
 
 if __name__ == "__main__":
     import sys
