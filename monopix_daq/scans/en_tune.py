@@ -137,7 +137,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(usage="analog_scan.py xxx_scan",
-s             formatter_class=argparse.RawTextHelpFormatter)
+             formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config_file", type=str, default=None)
     parser.add_argument('-e',"--exp_time", type=float, default=local_configuration["exp_time"])
     parser.add_argument('-n',"--n_pix", type=float, default=local_configuration["n_pix"])

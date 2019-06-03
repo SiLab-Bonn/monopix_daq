@@ -209,7 +209,7 @@ registers:
     arg_names   : [ value ]
     arg_add     : { 'channel': 'INJ0'}
     init        :
-        'DAC': {'offset': 0.0, 'gain': 0.5}
+        'DAC': {'offset': 0.0, 'gain': 0.99}
 
   - name        : CONF_SR
     type        : StdRegister

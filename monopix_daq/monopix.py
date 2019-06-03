@@ -520,6 +520,7 @@ class Monopix():
         self.dut['CONF']['EN_DRIVER'] = 0
         self.dut['CONF'].write()
         return lost_cnt
+
     def set_tlu(self,tlu_delay=8,ts=True):
         self.dut["tlu"]["RESET"]=1
         self.dut["tlu"]["TRIGGER_MODE"]=3
