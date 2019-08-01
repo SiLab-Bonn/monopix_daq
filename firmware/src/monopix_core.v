@@ -466,7 +466,6 @@ timestamp640
     .FIFO_DATA(TS_TLU_FIFO_DATA)
 );
 
-wire RX_nRST;
 mono_data_rx #(
    .BASEADDR(DATA_RX_BASEADDR),
    .HIGHADDR(DATA_RX_HIGHADDR),
@@ -486,7 +485,6 @@ mono_data_rx #(
     //.RX_CLK(CLK40), //this does not
     .RX_READ(READ), 
     .RX_FREEZE(FREEZE),
-    .RX_nRST(RX_nRST), 
     .TIMESTAMP(TIMESTAMP),
     
     .FIFO_READ(FE_FIFO_READ),
@@ -501,7 +499,7 @@ ODDR clk_bx_gate(.D1(EN_BX_CLK_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0),
 assign CLK_OUT = EN_OUT_CLK_CONF ? CLK40 : 1'b0;
 
 reg nRST_reg;
-assign nRST = nRST_reg & RX_nRST;
+assign nRST = nRST_reg; // & RX_nRST;
 always@(negedge CLK40)
     nRST_reg <= !RESET_CONF;
 

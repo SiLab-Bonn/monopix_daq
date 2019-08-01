@@ -27,8 +27,7 @@ module mono_data_rx
 	 
     input wire CLK_BX,
     input wire RX_TOKEN, RX_DATA, RX_CLK,
-    output wire RX_READ, RX_FREEZE,
-    output wire RX_nRST,
+    output wire RX_READ, RX_FREEZE, 
     
     input wire FIFO_READ,
     output wire FIFO_EMPTY,
@@ -77,7 +76,6 @@ mono_data_rx_core
     .RX_CLK(RX_CLK),
     .RX_READ(RX_READ),
     .RX_FREEZE(RX_FREEZE),
-    .RX_nRST(RX_nRST),
     .TIMESTAMP(TIMESTAMP),
     
     .FIFO_READ(FIFO_READ),
