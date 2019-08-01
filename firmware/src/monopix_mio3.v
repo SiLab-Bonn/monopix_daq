@@ -1,29 +1,30 @@
 `timescale 1ns / 1ps
 `default_nettype none
+`define CODE_FOR_MIO3 
 
-`include "utils/bus_to_ip.v"
-`include "utils/clock_divider.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/bus_to_ip.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/clock_divider.v"
 
-`include "utils/cdc_syncfifo.v"
-`include "utils/generic_fifo.v"
-`include "utils/cdc_pulse_sync.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/cdc_syncfifo.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/generic_fifo.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/cdc_pulse_sync.v"
 
-`include "utils/CG_MOD_pos.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/CG_MOD_pos.v"
 
-`include "utils/3_stage_synchronizer.v"
-`include "rrp_arbiter/rrp_arbiter.v"
-`include "utils/ddr_des.v"
-`include "utils/flag_domain_crossing.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/3_stage_synchronizer.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/rrp_arbiter/rrp_arbiter.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/ddr_des.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/flag_domain_crossing.v"
 
-`include "utils/cdc_reset_sync.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/cdc_reset_sync.v"
 
-`include "utils/fifo_32_to_8.v"
-`include "utils/clock_divider.v"
-`include "i2c/i2c.v"
-`include "i2c/i2c_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/fifo_32_to_8.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/clock_divider.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/i2c/i2c.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/i2c/i2c_core.v"
 
-`include "utils/rgmii_io.v"
-`include "utils/rbcp_to_bus.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/rgmii_io.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/utils/rbcp_to_bus.v"
 
 ////SiTCP
 `include "SiTCP/WRAP_SiTCP_GMII_XC7K_32K.V"
@@ -34,29 +35,27 @@
 ////User core and its modules
 `include "monopix_core.v"
 
-`include "spi/spi_core.v"
-`include "spi/spi.v"
-`include "spi/blk_mem_gen_8_to_1_2k.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/spi/spi_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/spi/spi.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/spi/blk_mem_gen_8_to_1_2k.v"
 
-`include "gpio/gpio.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/gpio/gpio.v"
 
-`include "tlu/tlu_controller.v"
-`include "tlu/tlu_controller_core.v"
-`include "tlu/tlu_controller_fsm.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/tlu/tlu_controller_fsm.v"
 
 `include "timestamp640/timestamp640.v"
 `include "timestamp640/timestamp640_core.v"
 
-`include "pulse_gen/pulse_gen.v"
-`include "pulse_gen/pulse_gen_core.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/pulse_gen/pulse_gen.v"
+`include "/home/user/workspace/basil/basil_thinn/firmware/modules/pulse_gen/pulse_gen_core.v"
 
 `include "pulse_gen640/pulse_gen640.v"
 `include "pulse_gen640/pulse_gen640_core.v"
 
 `include "mono_data_rx/mono_data_rx.v"
 `include "mono_data_rx/mono_data_rx_core.v"
-
-`define CODE_FOR_MIO3
 
 module monopix_mio3(
 
